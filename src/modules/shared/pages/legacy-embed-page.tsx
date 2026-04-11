@@ -8,21 +8,23 @@ export function LegacyEmbedPage() {
 
   if (!mapping?.powerBiUrl) {
     return (
-      <section className="space-y-3 py-2">
-        <Alert>No se encontro el enlace Power BI preservado para esta ruta.</Alert>
+      <section className="py-4">
+        <Alert variant="warning">
+          No se encontro el enlace Power BI preservado para esta ruta.
+        </Alert>
       </section>
     )
   }
 
   return (
-    <section className="flex min-h-[calc(100vh-5.75rem)] flex-col gap-2">
+    <section className="flex min-h-[calc(100vh-6rem)] flex-col">
       <iframe
         allowFullScreen
-        className="block w-full rounded-[22px] border border-white/70 bg-white shadow-sm"
+        className="block w-full flex-1 rounded-xl border border-border bg-white shadow-sm"
         frameBorder="0"
         scrolling="no"
         src={mapping.powerBiUrl}
-        style={{ height: `max(${mapping.frameHeight ?? 800}px, calc(100vh - 8.5rem))` }}
+        style={{ minHeight: `${mapping.frameHeight ?? 800}px` }}
         title={mapping.title}
       />
     </section>

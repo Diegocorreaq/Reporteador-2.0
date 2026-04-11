@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ExternalLink, LogOut, Menu, MoreHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ExternalLink, LogOut, Menu, MoreHorizontal, User } from 'lucide-react'
 import { workspaceMeta } from '@/config/module-registry'
 import { menuService } from '@/services/menu/menu.service'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
@@ -49,7 +49,7 @@ function QuickLinkButton({
 
   if (link.to) {
     return (
-      <Button asChild className={cn('h-8 rounded-xl px-2.5 text-xs font-medium', className)} size="sm" variant="outline">
+      <Button asChild className={cn('h-8 rounded-lg px-3 text-xs font-medium', className)} size="sm" variant="outline">
         <Link to={link.to} onClick={onSelect}>
           <Icon className="h-3.5 w-3.5" />
           <span>{link.label}</span>
@@ -59,7 +59,7 @@ function QuickLinkButton({
   }
 
   return (
-    <Button asChild className={cn('h-8 rounded-xl px-2.5 text-xs font-medium', className)} size="sm" variant="outline">
+    <Button asChild className={cn('h-8 rounded-lg px-3 text-xs font-medium', className)} size="sm" variant="outline">
       <a
         href={link.href}
         rel={link.external ? 'noreferrer' : undefined}
@@ -86,11 +86,13 @@ function WorkspaceSwitchButton({
     <Button
       asChild
       className={cn(
-        'h-8 rounded-[10px] px-2.5 text-xs font-semibold shadow-none sm:px-3',
-        active ? 'pointer-events-none' : '',
+        'h-7 rounded-md px-3 text-xs font-semibold shadow-none',
+        active
+          ? 'bg-brand text-white hover:bg-brand'
+          : 'bg-transparent text-muted hover:bg-panelAlt hover:text-text',
       )}
       size="sm"
-      variant={active ? 'default' : 'ghost'}
+      variant="ghost"
     >
       <Link to={to}>{label}</Link>
     </Button>
@@ -123,17 +125,17 @@ function QuickLinksOverflow({ links }: { links: WorkspaceQuickLink[] }) {
   return (
     <div className="relative" ref={containerRef}>
       <Button
-        className="h-8 rounded-xl px-2.5 text-xs font-medium"
+        className="h-8 rounded-lg px-2.5 text-xs font-medium"
         size="sm"
         type="button"
         variant="outline"
         onClick={() => setOpen((current) => !current)}
       >
         <MoreHorizontal className="h-3.5 w-3.5" />
-        Mas
+        <span className="hidden sm:inline">Mas</span>
       </Button>
       {open ? (
-        <div className="absolute right-0 top-full z-30 mt-2 flex min-w-[270px] flex-col gap-1 rounded-2xl border border-white/80 bg-white/95 p-2 shadow-shell backdrop-blur">
+        <div className="absolute right-0 top-full z-30 mt-2 flex min-w-[240px] flex-col gap-1 rounded-xl border border-border bg-white p-2 shadow-lg">
           {links.map((link) => (
             <QuickLinkButton className="justify-start" key={link.key} link={link} onSelect={() => setOpen(false)} />
           ))}
@@ -157,14 +159,21 @@ export function Topbar({ collapsed, workspace, onOpenMobile, onToggleSidebar }: 
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b border-white/70 bg-canvas/94 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-[1680px] items-center gap-2 px-3 sm:px-5 lg:px-6">
-        <Button className="h-8 w-8 rounded-xl lg:hidden" size="icon" variant="outline" onClick={onOpenMobile}>
+    <header className="sticky top-0 z-20 border-b border-border bg-white">
+      <div className="mx-auto flex h-14 max-w-[1680px] items-center gap-3 px-4 sm:px-5 lg:px-6">
+        {/* Mobile menu button */}
+        <Button
+          className="h-8 w-8 rounded-lg lg:hidden"
+          size="icon"
+          variant="outline"
+          onClick={onOpenMobile}
+        >
           <Menu className="h-4 w-4" />
         </Button>
 
+        {/* Desktop sidebar toggle */}
         <Button
-          className="hidden h-8 w-8 rounded-xl lg:inline-flex"
+          className="hidden h-8 w-8 rounded-lg lg:inline-flex"
           size="icon"
           title={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
           variant="outline"
@@ -173,19 +182,25 @@ export function Topbar({ collapsed, workspace, onOpenMobile, onToggleSidebar }: 
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>
 
-        <Link className="flex items-center gap-2" to={workspace === 'main' ? '/app' : '/sigh'}>
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm">
+        {/* Logo and workspace name */}
+        <Link className="flex items-center gap-2.5" to={workspace === 'main' ? '/app' : '/sigh'}>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-soft">
             <img alt="Reporteador" className="h-5 w-5" src="/logo-mark.svg" />
           </span>
-          <span className="hidden text-sm font-semibold text-text sm:inline">Reporteador HEVES</span>
+          <span className="hidden text-sm font-semibold text-brand-strong sm:inline">
+            Reporteador HEVES
+          </span>
         </Link>
 
-        <div className="ml-1 flex min-w-0 items-center rounded-[14px] border border-border bg-white/85 p-1">
+        {/* Workspace switcher */}
+        <div className="ml-1 flex items-center rounded-lg border border-border bg-canvas p-0.5">
           <WorkspaceSwitchButton active={workspace === 'main'} label="Principal" to="/app" />
           <WorkspaceSwitchButton active={workspace === 'sigh'} label="Datos en Linea" to="/sigh" />
         </div>
 
-        <div className="ml-auto flex items-center gap-1.5">
+        {/* Right side actions */}
+        <div className="ml-auto flex items-center gap-2">
+          {/* Quick links - desktop */}
           <div className="hidden items-center gap-1.5 lg:flex 2xl:hidden">
             {compactQuickLinks.map((link) => (
               <QuickLinkButton key={link.key} link={link} />
@@ -193,45 +208,66 @@ export function Topbar({ collapsed, workspace, onOpenMobile, onToggleSidebar }: 
             <QuickLinksOverflow links={overflowQuickLinks} />
           </div>
 
+          {/* Quick links - large desktop */}
           <div className="hidden items-center gap-1.5 2xl:flex">
             {quickLinks.map((link) => (
               <QuickLinkButton key={link.key} link={link} />
             ))}
           </div>
 
+          {/* Quick links - mobile */}
           <div className="lg:hidden">
             <QuickLinksOverflow links={quickLinks} />
           </div>
 
+          {/* User menu */}
           <Dialog>
             <DialogTrigger asChild>
-              <Button className="h-8 w-8 rounded-xl" size="icon" variant="outline">
-                <span className="text-xs font-semibold text-text">{getInitials(user?.name)}</span>
+              <Button className="h-8 w-8 rounded-lg bg-brand-soft hover:bg-brand-soft/80" size="icon" variant="ghost">
+                <span className="text-xs font-bold text-brand-strong">{getInitials(user?.name)}</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Cuenta</DialogTitle>
-                <DialogDescription>Revise sus datos de acceso y cierre la sesion cuando termine.</DialogDescription>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-soft">
+                    <User className="h-6 w-6 text-brand-strong" />
+                  </div>
+                  <div>
+                    <DialogTitle>Mi Cuenta</DialogTitle>
+                    <DialogDescription>Informacion de usuario y sesion activa</DialogDescription>
+                  </div>
+                </div>
               </DialogHeader>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[24px] border border-border bg-panelAlt/50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Usuario</p>
-                  <p className="mt-2 text-sm font-semibold text-text">{user?.name ?? 'Usuario'}</p>
-                  <p className="mt-1 text-sm text-muted">{user?.email ?? 'sin correo registrado'}</p>
+              
+              <div className="space-y-3">
+                <div className="rounded-xl border border-border bg-canvas p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">Usuario</p>
+                  <p className="mt-1.5 text-sm font-semibold text-text">{user?.name ?? 'Usuario'}</p>
+                  <p className="mt-0.5 text-sm text-muted">{user?.email ?? 'sin correo registrado'}</p>
                 </div>
-                <div className="rounded-[24px] border border-border bg-panelAlt/50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Perfil</p>
-                  <p className="mt-2 text-sm font-semibold text-text">{user?.role ?? 'Sin perfil'}</p>
-                  <p className="mt-1 text-sm text-muted">{user?.service ?? 'Sin servicio asignado'}</p>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-border bg-canvas p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">Perfil</p>
+                    <p className="mt-1.5 text-sm font-semibold text-text">{user?.role ?? 'Sin perfil'}</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-canvas p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">Servicio</p>
+                    <p className="mt-1.5 text-sm font-semibold text-text">{user?.service ?? 'Sin asignar'}</p>
+                  </div>
                 </div>
-                <div className="rounded-[24px] border border-border bg-panelAlt/50 p-4 sm:col-span-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Ambiente actual</p>
-                  <p className="mt-2 text-sm font-semibold text-text">{workspaceMeta[workspace].label}</p>
+                
+                <div className="rounded-xl border border-brand/20 bg-brand-soft/50 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand">Ambiente Actual</p>
+                  <p className="mt-1.5 text-sm font-semibold text-brand-strong">
+                    {workspaceMeta[workspace].label}
+                  </p>
                 </div>
               </div>
+
               <DialogFooter>
-                <Button variant="danger" onClick={handleLogout}>
+                <Button className="w-full rounded-xl sm:w-auto" variant="danger" onClick={handleLogout}>
                   <LogOut className="h-4 w-4" />
                   Cerrar sesion
                 </Button>

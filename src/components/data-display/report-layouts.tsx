@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { BarChart3 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/data-display/page-header'
 
@@ -31,14 +32,14 @@ export function TableReportLayout({
   sideContent,
 }: TableReportLayoutProps) {
   return (
-    <section className="space-y-4">
+    <section className="space-y-5">
       <PageHeader eyebrow={eyebrow} title={title} description={description} actions={actions} />
-      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-4">
+      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-5">
           {filters}
           {table}
         </div>
-        {sideContent ? <div className="space-y-4">{sideContent}</div> : null}
+        {sideContent ? <div className="space-y-5">{sideContent}</div> : null}
       </div>
     </section>
   )
@@ -55,20 +56,25 @@ export function AnalyticsReportLayout({
   sideContent,
 }: AnalyticsReportLayoutProps) {
   return (
-    <section className="space-y-4">
+    <section className="space-y-5">
       <PageHeader eyebrow={eyebrow} title={title} description={description} actions={actions} />
-      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-4">
+      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-5">
           {filters}
           <Card>
-            <CardHeader className="border-b border-border/70 pb-3">
-              <CardTitle className="text-base">Visual analitica</CardTitle>
+            <CardHeader className="border-b border-border pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-soft">
+                  <BarChart3 className="h-5 w-5 text-brand-strong" />
+                </div>
+                <CardTitle>Visual Analitica</CardTitle>
+              </div>
             </CardHeader>
-            <CardContent>{chart}</CardContent>
+            <CardContent className="pt-5">{chart}</CardContent>
           </Card>
           {table}
         </div>
-        {sideContent ? <div className="space-y-4">{sideContent}</div> : null}
+        {sideContent ? <div className="space-y-5">{sideContent}</div> : null}
       </div>
     </section>
   )

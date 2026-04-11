@@ -4,22 +4,23 @@ import type { ButtonHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-2xl text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-brand text-white hover:bg-brand-strong shadow-panel',
-        accent: 'bg-accent text-white hover:bg-accent-strong shadow-panel',
-        secondary: 'bg-panelAlt text-text hover:bg-panelAlt/80',
-        outline: 'border border-border bg-white/80 text-text hover:bg-panel',
-        ghost: 'text-text hover:bg-panelAlt/80',
-        danger: 'bg-danger text-white hover:bg-danger/90',
+        default: 'bg-accent text-white hover:bg-accent-strong shadow-sm',
+        brand: 'bg-brand text-white hover:bg-brand-strong shadow-sm',
+        secondary: 'bg-panelAlt text-text hover:bg-panelAlt/80 border border-border',
+        outline: 'border border-border bg-white text-text hover:bg-canvas hover:border-brand/40',
+        ghost: 'text-text hover:bg-panelAlt',
+        danger: 'bg-danger text-white hover:bg-danger/90 shadow-sm',
+        link: 'text-brand underline-offset-4 hover:underline',
       },
       size: {
-        sm: 'h-9 px-3.5',
-        md: 'h-11 px-4.5',
-        lg: 'h-12 px-5',
-        icon: 'h-11 w-11',
+        sm: 'h-8 px-3 text-xs',
+        md: 'h-10 px-4',
+        lg: 'h-11 px-5',
+        icon: 'h-10 w-10',
       },
     },
     defaultVariants: {

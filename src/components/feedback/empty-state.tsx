@@ -1,5 +1,4 @@
-import { CircleSlash2 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Inbox } from 'lucide-react'
 
 interface EmptyStateProps {
   title: string
@@ -8,18 +7,12 @@ interface EmptyStateProps {
 
 export function EmptyState({ title, description }: EmptyStateProps) {
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-panelAlt">
-            <CircleSlash2 className="h-5 w-5 text-muted" />
-          </div>
-          <CardTitle>{title}</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm leading-6 text-muted">{description}</p>
-      </CardContent>
-    </Card>
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-canvas">
+        <Inbox className="h-7 w-7 text-muted" />
+      </div>
+      <h3 className="mt-4 text-base font-semibold text-brand-strong">{title}</h3>
+      <p className="mt-1 max-w-sm text-sm text-muted">{description}</p>
+    </div>
   )
 }

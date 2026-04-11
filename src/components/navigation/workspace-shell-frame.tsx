@@ -29,7 +29,7 @@ export function WorkspaceShellFrame({ workspace }: WorkspaceShellFrameProps) {
   }, [setWorkspace, workspace])
 
   return (
-    <div className="min-h-screen lg:flex">
+    <div className="min-h-screen bg-canvas lg:flex">
       <WorkspaceSidebar
         collapsed={sidebarCollapsed}
         mobileOpen={mobileOpen}
@@ -38,7 +38,7 @@ export function WorkspaceShellFrame({ workspace }: WorkspaceShellFrameProps) {
         sections={sections}
         workspace={workspace}
       />
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col bg-canvas">
         <Topbar
           collapsed={sidebarCollapsed}
           onOpenMobile={() => setMobileOpen(true)}
@@ -50,8 +50,8 @@ export function WorkspaceShellFrame({ workspace }: WorkspaceShellFrameProps) {
             className={cn(
               'mx-auto flex w-full flex-col',
               isPowerBiEmbed
-                ? 'max-w-none gap-2 px-2 py-2 sm:px-3 lg:px-4'
-                : 'max-w-[1680px] gap-4 px-4 py-4 sm:px-5 lg:px-6',
+                ? 'max-w-none gap-3 px-3 py-3 sm:px-4 lg:px-5'
+                : 'max-w-[1680px] gap-5 px-4 py-5 sm:px-6 lg:px-8',
             )}
           >
             <Outlet />

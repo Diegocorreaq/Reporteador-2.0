@@ -17,11 +17,11 @@ export function DetailModal({ open, onOpenChange, title, description, items }: D
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           {items.map((item) => (
-            <div className="rounded-2xl border border-border bg-panelAlt/60 p-4" key={item.label}>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">{item.label}</p>
-              <p className="mt-2 text-sm font-medium text-text">{item.value}</p>
+            <div className="rounded-lg border border-border bg-canvas p-4" key={item.label}>
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted">{item.label}</p>
+              <p className="mt-1.5 text-sm font-medium text-brand-strong">{item.value}</p>
             </div>
           ))}
         </div>
