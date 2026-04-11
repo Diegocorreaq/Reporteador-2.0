@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --color-canvas: 244 247 251;
+  --color-panel: 255 255 255;
+  --color-panel-alt: 234 241 246;
+  --color-text: 15 23 42;
+  --color-muted: 93 108 127;
+  --color-border: 208 218 231;
+  --color-brand: 45 212 191;
+  --color-brand-strong: 13 148 136;
+  --color-brand-soft: 204 251 241;
+  --color-accent: 245 158 11;
+  --color-accent-soft: 254 243 199;
+  --color-success: 22 163 74;
+  --color-warning: 217 119 6;
+  --color-danger: 220 38 38;
+}
+
+* {
+  @apply border-border;
+}
+
+html {
+  @apply scroll-smooth;
+}
+
+body {
+  @apply min-h-screen bg-canvas font-sans text-text antialiased;
+  background-image:
+    radial-gradient(circle at top left, rgba(45, 212, 191, 0.12), transparent 28%),
+    radial-gradient(circle at top right, rgba(245, 158, 11, 0.08), transparent 18%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(244, 247, 251, 0.96));
+}
+
+#root {
+  @apply min-h-screen;
+}
+
+::selection {
+  background: rgba(45, 212, 191, 0.24);
+}
+
+.shell-grid {
+  background-size: 28px 28px;
+}
