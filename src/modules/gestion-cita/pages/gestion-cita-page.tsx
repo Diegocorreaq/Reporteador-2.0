@@ -50,7 +50,7 @@ export function GestionCitaPage({ workspace }: GestionCitaPageProps) {
         title={item?.label ?? 'Gestion de Citas'}
         description={item?.description ?? 'Consulte agendas, cumplimiento e inasistencias por especialidad y profesional.'}
         actions={
-          <Button>
+          <Button className="h-8 rounded-xl px-2.5 text-xs font-medium" size="sm">
             <CalendarRange className="h-4 w-4" />
             Exportar agenda
           </Button>

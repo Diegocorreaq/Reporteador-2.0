@@ -1,24 +1,25 @@
 import type { ReactNode } from 'react'
-import { Badge } from '@/components/ui/badge'
 
 interface PageHeaderProps {
   eyebrow?: string
   title: string
-  description: string
+  description?: string
   actions?: ReactNode
 }
 
 export function PageHeader({ eyebrow, title, description, actions }: PageHeaderProps) {
   return (
-    <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-      <div className="space-y-3">
-        {eyebrow ? <Badge variant="brand">{eyebrow}</Badge> : null}
-        <div className="space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight text-text sm:text-[2rem]">{title}</h1>
-          <p className="max-w-3xl text-sm leading-7 text-muted sm:text-base">{description}</p>
+    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          {eyebrow ? (
+            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{eyebrow}</span>
+          ) : null}
+          <h1 className="text-xl font-semibold tracking-tight text-text sm:text-2xl">{title}</h1>
         </div>
+        {description ? <p className="mt-1 hidden max-w-3xl text-sm leading-6 text-muted 2xl:block">{description}</p> : null}
       </div>
-      {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
+      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
   )
 }

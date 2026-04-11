@@ -58,7 +58,7 @@ export function LaboratorioPage({ workspace }: LaboratorioPageProps) {
         title={item?.label ?? 'Laboratorio'}
         description={item?.description ?? 'Consulte produccion, criticidad y tiempos de respuesta por area.'}
         actions={
-          <Button>
+          <Button className="h-8 rounded-xl px-2.5 text-xs font-medium" size="sm">
             <FlaskConical className="h-4 w-4" />
             Exportar resultados
           </Button>

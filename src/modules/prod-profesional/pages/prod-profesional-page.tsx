@@ -49,7 +49,7 @@ export function ProdProfesionalPage({ workspace }: ProdProfesionalPageProps) {
         title={item?.label ?? 'Produccion de Actividades'}
         description={item?.description ?? 'Consulte atenciones, rendimiento y observaciones por profesional.'}
         actions={
-          <Button>
+          <Button className="h-8 rounded-xl px-2.5 text-xs font-medium" size="sm">
             <UsersRound className="h-4 w-4" />
             Exportar ranking
           </Button>

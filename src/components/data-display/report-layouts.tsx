@@ -31,14 +31,14 @@ export function TableReportLayout({
   sideContent,
 }: TableReportLayoutProps) {
   return (
-    <section className="space-y-6">
+    <section className="space-y-4">
       <PageHeader eyebrow={eyebrow} title={title} description={description} actions={actions} />
-      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-6">
+      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="space-y-4">
           {filters}
           {table}
         </div>
-        {sideContent ? <div className="space-y-6">{sideContent}</div> : null}
+        {sideContent ? <div className="space-y-4">{sideContent}</div> : null}
       </div>
     </section>
   )
@@ -55,20 +55,20 @@ export function AnalyticsReportLayout({
   sideContent,
 }: AnalyticsReportLayoutProps) {
   return (
-    <section className="space-y-6">
+    <section className="space-y-4">
       <PageHeader eyebrow={eyebrow} title={title} description={description} actions={actions} />
-      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-6">
+      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="space-y-4">
           {filters}
           <Card>
-            <CardHeader>
-              <CardTitle>Visual analítica</CardTitle>
+            <CardHeader className="border-b border-border/70 pb-3">
+              <CardTitle className="text-base">Visual analitica</CardTitle>
             </CardHeader>
             <CardContent>{chart}</CardContent>
           </Card>
           {table}
         </div>
-        {sideContent ? <div className="space-y-6">{sideContent}</div> : null}
+        {sideContent ? <div className="space-y-4">{sideContent}</div> : null}
       </div>
     </section>
   )

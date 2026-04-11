@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { workspaceMeta } from '@/config/module-registry'
@@ -19,8 +20,11 @@ export function ModuleStatusPage({ module }: ModuleStatusPageProps) {
         title={module.title}
         description={module.summary}
         actions={
-          <Button asChild variant="outline">
-            <Link to={homeRoute}>Volver al inicio</Link>
+          <Button asChild className="h-8 px-2.5 text-xs font-medium" size="sm" variant="ghost">
+            <Link to={homeRoute}>
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Volver al inicio
+            </Link>
           </Button>
         }
       />

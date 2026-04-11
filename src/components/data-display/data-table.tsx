@@ -47,15 +47,15 @@ export function DataTable<TData>({ title, description, columns, data }: DataTabl
 
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-center lg:justify-between">
+      <CardHeader className="flex flex-col gap-2 border-b border-border/70 pb-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <CardTitle>{title}</CardTitle>
+          <CardTitle className="text-base">{title}</CardTitle>
           {description ? <p className="mt-1 text-sm leading-6 text-muted">{description}</p> : null}
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Filas</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Filas</span>
           <Select
-            className="w-28"
+            className="h-8 w-24 rounded-xl px-2 text-xs"
             value={String(pagination.pageSize)}
             onChange={(event) =>
               setPagination({
@@ -77,10 +77,7 @@ export function DataTable<TData>({ title, description, columns, data }: DataTabl
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
-                    <th
-                      className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.16em] text-muted"
-                      key={header.id}
-                    >
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.16em] text-muted" key={header.id}>
                       {header.isPlaceholder ? null : (
                         <button
                           className={cn(
@@ -113,22 +110,20 @@ export function DataTable<TData>({ title, description, columns, data }: DataTabl
               ) : (
                 <tr>
                   <td className="p-6" colSpan={columns.length}>
-                    <EmptyState
-                      title="Sin resultados"
-                      description="No hay información disponible para los filtros seleccionados."
-                    />
+                    <EmptyState title="Sin resultados" description="No hay informacion disponible para los filtros seleccionados." />
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-        <div className="flex flex-col gap-3 border-t border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted">
-            Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount() || 1}
+            Pagina {table.getState().pagination.pageIndex + 1} de {table.getPageCount() || 1}
           </p>
           <div className="flex gap-2">
             <Button
+              className="h-8 rounded-xl px-2.5 text-xs font-medium"
               size="sm"
               variant="outline"
               onClick={() => table.previousPage()}
@@ -137,7 +132,13 @@ export function DataTable<TData>({ title, description, columns, data }: DataTabl
               <ChevronLeft className="h-4 w-4" />
               Anterior
             </Button>
-            <Button size="sm" variant="outline" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+            <Button
+              className="h-8 rounded-xl px-2.5 text-xs font-medium"
+              size="sm"
+              variant="outline"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
               Siguiente
               <ChevronRight className="h-4 w-4" />
             </Button>

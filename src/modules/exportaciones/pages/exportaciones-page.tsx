@@ -60,7 +60,7 @@ export function ExportacionesPage() {
         title={item?.label ?? 'Exportar Datos'}
         description={item?.description ?? 'Revise solicitudes, cortes y descargas recientes desde un solo lugar.'}
         actions={
-          <Button>
+          <Button className="h-8 rounded-xl px-2.5 text-xs font-medium" size="sm">
             <FileDown className="h-4 w-4" />
             Nuevo exporte
           </Button>

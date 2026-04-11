@@ -59,7 +59,7 @@ export function MonitoreoPage({ workspace }: MonitoreoPageProps) {
         title={item?.label ?? 'Monitoreo'}
         description={item?.description ?? 'Haga seguimiento a observaciones, responsables y estado de atencion.'}
         actions={
-          <Button>
+          <Button className="h-8 rounded-xl px-2.5 text-xs font-medium" size="sm">
             <MonitorDot className="h-4 w-4" />
             Exportar seguimiento
           </Button>

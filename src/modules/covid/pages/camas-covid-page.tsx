@@ -49,7 +49,7 @@ export function CamasCovidPage({ workspace }: CamasCovidPageProps) {
         title={item?.label ?? 'Gestion de Camas'}
         description={item?.description ?? 'Consulte ocupacion, disponibilidad, aislamiento y traslados por area.'}
         actions={
-          <Button>
+          <Button className="h-8 rounded-xl px-2.5 text-xs font-medium" size="sm">
             <BedDouble className="h-4 w-4" />
             Actualizar corte
           </Button>

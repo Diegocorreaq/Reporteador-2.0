@@ -21,14 +21,14 @@ export function WorkspaceHomeModernPage({ workspace }: WorkspaceHomeModernPagePr
   const firstFeaturedItem = featuredItems[0]
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4">
       <PageHeader
         eyebrow={workspaceMeta[workspace].shortLabel}
         title={content.title}
         description={content.description}
         actions={
           firstFeaturedItem ? (
-            <Button asChild>
+            <Button asChild className="h-8 rounded-xl px-2.5 text-xs font-medium" size="sm">
               <Link to={firstFeaturedItem.to}>
                 Abrir {firstFeaturedItem.label}
                 <ArrowRight className="h-4 w-4" />

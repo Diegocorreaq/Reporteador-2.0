@@ -44,7 +44,7 @@ export function ProduccionHospitalariaPage() {
         title={item?.label ?? 'Hospitalizacion'}
         description={item?.description ?? 'Consulte egresos, estancia y ocupacion por servicio.'}
         actions={
-          <Button>
+          <Button className="h-8 rounded-xl px-2.5 text-xs font-medium" size="sm">
             <Hospital className="h-4 w-4" />
             Descargar consolidado
           </Button>
