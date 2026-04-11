@@ -20,10 +20,12 @@ export default {
           DEFAULT: 'rgb(var(--color-brand) / <alpha-value>)',
           strong: 'rgb(var(--color-brand-strong) / <alpha-value>)',
           soft: 'rgb(var(--color-brand-soft) / <alpha-value>)',
+          medium: 'rgb(var(--color-brand-medium) / <alpha-value>)',
         },
         accent: {
           DEFAULT: 'rgb(var(--color-accent) / <alpha-value>)',
           soft: 'rgb(var(--color-accent-soft) / <alpha-value>)',
+          strong: 'rgb(var(--color-accent-strong) / <alpha-value>)',
         },
         success: 'rgb(var(--color-success) / <alpha-value>)',
         warning: 'rgb(var(--color-warning) / <alpha-value>)',
