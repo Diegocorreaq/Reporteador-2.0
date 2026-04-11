@@ -17,28 +17,11 @@ const CentroObstetricoPage = lazy(() =>
     default: module.CentroObstetricoPage,
   })),
 )
-const ExportacionesPage = lazy(() =>
-  import('@/modules/exportaciones/pages/exportaciones-page').then((module) => ({ default: module.ExportacionesPage })),
-)
 const MainHomePage = lazy(() =>
   import('@/modules/inicio/pages/main-home-page').then((module) => ({ default: module.MainHomePage })),
 )
 const SighHomePage = lazy(() =>
   import('@/modules/inicio/pages/sigh-home-page').then((module) => ({ default: module.SighHomePage })),
-)
-const MonitoreoPage = lazy(() =>
-  import('@/modules/monitoreo/pages/monitoreo-page').then((module) => ({ default: module.MonitoreoPage })),
-)
-const ProdProfesionalPage = lazy(() =>
-  import('@/modules/prod-profesional/pages/prod-profesional-page').then((module) => ({
-    default: module.ProdProfesionalPage,
-  })),
-)
-const CamasCovidPage = lazy(() =>
-  import('@/modules/covid/pages/camas-covid-page').then((module) => ({ default: module.CamasCovidPage })),
-)
-const GestionCitaPage = lazy(() =>
-  import('@/modules/gestion-cita/pages/gestion-cita-page').then((module) => ({ default: module.GestionCitaPage })),
 )
 const LegacyEmbedPage = lazy(() =>
   import('@/modules/shared/pages/legacy-embed-page').then((module) => ({ default: module.LegacyEmbedPage })),
@@ -104,14 +87,14 @@ const mainScaffoldRoutes = getModulesByWorkspace('main')
   .filter((module) => !explicitMainRoutePaths.has(module.path))
   .map((module) => ({
     path: module.path,
-    element: lazyElement(<ModuleScaffoldPage module={module} />),
+    element: lazyElement(<ModuleScaffoldPage />),
   }))
 
 const sighScaffoldRoutes = getModulesByWorkspace('sigh')
   .filter((module) => !explicitSighRoutePaths.has(module.path))
   .map((module) => ({
     path: module.path,
-    element: lazyElement(<ModuleScaffoldPage module={module} />),
+    element: lazyElement(<ModuleScaffoldPage />),
   }))
 
 const mainImplementedRoutes = [
@@ -122,7 +105,7 @@ const mainImplementedRoutes = [
   },
   {
     path: 'zona-descarga/registros-procesados',
-    element: lazyElement(<ExportacionesPage />),
+    element: lazyElement(<ModuleScaffoldPage />),
   },
 ]
 
@@ -130,51 +113,51 @@ const sighImplementedRoutes = [
   ...legacySighEmbedRoutes,
   {
     path: 'monitoreo-en-linea/informe-familia-pendientes',
-    element: lazyElement(<MonitoreoPage workspace="sigh" />),
+    element: lazyElement(<ModuleScaffoldPage />),
   },
   {
     path: 'exportar-registros/registros-nominales',
-    element: lazyElement(<ExportacionesPage />),
+    element: lazyElement(<ModuleScaffoldPage />),
   },
   {
     path: 'exportar-registros/registros-produccion',
-    element: lazyElement(<ExportacionesPage />),
+    element: lazyElement(<ModuleScaffoldPage />),
   },
   {
     path: 'produccion-actividades/produccion-medicos',
-    element: lazyElement(<ProdProfesionalPage workspace="sigh" />),
+    element: lazyElement(<ModuleScaffoldPage />),
   },
   {
     path: 'gestion-camas/monitoreo-de-camas',
-    element: lazyElement(<CamasCovidPage workspace="sigh" />),
+    element: lazyElement(<ModuleScaffoldPage />),
   },
   {
     path: 'gestion-camas/resumen-de-camas',
-    element: lazyElement(<CamasCovidPage workspace="sigh" />),
+    element: lazyElement(<ModuleScaffoldPage />),
   },
   {
     path: 'gestion-camas/porcentaje-de-ocupacion-cama',
-    element: lazyElement(<CamasCovidPage workspace="sigh" />),
+    element: lazyElement(<ModuleScaffoldPage />),
   },
   {
     path: 'gestion-camas/gestion-estancia-cama',
-    element: lazyElement(<CamasCovidPage workspace="sigh" />),
+    element: lazyElement(<ModuleScaffoldPage />),
   },
   {
     path: 'atencion-al-usuario/gestion-de-citas',
-    element: lazyElement(<GestionCitaPage workspace="sigh" />),
+    element: lazyElement(<ModuleScaffoldPage />),
   },
   {
     path: 'atencion-al-usuario/rol-consulta-externa',
-    element: lazyElement(<GestionCitaPage workspace="sigh" />),
+    element: lazyElement(<ModuleScaffoldPage />),
   },
   {
     path: 'atencion-al-usuario/monitoreo-de-tickets',
-    element: lazyElement(<GestionCitaPage workspace="sigh" />),
+    element: lazyElement(<ModuleScaffoldPage />),
   },
   {
     path: 'atencion-al-usuario/monitoreo-ventanilla',
-    element: lazyElement(<GestionCitaPage workspace="sigh" />),
+    element: lazyElement(<ModuleScaffoldPage />),
   },
 ]
 

@@ -1,7 +1,5 @@
 import { useLocation } from 'react-router-dom'
-import { ExternalLink } from 'lucide-react'
 import { Alert } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
 import { findLegacyModuleMapping } from '@/config/legacy-functional-map'
 
 export function LegacyEmbedPage() {
