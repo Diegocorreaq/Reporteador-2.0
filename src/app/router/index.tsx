@@ -14,6 +14,11 @@ const LoginPage = lazy(() =>
 const CamasCovidPage = lazy(() =>
   import('@/modules/covid/pages/camas-covid-page').then((module) => ({ default: module.CamasCovidPage })),
 )
+const CentroObstetricoPage = lazy(() =>
+  import('@/modules/centro-obstetrico/pages/centro-obstetrico-page').then((module) => ({
+    default: module.CentroObstetricoPage,
+  })),
+)
 const ExportacionesPage = lazy(() =>
   import('@/modules/exportaciones/pages/exportaciones-page').then((module) => ({ default: module.ExportacionesPage })),
 )
@@ -96,7 +101,7 @@ const mainImplementedRoutes = [
   },
   {
     path: 'atencion-ambulatoria-hospitalizacion/centro-obstetrico',
-    element: lazyElement(<CamasCovidPage workspace="main" />),
+    element: lazyElement(<CentroObstetricoPage />),
   },
   {
     path: 'emergencia-cuidados-criticos/cuidados-criticos-uce-y-uci',

@@ -38,6 +38,43 @@ npm run dev
 
 La app queda disponible en `http://localhost:5173`.
 
+## Backend Node + Express + SQL Server
+
+Para consultas reales contra SQL Server ahora existe un backend ligero en `server/` que expone:
+
+- `GET /legacy-api/health`
+- `GET /legacy-api/reports/centro-obstetrico?fechaInicio=YYYY-MM-DD&fechaFin=YYYY-MM-DD`
+
+### Configuracion
+
+1. Crea un archivo `.env` a partir de `.env.example`
+2. Completa al menos:
+
+- `SQL_USER`
+- `SQL_PASSWORD`
+
+### Arranque local
+
+Frontend y backend juntos:
+
+```bash
+npm run dev:full
+```
+
+Solo backend:
+
+```bash
+npm run server
+```
+
+Solo frontend:
+
+```bash
+npm run dev
+```
+
+En desarrollo, Vite redirige `/legacy-api` hacia `http://localhost:8787`, por lo que el frontend sigue usando la misma base URL.
+
 ## Validacion tecnica
 
 ```bash

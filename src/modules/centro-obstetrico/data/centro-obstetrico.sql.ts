@@ -1,0 +1,72 @@
+export const centroObstetricoSql = {
+  endpoint: '/legacy-api/reports/centro-obstetrico',
+  sourceQuery: `
+SELECT
+  D1.ANIO,
+  D1.MES,
+  D1.NMES,
+  CAST(D1.FECHA AS date) AS FECHA,
+  D1.INGRESOS,
+  D1.ESTANCIA,
+  D1.PACIENTEDIA,
+  D1.CAMADIA,
+  D1.CAMASDIS2,
+  (D1.CAMADIA - D1.PACIENTEDIA) AS DIFEREN1,
+  D1.TRAN_HOSP,
+  D1.TRAN_UCI,
+  D1.TRANSOTROS,
+  (D1.EGRESOS - D1.NROREFERIDO - D1.FALLMAY - D1.FALLMEN - D1.FALL12M) AS ALTATOT,
+  D1.NROREFERIDO,
+  D1.TRAN_VILLA,
+  (D1.NROREFERIDO - D1.TRAN_VILLA) AS REFOTROS,
+  ISNULL(D1.FALLMEN + D1.FALLMAY + D1.FALL12M, 0) AS FALLTOT,
+  ISNULL(D1.FALL12M, 0) AS FALL12M,
+  ISNULL(D1.FALLMEN, 0) AS FALLMEN,
+  ISNULL(D1.FALLMAY, 0) AS FALLMAY,
+  ISNULL(D1.EGRESOS + D1.TRANSF, 0) AS EGRESOS
+FROM (
+  SELECT
+    A.ANIO,
+    A.MES,
+    A.NMES,
+    A.FECHA,
+    SUM(A.TOTING) AS INGRESOS,
+    SUM(ISNULL(A.ALTAS, 0)) AS EGRESOS,
+    SUM(A.ESTANCIA) AS ESTANCIA,
+    SUM(A.PACIENTEDIA) AS PACIENTEDIA,
+    SUM(A.CAMASDIS) AS CAMADIA,
+    AVG(CASE WHEN A.CAMAFIJA <> 0 THEN A.CAMAFIJA ELSE NULL END) AS CAMASDIS2,
+    ISNULL(SUM(A.FALL_MEN12), 0) AS FALL12M,
+    ISNULL(SUM(A.FALL_MEN48), 0) AS FALLMEN,
+    ISNULL(SUM(A.FALL_MAY48), 0) AS FALLMAY,
+    SUM(A.TRANSF_UCI) AS TRAN_UCI,
+    SUM(A.TRANSF) AS TRANSF,
+    SUM(A.TRANSF_VILLA) AS TRAN_VILLA,
+    ISNULL(SUM(A.REFERIDOS), 0) AS NROREFERIDO,
+    SUM(A.TRANSF_OBS) AS TRAN_HOSP,
+    SUM(ISNULL(A.TRANSF, 0) - ISNULL(A.TRANSF_OBS, 0)) AS TRANSOTROS
+  FROM sigh_depura..Rpt_MovimientoHospitalario A
+  INNER JOIN T_Upss_Consultorio C ON C.cod_Consultorio = A.idservicio
+  INNER JOIN V_Consultorios S ON C.cod_Consultorio = S.cod_Consultorio
+  WHERE YEAR(A.fecha) >= 2019
+    AND CAST(A.fecha AS date) BETWEEN @FechaInicio AND @FechaFin
+    AND C.des_Consultorio LIKE '%obstetrico%'
+  GROUP BY A.anio, A.mes, A.nmes, A.fecha
+) D1
+ORDER BY D1.ANIO, D1.MES;
+`.trim(),
+  lastUpdatedQuery: `
+SELECT MAX(CAST(Fecha AS date)) AS FECAC
+FROM SIGH_DEPURA..Rpt_MovimientoHospitalario;
+`.trim(),
+  calendarQuery: `
+SELECT
+  Fecha,
+  Anio,
+  NMes,
+  Nombre_Mes AS MesNombre
+FROM SIGH_DEPURA..T_TABLA_FECHA
+WHERE YEAR(Fecha) >= 2019
+ORDER BY Fecha;
+`.trim(),
+} as const

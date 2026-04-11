@@ -1,16 +1,5 @@
-import ReactEChartsCore from 'echarts-for-react/lib/core'
-import * as echarts from 'echarts/core'
-import { BarChart, LineChart } from 'echarts/charts'
-import {
-  GridComponent,
-  LegendComponent,
-  TitleComponent,
-  TooltipComponent,
-} from 'echarts/components'
-import { CanvasRenderer } from 'echarts/renderers'
+import ReactECharts from 'echarts-for-react'
 import type { ChartSeriesConfig } from '@/types/report'
-
-echarts.use([TitleComponent, TooltipComponent, LegendComponent, GridComponent, LineChart, BarChart, CanvasRenderer])
 
 interface TrendChartProps {
   title: string
@@ -21,8 +10,7 @@ interface TrendChartProps {
 
 export function TrendChart({ title, subtitle, categories, series }: TrendChartProps) {
   return (
-    <ReactEChartsCore
-      echarts={echarts}
+    <ReactECharts
       style={{ height: 360 }}
       option={{
         backgroundColor: 'transparent',

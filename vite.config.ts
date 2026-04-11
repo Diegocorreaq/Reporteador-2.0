@@ -8,5 +8,11 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    proxy: {
+      '/legacy-api': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+      },
+    },
   },
 })
