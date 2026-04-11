@@ -4,17 +4,19 @@
 
 :root {
   color-scheme: light;
-  --color-canvas: 244 247 251;
+  --color-canvas: 243 244 246;
   --color-panel: 255 255 255;
-  --color-panel-alt: 234 241 246;
-  --color-text: 15 23 42;
-  --color-muted: 93 108 127;
-  --color-border: 208 218 231;
-  --color-brand: 45 212 191;
-  --color-brand-strong: 13 148 136;
-  --color-brand-soft: 204 251 241;
-  --color-accent: 245 158 11;
+  --color-panel-alt: 229 231 235;
+  --color-text: 18 59 99;
+  --color-muted: 100 116 139;
+  --color-border: 203 213 225;
+  --color-brand: 0 95 143;
+  --color-brand-strong: 18 59 99;
+  --color-brand-soft: 224 242 254;
+  --color-brand-medium: 44 110 153;
+  --color-accent: 217 139 39;
   --color-accent-soft: 254 243 199;
+  --color-accent-strong: 180 83 9;
   --color-success: 22 163 74;
   --color-warning: 217 119 6;
   --color-danger: 220 38 38;
@@ -31,9 +33,9 @@ html {
 body {
   @apply min-h-screen bg-canvas font-sans text-text antialiased;
   background-image:
-    radial-gradient(circle at top left, rgba(45, 212, 191, 0.12), transparent 28%),
-    radial-gradient(circle at top right, rgba(245, 158, 11, 0.08), transparent 18%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(244, 247, 251, 0.96));
+    radial-gradient(circle at top left, rgba(0, 95, 143, 0.08), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(217, 139, 39, 0.06), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(243, 244, 246, 0.98));
 }
 
 #root {
@@ -41,7 +43,7 @@ body {
 }
 
 ::selection {
-  background: rgba(45, 212, 191, 0.24);
+  background: rgba(0, 95, 143, 0.24);
 }
 
 .shell-grid {
