@@ -32,10 +32,6 @@ html {
 
 body {
   @apply min-h-screen bg-canvas font-sans text-text antialiased;
-  background-image:
-    radial-gradient(circle at top left, rgba(0, 95, 143, 0.08), transparent 32%),
-    radial-gradient(circle at bottom right, rgba(217, 139, 39, 0.06), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(243, 244, 246, 0.98));
 }
 
 #root {

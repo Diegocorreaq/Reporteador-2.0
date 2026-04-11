@@ -43,15 +43,15 @@ function SidebarFlyoutLinks({
   onSelect: () => void
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       {items.map((item) => (
         <NavLink
           className={({ isActive }) =>
             cn(
-              'flex items-center gap-3 rounded-2xl px-3 py-3 text-sm transition',
+              'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition',
               isActive
-                ? 'bg-slate-950 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
-                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950',
+                ? 'bg-brand text-white'
+                : 'text-brand-strong hover:bg-brand-soft',
             )
           }
           key={item.key}
@@ -91,13 +91,13 @@ function SidebarLeaf({
     <NavLink
       className={({ isActive }) =>
         cn(
-          'group flex items-center gap-3 text-sm transition',
+          'group flex items-center gap-3 text-sm font-medium transition',
           collapsed
-            ? 'h-12 w-12 justify-center rounded-2xl px-0'
-            : 'rounded-[18px] px-3 py-2.5',
+            ? 'h-11 w-11 justify-center rounded-xl px-0'
+            : 'rounded-xl px-3 py-2.5',
           isActive
-            ? 'bg-white/14 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
-            : 'text-white/76 hover:bg-white/8 hover:text-white',
+            ? 'bg-accent text-white shadow-sm'
+            : 'text-white/80 hover:bg-white/10 hover:text-white',
         )
       }
       onBlur={collapsed ? onHoverEnd : undefined}
@@ -127,9 +127,6 @@ export function WorkspaceSidebar({
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const [flyout, setFlyout] = useState<FlyoutState | null>(null)
   const effectiveCollapsed = collapsed && !mobileOpen
-  const isMain = workspace === 'main'
-  const gradient = isMain ? 'from-slate-950 via-slate-900 to-cyan-950' : 'from-slate-950 via-slate-900 to-emerald-950'
-  const accent = isMain ? 'text-brand' : 'text-emerald-300'
 
   const activeGroupKeys = useMemo(
     () =>
@@ -178,156 +175,215 @@ export function WorkspaceSidebar({
     const rect = target.getBoundingClientRect()
     setFlyout({
       entry,
-      left: rect.right + 14,
+      left: rect.right + 12,
       top: getFlyoutTop(rect.top),
     })
   }
 
   return (
     <>
+      {/* Mobile overlay */}
       <div
         className={cn(
-          'fixed inset-0 z-30 bg-slate-950/45 transition lg:hidden',
+          'fixed inset-0 z-30 bg-brand-strong/60 backdrop-blur-sm transition lg:hidden',
           mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0',
         )}
         onClick={onCloseMobile}
       />
 
+      {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-[304px] flex-col border-r border-white/10 bg-gradient-to-b text-white shadow-shell transition-all duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:transition-[width]',
-          gradient,
-          effectiveCollapsed ? 'lg:w-[92px]' : 'lg:w-[304px]',
+          'fixed inset-y-0 left-0 z-40 flex w-[280px] flex-col bg-brand-strong text-white shadow-xl transition-all duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:transition-[width]',
+          effectiveCollapsed ? 'lg:w-[80px]' : 'lg:w-[280px]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <div className="shell-grid flex h-full flex-col bg-grid-fade">
-          <div
-            className={cn(
-              'border-b border-white/10 px-4 py-4',
-              effectiveCollapsed ? 'lg:px-3' : '',
-            )}
-          >
-            <div className={cn('flex items-center gap-3', effectiveCollapsed ? 'lg:justify-center' : 'justify-between')}>
-              <div className={cn('flex items-center gap-3', effectiveCollapsed ? 'lg:flex-col lg:gap-2' : '')}>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
-                  <img alt="Reporteador" className="h-8 w-8" src="/logo-mark.svg" />
-                </div>
-                {effectiveCollapsed ? null : (
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-white/55">Reporteador HEVES</p>
-                    <p className={cn('text-sm font-semibold', accent)}>{workspaceMeta[workspace].label}</p>
-                  </div>
-                )}
-              </div>
-
-              <Button
-                className={cn(
-                  'hidden h-9 w-9 rounded-2xl text-white hover:bg-white/10 hover:text-white lg:inline-flex',
-                  effectiveCollapsed ? 'lg:ml-0' : '',
-                )}
-                size="icon"
-                title={effectiveCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
-                variant="ghost"
-                onClick={onToggleCollapse}
-              >
-                {effectiveCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-              </Button>
+        {/* Header */}
+        <div
+          className={cn(
+            'flex items-center border-b border-white/10 px-4 py-4',
+            effectiveCollapsed ? 'lg:justify-center lg:px-3' : 'justify-between',
+          )}
+        >
+          <div className={cn('flex items-center gap-3', effectiveCollapsed ? 'lg:flex-col lg:gap-2' : '')}>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
+              <img alt="Reporteador" className="h-7 w-7" src="/logo-mark.svg" />
             </div>
+            {effectiveCollapsed ? null : (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                  Reporteador HEVES
+                </p>
+                <p className="text-sm font-semibold text-accent">{workspaceMeta[workspace].label}</p>
+              </div>
+            )}
           </div>
 
-          <div className="flex-1 overflow-y-auto px-3 py-5">
-            <div className="space-y-6">
-              {sections.map((section) => (
-                <div key={section.key}>
-                  {section.title && !effectiveCollapsed ? (
-                    <p className="px-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">{section.title}</p>
-                  ) : null}
+          <Button
+            className={cn(
+              'hidden h-8 w-8 rounded-lg border-0 bg-white/10 text-white hover:bg-white/20 hover:text-white lg:inline-flex',
+              effectiveCollapsed ? 'lg:hidden' : '',
+            )}
+            size="icon"
+            title={effectiveCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
+            variant="ghost"
+            onClick={onToggleCollapse}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        </div>
 
-                  <div className={cn('space-y-1.5', section.title && !effectiveCollapsed ? 'mt-2' : '')}>
-                    {section.entries.map((entry) => {
-                      if (!isNavigationGroup(entry)) {
-                        return (
-                          <SidebarLeaf
-                            collapsed={effectiveCollapsed}
-                            item={entry}
-                            key={entry.key}
-                            onCloseMobile={onCloseMobile}
-                            onHoverEnd={scheduleFlyoutClose}
-                            onHoverStart={openFlyout}
-                          />
-                        )
-                      }
+        {/* Expand button when collapsed */}
+        {effectiveCollapsed ? (
+          <div className="hidden border-b border-white/10 p-2 lg:block">
+            <Button
+              className="h-8 w-full rounded-lg border-0 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+              size="icon"
+              title="Expandir sidebar"
+              variant="ghost"
+              onClick={onToggleCollapse}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : null}
 
-                      if (effectiveCollapsed) {
-                        const isActive = groupHasActiveItem(entry, location.pathname)
+        {/* Navigation */}
+        <div className="flex-1 overflow-y-auto px-3 py-4">
+          <div className="space-y-6">
+            {sections.map((section) => (
+              <div key={section.key}>
+                {section.title && !effectiveCollapsed ? (
+                  <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">
+                    {section.title}
+                  </p>
+                ) : null}
 
-                        return (
-                          <button
-                            className={cn(
-                              'flex h-12 w-12 items-center justify-center rounded-2xl text-white/76 transition',
-                              isActive ? 'bg-white/14 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]' : 'hover:bg-white/8 hover:text-white',
-                            )}
-                            key={entry.key}
-                            onBlur={scheduleFlyoutClose}
-                            onFocus={(event) => openFlyout(entry, event.currentTarget)}
-                            onMouseEnter={(event) => openFlyout(entry, event.currentTarget)}
-                            onMouseLeave={scheduleFlyoutClose}
-                            title={entry.label}
-                            type="button"
-                          >
-                            <entry.icon className="h-4 w-4 shrink-0" />
-                          </button>
-                        )
-                      }
+                <div className={cn('space-y-1', effectiveCollapsed ? 'flex flex-col items-center' : '')}>
+                  {section.entries.map((entry) => {
+                    if (!isNavigationGroup(entry)) {
+                      return (
+                        <SidebarLeaf
+                          collapsed={effectiveCollapsed}
+                          item={entry}
+                          key={entry.key}
+                          onCloseMobile={onCloseMobile}
+                          onHoverEnd={scheduleFlyoutClose}
+                          onHoverStart={openFlyout}
+                        />
+                      )
+                    }
 
-                      const isOpen = openGroups[entry.key] ?? activeGroupKeys.includes(entry.key)
+                    if (effectiveCollapsed) {
+                      const isActive = groupHasActiveItem(entry, location.pathname)
 
                       return (
-                        <div className="rounded-[22px] border border-white/8 bg-white/[0.04]" key={entry.key}>
-                          <button
-                            className={cn(
-                              'flex w-full items-center gap-3 rounded-[22px] px-3 py-3 text-left transition hover:bg-white/[0.04]',
-                              groupHasActiveItem(entry, location.pathname) ? 'text-white' : 'text-white/76',
-                            )}
-                            onClick={() =>
-                              setOpenGroups((current) => ({
-                                ...current,
-                                [entry.key]: !isOpen,
-                              }))
-                            }
-                            type="button"
-                          >
-                            <entry.icon className="h-4 w-4 shrink-0" />
-                            <span className="min-w-0 flex-1 text-sm font-medium">{entry.label}</span>
-                            <ChevronDown className={cn('h-4 w-4 shrink-0 transition', isOpen ? 'rotate-180' : 'rotate-0')} />
-                          </button>
-
-                          {isOpen ? (
-                            <div className="space-y-1 border-t border-white/8 px-2 py-2">
-                              {entry.items.map((item) => (
-                                <SidebarLeaf
-                                  collapsed={false}
-                                  item={item}
-                                  key={item.key}
-                                  onCloseMobile={onCloseMobile}
-                                  onHoverEnd={scheduleFlyoutClose}
-                                  onHoverStart={openFlyout}
-                                />
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
+                        <button
+                          className={cn(
+                            'flex h-11 w-11 items-center justify-center rounded-xl text-white/80 transition',
+                            isActive
+                              ? 'bg-accent text-white shadow-sm'
+                              : 'hover:bg-white/10 hover:text-white',
+                          )}
+                          key={entry.key}
+                          onBlur={scheduleFlyoutClose}
+                          onFocus={(event) => openFlyout(entry, event.currentTarget)}
+                          onMouseEnter={(event) => openFlyout(entry, event.currentTarget)}
+                          onMouseLeave={scheduleFlyoutClose}
+                          title={entry.label}
+                          type="button"
+                        >
+                          <entry.icon className="h-4 w-4 shrink-0" />
+                        </button>
                       )
-                    })}
-                  </div>
+                    }
+
+                    const isOpen = openGroups[entry.key] ?? activeGroupKeys.includes(entry.key)
+                    const isActive = groupHasActiveItem(entry, location.pathname)
+
+                    return (
+                      <div
+                        className={cn(
+                          'overflow-hidden rounded-xl transition-colors',
+                          isOpen ? 'bg-white/5' : '',
+                        )}
+                        key={entry.key}
+                      >
+                        <button
+                          className={cn(
+                            'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition',
+                            isActive ? 'text-accent' : 'text-white/80 hover:bg-white/10 hover:text-white',
+                          )}
+                          onClick={() =>
+                            setOpenGroups((current) => ({
+                              ...current,
+                              [entry.key]: !isOpen,
+                            }))
+                          }
+                          type="button"
+                        >
+                          <entry.icon className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0 flex-1">{entry.label}</span>
+                          <ChevronDown
+                            className={cn(
+                              'h-4 w-4 shrink-0 text-white/50 transition-transform',
+                              isOpen ? 'rotate-180' : 'rotate-0',
+                            )}
+                          />
+                        </button>
+
+                        {isOpen ? (
+                          <div className="space-y-0.5 px-2 pb-2">
+                            {entry.items.map((item) => (
+                              <NavLink
+                                className={({ isActive }) =>
+                                  cn(
+                                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition',
+                                    isActive
+                                      ? 'bg-accent text-white'
+                                      : 'text-white/70 hover:bg-white/10 hover:text-white',
+                                  )
+                                }
+                                key={item.key}
+                                onClick={onCloseMobile}
+                                to={item.to}
+                              >
+                                <item.icon className="h-3.5 w-3.5 shrink-0" />
+                                <span className="line-clamp-2">{item.label}</span>
+                              </NavLink>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    )
+                  })}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className={cn('border-t border-white/10 p-3', effectiveCollapsed ? 'hidden lg:block' : '')}>
+          <div
+            className={cn(
+              'rounded-xl bg-white/5 px-3 py-2.5',
+              effectiveCollapsed ? 'text-center' : '',
+            )}
+          >
+            {effectiveCollapsed ? (
+              <span className="text-[10px] font-bold text-white/40">v2.0</span>
+            ) : (
+              <p className="text-[10px] font-medium text-white/50">
+                Sistema de Reportes v2.0
+              </p>
+            )}
           </div>
         </div>
       </aside>
 
+      {/* Flyout menu for collapsed state */}
       {effectiveCollapsed && flyout ? (
         <div
           className="fixed z-50 hidden lg:block"
@@ -338,17 +394,19 @@ export function WorkspaceSidebar({
           onMouseEnter={clearFlyoutClose}
           onMouseLeave={scheduleFlyoutClose}
         >
-          <div className="min-w-[240px] max-w-[320px] overflow-hidden rounded-[24px] border border-white/80 bg-white/96 p-2 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur">
+          <div className="min-w-[220px] max-w-[280px] overflow-hidden rounded-xl border border-border bg-white p-2 shadow-lg">
             {isNavigationGroup(flyout.entry) ? (
               <div className="space-y-2">
-                <div className="px-3 py-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Navegacion</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-950">{flyout.entry.label}</p>
+                <div className="border-b border-border px-3 pb-2">
+                  <p className="text-xs font-semibold text-brand-strong">{flyout.entry.label}</p>
+                  {flyout.entry.description ? (
+                    <p className="mt-0.5 text-[10px] text-muted">{flyout.entry.description}</p>
+                  ) : null}
                 </div>
                 <SidebarFlyoutLinks items={flyout.entry.items} onSelect={() => setFlyout(null)} />
               </div>
             ) : (
-              <div className="flex items-center gap-3 rounded-[18px] px-3 py-3 text-sm font-medium text-slate-950">
+              <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-brand-strong">
                 <flyout.entry.icon className="h-4 w-4 shrink-0" />
                 <span>{flyout.entry.label}</span>
               </div>

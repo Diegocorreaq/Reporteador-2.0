@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Clock, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { workspaceMeta } from '@/config/module-registry'
@@ -14,33 +14,45 @@ export function ModuleStatusPage() {
     <section className="space-y-6">
       <PageHeader
         eyebrow={workspaceMeta[workspace].shortLabel}
-        title={item?.label ?? 'Módulo'}
+        title={item?.label ?? 'Modulo'}
         actions={
-          <Button asChild className="h-8 px-2.5 text-xs font-medium" size="sm" variant="ghost">
+          <Button asChild size="sm" variant="outline">
             <Link to={homeRoute}>
-              <ArrowLeft className="h-3.5 w-3.5" />
+              <ArrowLeft className="h-4 w-4" />
               Volver al inicio
             </Link>
           </Button>
         }
       />
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+
+      <div className="grid gap-5 lg:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle>Estado del módulo</CardTitle>
+          <CardHeader className="border-b border-border pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-soft">
+                <Clock className="h-5 w-5 text-accent-strong" />
+              </div>
+              <CardTitle>Estado del Modulo</CardTitle>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm leading-7 text-muted">
-            <p>El contenido de este módulo no está habilitado en esta fase del proyecto.</p>
-            <p>Mientras tanto, puede continuar usando los módulos que ya están disponibles.</p>
+          <CardContent className="pt-5 text-sm leading-relaxed text-muted">
+            <p>El contenido de este modulo no esta habilitado en esta fase del proyecto.</p>
+            <p className="mt-3">Mientras tanto, puede continuar usando los modulos que ya estan disponibles.</p>
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader>
-            <CardTitle>Información</CardTitle>
+          <CardHeader className="border-b border-border pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-soft">
+                <Info className="h-5 w-5 text-brand-strong" />
+              </div>
+              <CardTitle>Informacion</CardTitle>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm leading-7 text-muted">
-            <p>El acceso ya está presente dentro del menú para mantener continuidad con el sistema anterior.</p>
-            <p>Este módulo será implementado en futuras versiones.</p>
+          <CardContent className="pt-5 text-sm leading-relaxed text-muted">
+            <p>El acceso ya esta presente dentro del menu para mantener continuidad con el sistema anterior.</p>
+            <p className="mt-3">Este modulo sera implementado en futuras versiones.</p>
           </CardContent>
         </Card>
       </div>

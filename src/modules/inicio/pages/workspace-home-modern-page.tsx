@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, BarChart3, FileText, Users } from 'lucide-react'
 import { workspaceMeta } from '@/config/module-registry'
 import { isNavigationGroup } from '@/config/navigation-builders'
 import { menuService } from '@/services/menu/menu.service'
@@ -13,6 +13,12 @@ interface WorkspaceHomeModernPageProps {
   workspace: WorkspaceKey
 }
 
+const quickStats = [
+  { label: 'Reportes Activos', value: '24', icon: BarChart3 },
+  { label: 'Usuarios del Sistema', value: '156', icon: Users },
+  { label: 'Documentos Generados', value: '1,234', icon: FileText },
+]
+
 export function WorkspaceHomeModernPage({ workspace }: WorkspaceHomeModernPageProps) {
   const user = useAuthStore((state) => state.user)
   const content = menuService.getHomeContent(workspace)
@@ -21,14 +27,14 @@ export function WorkspaceHomeModernPage({ workspace }: WorkspaceHomeModernPagePr
   const firstFeaturedItem = featuredItems[0]
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-6">
       <PageHeader
         eyebrow={workspaceMeta[workspace].shortLabel}
         title={content.title}
         description={content.description}
         actions={
           firstFeaturedItem ? (
-            <Button asChild className="h-8 rounded-xl px-2.5 text-xs font-medium" size="sm">
+            <Button asChild size="sm">
               <Link to={firstFeaturedItem.to}>
                 Abrir {firstFeaturedItem.label}
                 <ArrowRight className="h-4 w-4" />
@@ -38,78 +44,103 @@ export function WorkspaceHomeModernPage({ workspace }: WorkspaceHomeModernPagePr
         }
       />
 
+      {/* Quick Stats */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        {quickStats.map((stat) => (
+          <Card key={stat.label}>
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-soft">
+                <stat.icon className="h-6 w-6 text-brand" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-brand-strong">{stat.value}</p>
+                <p className="text-xs font-medium text-muted">{stat.label}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Featured Items */}
       <Card>
-        <CardHeader>
+        <CardHeader className="border-b border-border">
           <CardTitle>{content.featuredTitle}</CardTitle>
-          <p className="text-sm leading-6 text-muted">{content.featuredDescription}</p>
+          <p className="text-sm text-muted">{content.featuredDescription}</p>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <CardContent className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
           {featuredItems.map((item) => (
             <Link
-              className="rounded-[26px] border border-border bg-panelAlt/55 p-5 transition hover:-translate-y-0.5 hover:border-brand/30 hover:bg-white"
+              className="group flex items-start gap-4 rounded-xl border border-border bg-white p-4 transition hover:border-brand/40 hover:shadow-sm"
               key={item.key}
               to={item.to}
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-sm">
-                <item.icon className="h-5 w-5 text-brand-strong" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-soft transition group-hover:bg-accent group-hover:text-white">
+                <item.icon className="h-5 w-5 text-accent-strong group-hover:text-white" />
               </div>
-              <h3 className="mt-4 text-base font-semibold text-text">{item.label}</h3>
-              <p className="mt-2 text-sm leading-6 text-muted">{item.description}</p>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-brand-strong">{item.label}</h3>
+                <p className="mt-1 line-clamp-2 text-sm text-muted">{item.description}</p>
+              </div>
+              <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted opacity-0 transition group-hover:opacity-100" />
             </Link>
           ))}
         </CardContent>
       </Card>
 
+      {/* Navigation Sections */}
       {sections.map((section) => (
         <Card key={section.key}>
-          <CardHeader>
-            <CardTitle>{section.key === 'menu' ? content.supportTitle : section.title}</CardTitle>
-            <p className="text-sm leading-6 text-muted">
+          <CardHeader className="border-b border-border">
+            <CardTitle>
+              {section.key === 'menu' ? content.supportTitle : section.title}
+            </CardTitle>
+            <p className="text-sm text-muted">
               {section.key === 'menu'
                 ? content.supportDescription
-                : 'Opciones adicionales preservadas para mantener continuidad con el sistema original.'}
+                : 'Opciones adicionales del sistema.'}
             </p>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <CardContent className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
             {section.entries.map((entry) =>
               isNavigationGroup(entry) ? (
-                <div className="rounded-[26px] border border-border bg-white p-4" key={entry.key}>
+                <div
+                  className="rounded-xl border border-border bg-canvas p-4"
+                  key={entry.key}
+                >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-panelAlt text-brand-strong">
-                      <entry.icon className="h-4 w-4" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-soft">
+                      <entry.icon className="h-5 w-5 text-brand-strong" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-text">{entry.label}</p>
+                      <p className="font-semibold text-brand-strong">{entry.label}</p>
                       <p className="text-xs text-muted">{entry.description}</p>
                     </div>
                   </div>
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-3 space-y-1">
                     {entry.items.map((item) => (
                       <Link
-                        className="flex items-center justify-between rounded-2xl border border-border bg-panelAlt/40 px-3 py-2 text-sm text-text transition hover:border-brand/30 hover:bg-panelAlt"
+                        className="flex items-center justify-between rounded-lg border border-border bg-white px-3 py-2 text-sm text-text transition hover:border-brand/40 hover:bg-brand-soft/30"
                         key={item.key}
                         to={item.to}
                       >
-                        <span className="pr-3">{item.label}</span>
-                        <ArrowRight className="h-4 w-4 shrink-0 text-muted" />
+                        <span>{item.label}</span>
+                        <ArrowRight className="h-4 w-4 text-muted" />
                       </Link>
                     ))}
                   </div>
                 </div>
               ) : (
                 <Link
-                  className="rounded-[26px] border border-border bg-white p-4 transition hover:border-brand/30 hover:bg-panelAlt/40"
+                  className="flex items-center gap-3 rounded-xl border border-border bg-white p-4 transition hover:border-brand/40 hover:bg-brand-soft/20"
                   key={entry.key}
                   to={entry.to}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-panelAlt text-brand-strong">
-                      <entry.icon className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-text">{entry.label}</p>
-                      <p className="text-xs text-muted">{entry.description}</p>
-                    </div>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-soft">
+                    <entry.icon className="h-5 w-5 text-brand-strong" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-brand-strong">{entry.label}</p>
+                    <p className="text-xs text-muted">{entry.description}</p>
                   </div>
                 </Link>
               ),
