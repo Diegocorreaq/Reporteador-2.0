@@ -6,7 +6,6 @@ import {
   FileText,
   FlaskConical,
   Home,
-  Microscope,
   MonitorDot,
   UsersRound,
 } from 'lucide-react'
@@ -129,26 +128,6 @@ export const sighSections: NavigationSection[] = [
         ],
       }),
       group({
-        key: 'sigh-sala-monitoreo-dengue',
-        legacyKey: 'saladengue',
-        label: 'Sala Monitoreo Dengue',
-        description: 'Consulta visible de sala monitoreo dengue.',
-        icon: Microscope,
-        access: { permissions: ['menu.sigh.sala-monitoreo-dengue.*'] },
-        items: [
-          item({
-            key: 'sigh-sala-monitoreo-dengue-monitoreo',
-            legacyKey: 'monitoreo',
-            legacyRoute: '/sigh/saladengue/monitoreo',
-            label: 'Monitoreo',
-            to: '/sigh/sala-monitoreo-dengue/monitoreo',
-            description: 'Consulta actual de monitoreo de dengue.',
-            icon: Microscope,
-            access: { permissions: ['menu.sigh.sala-monitoreo-dengue.monitoreo'] },
-          }),
-        ],
-      }),
-      group({
         key: 'sigh-gestion-camas',
         legacyKey: 'covid',
         label: 'Gestion Camas',
@@ -266,6 +245,30 @@ export const sighSections: NavigationSection[] = [
 ]
 
 export const sighQuickLinks: WorkspaceQuickLink[] = [
+  {
+    key: 'desembalse',
+    label: 'Desembalse Quirurgico 2024',
+    href: 'https://app.powerbi.com/view?r=eyJrIjoiNDFlMTdmNGQtMWM3MC00NTI3LWFjYmEtNWU2NjBhMTk0NjVmIiwidCI6ImIwZDQ1ZmViLTM5MzUtNGE4ZS04YTc1LTNhYWM4MGQ4NTMzYSJ9',
+    description: 'Abre el tablero institucional historico en Power BI.',
+    icon: MonitorDot,
+    external: true,
+  },
+  {
+    key: 'operacion-vida',
+    label: 'Operacion VIDA',
+    href: 'https://app.powerbi.com/view?r=eyJrIjoiZDQ2Y2ZmNTktMzY4Ny00NzQxLTk3OTgtOWRhYmQyY2RmYzU2IiwidCI6ImIwZDQ1ZmViLTM5MzUtNGE4ZS04YTc1LTNhYWM4MGQ4NTMzYSJ9',
+    description: 'Abre el tablero institucional Operacion VIDA.',
+    icon: MonitorDot,
+    external: true,
+  },
+  {
+    key: 'datos-en-linea',
+    label: 'Datos en Linea',
+    href: '/sigh',
+    description: 'Abre Datos en Linea en una nueva pestana, como en el header legacy.',
+    icon: Home,
+    external: true,
+  },
   {
     key: 'manuales',
     label: 'Ver manuales y tutoriales',

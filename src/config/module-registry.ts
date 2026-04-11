@@ -12,6 +12,7 @@ import {
   Stethoscope,
   Syringe,
 } from 'lucide-react'
+import { implementedLegacyPaths } from '@/config/legacy-functional-map'
 import type { ModuleDefinition, ScreenPattern } from '@/types/navigation'
 import type { WorkspaceKey } from '@/types/auth'
 
@@ -40,10 +41,16 @@ function createModule(definition: ModuleDefinition): ModuleDefinition {
 }
 
 function scaffoldModule(definition: Omit<ModuleDefinition, 'implemented' | 'priority' | 'summary'> & { summary?: string }) {
+  const implemented = implementedLegacyPaths.has(definition.path)
+
   return createModule({
-    implemented: false,
-    priority: 'posterior',
-    summary: definition.summary ?? 'Acceso preservado del menu actual para mantener continuidad operativa.',
+    implemented,
+    priority: implemented ? 'alta' : 'posterior',
+    summary:
+      definition.summary ??
+      (implemented
+        ? 'Migrado desde el legacy como acceso funcional dentro de la nueva arquitectura.'
+        : 'Acceso preservado del menu actual para mantener continuidad operativa.'),
     ...definition,
   })
 }
@@ -469,21 +476,7 @@ export const mainModules = [
   }),
 ] satisfies ModuleDefinition[]
 
-export const sighModules = [
-  scaffoldModule({
-    key: 'sigh-sala-monitoreo-dengue',
-    legacyModule: 'saladengue',
-    legacyRoute: '/sigh/saladengue/monitoreo',
-    workspace: 'sigh',
-    path: 'sala-monitoreo-dengue/monitoreo',
-    label: 'Monitoreo',
-    title: 'Monitoreo',
-    section: 'Sala Monitoreo Dengue',
-    patterns: ['filters-chart-table', 'modal-detail'],
-    goals: defaultGoals,
-    icon: Microscope,
-  }),
-] satisfies ModuleDefinition[]
+export const sighModules = [] satisfies ModuleDefinition[]
 
 export function getModulesByWorkspace(workspace: WorkspaceKey) {
   return workspace === 'main' ? mainModules : sighModules

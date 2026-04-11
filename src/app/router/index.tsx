@@ -6,13 +6,11 @@ import { SighShell } from '@/app/layouts/sigh-shell/sigh-shell'
 import { RequireAuth } from '@/app/router/guards'
 import { LoadingState } from '@/components/feedback/loading-state'
 import { getModulesByWorkspace } from '@/config/module-registry'
+import { getWorkspaceLegacyPowerBiModules } from '@/config/legacy-functional-map'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
 
 const LoginPage = lazy(() =>
   import('@/modules/auth/pages/login-clean-page').then((module) => ({ default: module.LoginCleanPage })),
-)
-const CamasCovidPage = lazy(() =>
-  import('@/modules/covid/pages/camas-covid-page').then((module) => ({ default: module.CamasCovidPage })),
 )
 const CentroObstetricoPage = lazy(() =>
   import('@/modules/centro-obstetrico/pages/centro-obstetrico-page').then((module) => ({
@@ -22,25 +20,11 @@ const CentroObstetricoPage = lazy(() =>
 const ExportacionesPage = lazy(() =>
   import('@/modules/exportaciones/pages/exportaciones-page').then((module) => ({ default: module.ExportacionesPage })),
 )
-const GestionCitaPage = lazy(() =>
-  import('@/modules/gestion-cita/pages/gestion-cita-page').then((module) => ({ default: module.GestionCitaPage })),
-)
-const ProduccionHospitalariaPage = lazy(() =>
-  import('@/modules/hospitalizacion/pages/produccion-hospitalaria-page').then((module) => ({
-    default: module.ProduccionHospitalariaPage,
-  })),
-)
 const MainHomePage = lazy(() =>
   import('@/modules/inicio/pages/main-home-page').then((module) => ({ default: module.MainHomePage })),
 )
 const SighHomePage = lazy(() =>
   import('@/modules/inicio/pages/sigh-home-page').then((module) => ({ default: module.SighHomePage })),
-)
-const IndicadoresPage = lazy(() =>
-  import('@/modules/indicadores/pages/indicadores-page').then((module) => ({ default: module.IndicadoresPage })),
-)
-const LaboratorioPage = lazy(() =>
-  import('@/modules/laboratorio/pages/laboratorio-page').then((module) => ({ default: module.LaboratorioPage })),
 )
 const MonitoreoPage = lazy(() =>
   import('@/modules/monitoreo/pages/monitoreo-page').then((module) => ({ default: module.MonitoreoPage })),
@@ -49,6 +33,15 @@ const ProdProfesionalPage = lazy(() =>
   import('@/modules/prod-profesional/pages/prod-profesional-page').then((module) => ({
     default: module.ProdProfesionalPage,
   })),
+)
+const CamasCovidPage = lazy(() =>
+  import('@/modules/covid/pages/camas-covid-page').then((module) => ({ default: module.CamasCovidPage })),
+)
+const GestionCitaPage = lazy(() =>
+  import('@/modules/gestion-cita/pages/gestion-cita-page').then((module) => ({ default: module.GestionCitaPage })),
+)
+const LegacyEmbedPage = lazy(() =>
+  import('@/modules/shared/pages/legacy-embed-page').then((module) => ({ default: module.LegacyEmbedPage })),
 )
 const ModuleScaffoldPage = lazy(() =>
   import('@/modules/shared/pages/module-status-page').then((module) => ({ default: module.ModuleStatusPage })),
@@ -72,64 +65,69 @@ function RootRedirect() {
   return <Navigate replace to={workspace === 'main' ? '/app' : '/sigh'} />
 }
 
-const mainScaffoldRoutes = getModulesByWorkspace('main').map((module) => ({
+const legacyMainEmbedRoutes = getWorkspaceLegacyPowerBiModules('main').map((module) => ({
   path: module.path,
-  element: lazyElement(<ModuleScaffoldPage module={module} />),
+  element: lazyElement(<LegacyEmbedPage />),
 }))
 
-const sighScaffoldRoutes = getModulesByWorkspace('sigh').map((module) => ({
+const legacySighEmbedRoutes = getWorkspaceLegacyPowerBiModules('sigh').map((module) => ({
   path: module.path,
-  element: lazyElement(<ModuleScaffoldPage module={module} />),
+  element: lazyElement(<LegacyEmbedPage />),
 }))
+
+const explicitMainRoutePaths = new Set(
+  legacyMainEmbedRoutes
+    .map((route) => route.path)
+    .concat(['atencion-ambulatoria-hospitalizacion/centro-obstetrico', 'zona-descarga/registros-procesados']),
+)
+
+const explicitSighRoutePaths = new Set(
+  legacySighEmbedRoutes
+    .map((route) => route.path)
+    .concat([
+      'monitoreo-en-linea/informe-familia-pendientes',
+      'exportar-registros/registros-nominales',
+      'exportar-registros/registros-produccion',
+      'produccion-actividades/produccion-medicos',
+      'gestion-camas/monitoreo-de-camas',
+      'gestion-camas/resumen-de-camas',
+      'gestion-camas/porcentaje-de-ocupacion-cama',
+      'gestion-camas/gestion-estancia-cama',
+      'atencion-al-usuario/gestion-de-citas',
+      'atencion-al-usuario/rol-consulta-externa',
+      'atencion-al-usuario/monitoreo-de-tickets',
+      'atencion-al-usuario/monitoreo-ventanilla',
+    ]),
+)
+
+const mainScaffoldRoutes = getModulesByWorkspace('main')
+  .filter((module) => !explicitMainRoutePaths.has(module.path))
+  .map((module) => ({
+    path: module.path,
+    element: lazyElement(<ModuleScaffoldPage module={module} />),
+  }))
+
+const sighScaffoldRoutes = getModulesByWorkspace('sigh')
+  .filter((module) => !explicitSighRoutePaths.has(module.path))
+  .map((module) => ({
+    path: module.path,
+    element: lazyElement(<ModuleScaffoldPage module={module} />),
+  }))
 
 const mainImplementedRoutes = [
-  {
-    path: 'indicadores-hospitalarios/indicadores-de-eficiencia',
-    element: lazyElement(<IndicadoresPage />),
-  },
-  {
-    path: 'indicadores-hospitalarios/indicadores-de-eficacia',
-    element: lazyElement(<IndicadoresPage />),
-  },
-  {
-    path: 'indicadores-hospitalarios/indicadores-de-calidad',
-    element: lazyElement(<IndicadoresPage />),
-  },
-  {
-    path: 'atencion-ambulatoria-hospitalizacion/hospitalizacion',
-    element: lazyElement(<ProduccionHospitalariaPage />),
-  },
+  ...legacyMainEmbedRoutes,
   {
     path: 'atencion-ambulatoria-hospitalizacion/centro-obstetrico',
     element: lazyElement(<CentroObstetricoPage />),
   },
   {
-    path: 'emergencia-cuidados-criticos/cuidados-criticos-uce-y-uci',
-    element: lazyElement(<CamasCovidPage workspace="main" />),
-  },
-  {
-    path: 'apoyo-diagnostico-tratamiento/laboratorio',
-    element: lazyElement(<LaboratorioPage workspace="main" />),
-  },
-  {
     path: 'zona-descarga/registros-procesados',
     element: lazyElement(<ExportacionesPage />),
-  },
-  {
-    path: 'articulacion-prestacional/monitoreo-de-citas',
-    element: lazyElement(<GestionCitaPage workspace="main" />),
-  },
-  {
-    path: 'articulacion-prestacional/indicador-citas-reprogramdas',
-    element: lazyElement(<GestionCitaPage workspace="main" />),
   },
 ]
 
 const sighImplementedRoutes = [
-  {
-    path: 'laboratorio-cultivos/mapa-microbiologico',
-    element: lazyElement(<LaboratorioPage workspace="sigh" />),
-  },
+  ...legacySighEmbedRoutes,
   {
     path: 'monitoreo-en-linea/informe-familia-pendientes',
     element: lazyElement(<MonitoreoPage workspace="sigh" />),
@@ -172,10 +170,6 @@ const sighImplementedRoutes = [
   },
   {
     path: 'atencion-al-usuario/monitoreo-de-tickets',
-    element: lazyElement(<GestionCitaPage workspace="sigh" />),
-  },
-  {
-    path: 'atencion-al-usuario/tiempos-de-espera',
     element: lazyElement(<GestionCitaPage workspace="sigh" />),
   },
   {

@@ -600,6 +600,14 @@ export const mainSections: NavigationSection[] = [
 
 export const mainQuickLinks: WorkspaceQuickLink[] = [
   {
+    key: 'datos-en-linea',
+    label: 'Datos en Linea',
+    href: '/sigh',
+    description: 'Abre el workspace operativo de Datos en Linea en una nueva pestana.',
+    icon: Home,
+    external: true,
+  },
+  {
     key: 'manuales',
     label: 'Ver manuales y tutoriales',
     href: 'https://recursos.heves.gob.pe/',

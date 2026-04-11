@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ExternalLink, LogOut, Menu, MoreHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ExternalLink, LogOut, Menu, MoreHorizontal } from 'lucide-react'
 import { workspaceMeta } from '@/config/module-registry'
 import { menuService } from '@/services/menu/menu.service'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
@@ -19,8 +19,10 @@ import type { WorkspaceQuickLink } from '@/types/navigation'
 import type { WorkspaceKey } from '@/types/auth'
 
 interface TopbarProps {
+  collapsed: boolean
   workspace: WorkspaceKey
   onOpenMobile: () => void
+  onToggleSidebar: () => void
 }
 
 function getInitials(name?: string) {
@@ -141,7 +143,7 @@ function QuickLinksOverflow({ links }: { links: WorkspaceQuickLink[] }) {
   )
 }
 
-export function Topbar({ workspace, onOpenMobile }: TopbarProps) {
+export function Topbar({ collapsed, workspace, onOpenMobile, onToggleSidebar }: TopbarProps) {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const signOut = useAuthStore((state) => state.signOut)
@@ -159,6 +161,16 @@ export function Topbar({ workspace, onOpenMobile }: TopbarProps) {
       <div className="mx-auto flex h-14 max-w-[1680px] items-center gap-2 px-3 sm:px-5 lg:px-6">
         <Button className="h-8 w-8 rounded-xl lg:hidden" size="icon" variant="outline" onClick={onOpenMobile}>
           <Menu className="h-4 w-4" />
+        </Button>
+
+        <Button
+          className="hidden h-8 w-8 rounded-xl lg:inline-flex"
+          size="icon"
+          title={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
+          variant="outline"
+          onClick={onToggleSidebar}
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>
 
         <Link className="flex items-center gap-2" to={workspace === 'main' ? '/app' : '/sigh'}>
