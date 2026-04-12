@@ -2,7 +2,7 @@ import { executeProcedure, sql } from './legacy-sql.service.js'
 
 const REPORT_TIMEOUT_MS = 180000
 
-const UCCA_SECTIONS = [
+const UCCA_DATASETS = [
   { key: 'ucca1', title: 'Numero de interconsultas respondidas', procedure: 'SP_REPORTE_UCCA_1' },
   { key: 'ucca1A', title: 'Porcentaje de interconsultas solicitadas a la UCCA', procedure: 'SP_REPORTE_UCCA_1A' },
   { key: 'ucca2', title: 'Numero de interconsultas respondidas por prioridad', procedure: 'SP_REPORTE_UCCA_2' },
@@ -47,7 +47,7 @@ const UCCA_SECTIONS = [
   { key: 'ucca20B', title: 'Mortalidad por prioridad', procedure: 'SP_REPORTE_UCCA_20B' },
 ]
 
-const UCCP_SECTIONS = [
+const UCCP_DATASETS = [
   { key: 'uccp1', title: 'Numero de interconsultas respondidas', procedure: 'SP_REPORTE_UCCP_1' },
   { key: 'uccp1A', title: 'Porcentaje de interconsultas solicitadas a la UCCP', procedure: 'SP_REPORTE_UCCA_1A' },
   { key: 'uccp2', title: 'Numero de interconsultas respondidas por prioridad', procedure: 'SP_REPORTE_UCCP_2' },
@@ -149,7 +149,7 @@ function extractPriorities(rows) {
   return [...new Set(priorities)]
 }
 
-function buildSectionMap(definitions, results) {
+function buildDatasetMap(definitions, results) {
   return definitions.reduce((accumulator, definition, index) => {
     accumulator[definition.key] = {
       key: definition.key,
@@ -162,12 +162,12 @@ function buildSectionMap(definitions, results) {
   }, {})
 }
 
-async function getCriticalCareReport({ type, rawFilters, sections, detailProcedure, detailOpsProcedure }) {
+async function getCriticalCareReport({ type, rawFilters, datasets, detailProcedure, detailOpsProcedure }) {
   const filters = parseDateRange(rawFilters)
-  const results = await Promise.all(sections.map((section) => executeMonthlyProcedure(section.procedure, filters)))
-  const sectionMap = buildSectionMap(sections, results)
-  const prioritySourceRows = sections.find((section) => section.procedure.endsWith('_2'))?.key
-  const priorities = extractPriorities(prioritySourceRows ? sectionMap[prioritySourceRows].rows : [])
+  const results = await Promise.all(datasets.map((dataset) => executeMonthlyProcedure(dataset.procedure, filters)))
+  const datasetMap = buildDatasetMap(datasets, results)
+  const prioritySourceRows = datasets.find((dataset) => dataset.procedure.endsWith('_2'))?.key
+  const priorities = extractPriorities(prioritySourceRows ? datasetMap[prioritySourceRows].rows : [])
 
   const priorityDetails = await Promise.all(
     priorities.map(async (priority) => {
@@ -188,7 +188,9 @@ async function getCriticalCareReport({ type, rawFilters, sections, detailProcedu
     module: type,
     filters,
     generatedAt: new Date().toISOString(),
-    sections: sectionMap,
+    datasets: datasetMap,
+    // Backward compatibility for old frontend callers.
+    sections: datasetMap,
     detailPrioridad: priorityDetails,
   }
 }
@@ -197,7 +199,7 @@ export async function getUccaReport(rawFilters) {
   return getCriticalCareReport({
     type: 'ucca',
     rawFilters,
-    sections: UCCA_SECTIONS,
+    datasets: UCCA_DATASETS,
     detailProcedure: 'SP_REPORTE_UCCA_2_DET',
     detailOpsProcedure: 'SP_REPORTE_UCCA_2_DET_O',
   })
@@ -207,7 +209,7 @@ export async function getUccpReport(rawFilters) {
   return getCriticalCareReport({
     type: 'uccp',
     rawFilters,
-    sections: UCCP_SECTIONS,
+    datasets: UCCP_DATASETS,
     detailProcedure: 'SP_REPORTE_UCCP_2_DET',
     detailOpsProcedure: 'SP_REPORTE_UCCP_2_DET_O',
   })

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import ReactECharts from 'echarts-for-react'
 import { AlertCircle } from 'lucide-react'
 import { EmptyState } from '@/components/feedback/empty-state'
 import { LoadingState } from '@/components/feedback/loading-state'
@@ -18,120 +17,45 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { workspaceMeta } from '@/config/module-registry'
 import { useActiveNavigationItem } from '@/hooks/use-active-navigation-item'
+import { CriticalCareChartBlock } from '@/modules/critical-care/components/critical-care-chart-block'
+import { CriticalCareModuleCard } from '@/modules/critical-care/components/critical-care-module-card'
+import { CriticalCareTableBlock } from '@/modules/critical-care/components/critical-care-table-block'
+import { normalizeKeyToken } from '@/modules/critical-care/components/critical-care-utils'
+import { UCCA_LAYOUT } from '@/modules/critical-care/config/ucca-layout'
+import { UCCP_LAYOUT } from '@/modules/critical-care/config/uccp-layout'
 import {
   buildDefaultCriticalCareFilters,
   fetchCriticalCareReport,
-  type CriticalCareModule,
 } from '@/modules/critical-care/services/critical-care.service'
 import type {
   CriticalCareFilters,
+  CriticalCareModule,
   CriticalCarePriorityDetail,
   CriticalCareReportResponse,
-  CriticalCareSection,
 } from '@/modules/critical-care/types'
 
-const MONTH_KEYS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'agt', 'sep', 'oct', 'nov', 'dic']
-const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Agt', 'Sep', 'Oct', 'Nov', 'Dic']
-
-function normalizeKey(value: string) {
-  return value.toLowerCase().replaceAll('ñ', 'n')
+interface DetailTableProps {
+  rows: Array<Record<string, unknown>>
+  emptyMessage: string
 }
 
-function toNumeric(value: unknown) {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : 0
-  }
-
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-function getValueByKey(row: Record<string, unknown>, expectedKey: string) {
-  const direct = row[expectedKey]
-  if (direct !== undefined) {
-    return direct
-  }
-
-  const normalizedExpected = normalizeKey(expectedKey)
-  const foundEntry = Object.entries(row).find(([key]) => normalizeKey(key) === normalizedExpected)
-  return foundEntry?.[1]
-}
-
-function hasMonthlyColumns(rows: Array<Record<string, unknown>>) {
-  if (!rows.length) {
-    return false
-  }
-
-  return MONTH_KEYS.some((monthKey) => getValueByKey(rows[0], monthKey) !== undefined)
-}
-
-function inferRowLabel(row: Record<string, unknown>) {
-  const preferredKeys = ['tipo', 'prioridad', 'servicio', 'especialidad', 'motivo', 'opcion', 'codigo', 'mes', 'nmes', 'nmess']
-
-  for (const preferredKey of preferredKeys) {
-    const value = getValueByKey(row, preferredKey)
-    if (value !== undefined && value !== null && String(value).trim().length > 0) {
-      return String(value)
-    }
-  }
-
-  const generic = Object.values(row).find(
-    (value) => typeof value === 'string' && value.trim().length > 0 && Number.isNaN(Number(value)),
-  )
-
-  return generic ? String(generic) : 'Serie'
-}
-
-function toRenderableValue(value: unknown) {
-  if (value === undefined || value === null || value === '') {
+function toDisplayValue(value: unknown) {
+  if (value === null || value === undefined || value === '') {
     return '-'
   }
 
   if (typeof value === 'number') {
-    return Number.isInteger(value) ? value.toString() : value.toFixed(2)
+    return Number.isInteger(value) ? value.toString() : value.toFixed(1)
   }
 
   return String(value)
 }
 
-function SectionChart({ section }: { section: CriticalCareSection }) {
-  const rows = section.rows.slice(0, 8)
-  const chartSeries = rows.map((row) => ({
-    name: inferRowLabel(row),
-    type: 'line',
-    smooth: true,
-    data: MONTH_KEYS.map((monthKey) => toNumeric(getValueByKey(row, monthKey))),
-  }))
-
-  return (
-    <ReactECharts
-      style={{ height: 280 }}
-      option={{
-        animationDuration: 350,
-        tooltip: { trigger: 'axis' },
-        legend: {
-          type: 'scroll',
-          bottom: 0,
-        },
-        grid: { top: 28, left: 16, right: 12, bottom: 58, containLabel: true },
-        xAxis: {
-          type: 'category',
-          data: MONTH_LABELS,
-        },
-        yAxis: {
-          type: 'value',
-        },
-        series: chartSeries,
-      }}
-    />
-  )
-}
-
-function GenericTable({ rows }: { rows: Array<Record<string, unknown>> }) {
+function DetailTable({ rows, emptyMessage }: DetailTableProps) {
   if (!rows.length) {
     return (
-      <div className="py-6">
-        <EmptyState title="Sin datos" description="No se encontraron registros para esta seccion." />
+      <div className="rounded-md border border-border/60 bg-white px-3 py-5 text-center text-xs text-muted">
+        {emptyMessage}
       </div>
     )
   }
@@ -139,23 +63,23 @@ function GenericTable({ rows }: { rows: Array<Record<string, unknown>> }) {
   const columns = Object.keys(rows[0])
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full border-collapse text-sm">
+    <div className="overflow-x-auto rounded-md border border-border/70 bg-white">
+      <table className="min-w-full border-collapse text-[11px]">
         <thead>
-          <tr className="bg-canvas">
+          <tr className="bg-[#eef5fb] text-[#123B63]">
             {columns.map((column) => (
-              <th key={column} className="border-b border-border px-3 py-2 text-left text-xs font-semibold uppercase text-muted">
+              <th key={column} className="border-b border-border px-2 py-1 text-left font-semibold uppercase">
                 {column}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, index) => (
-            <tr key={`${index}-${JSON.stringify(row).slice(0, 40)}`} className={index % 2 === 0 ? 'bg-white' : 'bg-canvas/40'}>
+          {rows.map((row, rowIndex) => (
+            <tr key={`${rowIndex}-${JSON.stringify(row).slice(0, 24)}`} className="odd:bg-white even:bg-[#f8fbff]">
               {columns.map((column) => (
-                <td key={`${index}-${column}`} className="border-b border-border px-3 py-2 align-top">
-                  {toRenderableValue(row[column])}
+                <td key={`${rowIndex}-${column}`} className="border-b border-border/70 px-2 py-1">
+                  {toDisplayValue(row[column])}
                 </td>
               ))}
             </tr>
@@ -166,35 +90,46 @@ function GenericTable({ rows }: { rows: Array<Record<string, unknown>> }) {
   )
 }
 
+interface PriorityDetailDialogProps {
+  open: boolean
+  initialPriority: string
+  details: CriticalCarePriorityDetail[]
+  onOpenChange: (open: boolean) => void
+}
+
 function PriorityDetailDialog({
   open,
-  onOpenChange,
+  initialPriority,
   details,
-}: {
-  open: boolean
-  onOpenChange: (value: boolean) => void
-  details: CriticalCarePriorityDetail[]
-}) {
+  onOpenChange,
+}: PriorityDetailDialogProps) {
   const [selectedPriority, setSelectedPriority] = useState('')
 
   useEffect(() => {
-    if (details.length && !selectedPriority) {
-      setSelectedPriority(details[0].prioridad)
+    if (!open) {
+      return
     }
-  }, [details, selectedPriority])
 
-  const selected = useMemo(
+    if (initialPriority && details.some((item) => item.prioridad === initialPriority)) {
+      setSelectedPriority(initialPriority)
+      return
+    }
+
+    setSelectedPriority(details[0]?.prioridad ?? '')
+  }, [details, initialPriority, open])
+
+  const selectedDetail = useMemo(
     () => details.find((item) => item.prioridad === selectedPriority) ?? details[0],
     [details, selectedPriority],
   )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(96vw,1100px)]">
+      <DialogContent className="w-[min(96vw,1180px)]">
         <DialogHeader>
           <DialogTitle>Detalle de prioridad</DialogTitle>
           <DialogDescription>
-            Revise el detalle de motivos y el detalle operativo para la prioridad seleccionada.
+            Revise los detalles de motivos y opcion respondida para la prioridad seleccionada.
           </DialogDescription>
         </DialogHeader>
         {!details.length ? (
@@ -202,10 +137,14 @@ function PriorityDetailDialog({
         ) : (
           <div className="space-y-4">
             <div className="max-w-xs">
-              <label className="mb-1 block text-xs font-semibold text-muted" htmlFor="priority-select">
+              <label className="mb-1 block text-xs font-semibold text-muted" htmlFor="priority-detail-select">
                 Prioridad
               </label>
-              <Select id="priority-select" value={selected?.prioridad ?? ''} onChange={(event) => setSelectedPriority(event.target.value)}>
+              <Select
+                id="priority-detail-select"
+                value={selectedDetail?.prioridad ?? ''}
+                onChange={(event) => setSelectedPriority(event.target.value)}
+              >
                 {details.map((item) => (
                   <option key={item.prioridad} value={item.prioridad}>
                     {item.prioridad}
@@ -215,18 +154,18 @@ function PriorityDetailDialog({
             </div>
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Detalle por motivo</CardTitle>
+                <CardTitle className="text-sm font-semibold">Motivos de Consulta</CardTitle>
               </CardHeader>
               <CardContent>
-                <GenericTable rows={selected?.detalle ?? []} />
+                <DetailTable rows={selectedDetail?.detalle ?? []} emptyMessage="No se encuentran registros" />
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Detalle operativo</CardTitle>
+                <CardTitle className="text-sm font-semibold">Opcion Respondida</CardTitle>
               </CardHeader>
               <CardContent>
-                <GenericTable rows={selected?.detalleOperativo ?? []} />
+                <DetailTable rows={selectedDetail?.detalleOperativo ?? []} emptyMessage="No se encuentran registros" />
               </CardContent>
             </Card>
           </div>
@@ -240,6 +179,27 @@ interface CriticalCareReportPageProps {
   module: CriticalCareModule
 }
 
+const LAYOUT_BY_MODULE = {
+  ucca: UCCA_LAYOUT,
+  uccp: UCCP_LAYOUT,
+} as const
+
+function getRowsFromReport(report: CriticalCareReportResponse | null, key: string) {
+  if (!report) {
+    return []
+  }
+
+  const datasets = report.datasets ?? report.sections ?? {}
+  const direct = datasets[key]
+  if (direct) {
+    return direct.rows ?? []
+  }
+
+  const normalizedKey = normalizeKeyToken(key)
+  const fallbackEntry = Object.entries(datasets).find(([datasetKey]) => normalizeKeyToken(datasetKey) === normalizedKey)
+  return fallbackEntry?.[1]?.rows ?? []
+}
+
 export function CriticalCareReportPage({ module }: CriticalCareReportPageProps) {
   const { item } = useActiveNavigationItem()
   const [filters, setFilters] = useState<CriticalCareFilters>(buildDefaultCriticalCareFilters())
@@ -247,6 +207,9 @@ export function CriticalCareReportPage({ module }: CriticalCareReportPageProps) 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isPriorityDialogOpen, setIsPriorityDialogOpen] = useState(false)
+  const [activePriority, setActivePriority] = useState('')
+
+  const layout = LAYOUT_BY_MODULE[module]
 
   const loadReport = useCallback(async (nextFilters: CriticalCareFilters) => {
     setIsLoading(true)
@@ -264,15 +227,7 @@ export function CriticalCareReportPage({ module }: CriticalCareReportPageProps) 
 
   useEffect(() => {
     void loadReport(filters)
-  }, [filters, loadReport])
-
-  const sections = useMemo(() => {
-    if (!report) {
-      return []
-    }
-
-    return Object.values(report.sections)
-  }, [report])
+  }, [loadReport])
 
   const handleSubmit = () => {
     if (filters.fechaInicio > filters.fechaFin) {
@@ -283,14 +238,26 @@ export function CriticalCareReportPage({ module }: CriticalCareReportPageProps) 
     void loadReport(filters)
   }
 
+  const handlePriorityClick = (priority: string) => {
+    setActivePriority(priority)
+    setIsPriorityDialogOpen(true)
+  }
+
   return (
     <section className="space-y-4">
       <PageHeader
         eyebrow={workspaceMeta.main.shortLabel}
         title={item?.label ?? (module === 'ucca' ? 'Indicadores UCCA (Adulto)' : 'Indicadores UCCP (Pediatrico)')}
-        description="Panel analitico migrado desde legacy con tablas, graficos y detalle de prioridad."
+        description="Panel analitico modernizado con estructura funcional de legacy por modulo, subtitulos y tablas internas."
         actions={
-          <Button variant="outline" onClick={() => setIsPriorityDialogOpen(true)} disabled={!report?.detailPrioridad.length}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setActivePriority('')
+              setIsPriorityDialogOpen(true)
+            }}
+            disabled={!report?.detailPrioridad.length}
+          >
             Ver detalle de prioridad
           </Button>
         }
@@ -342,17 +309,43 @@ export function CriticalCareReportPage({ module }: CriticalCareReportPageProps) 
 
       {isLoading && !report ? (
         <LoadingState />
-      ) : sections.length ? (
-        sections.map((section) => (
-          <Card key={section.key}>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{section.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {hasMonthlyColumns(section.rows) ? <SectionChart section={section} /> : null}
-              <GenericTable rows={section.rows} />
-            </CardContent>
-          </Card>
+      ) : report ? (
+        layout.modules.map((layoutModule) => (
+          <CriticalCareModuleCard
+            key={layoutModule.id}
+            numberLabel={layoutModule.numberLabel}
+            title={layoutModule.title}
+          >
+            {layoutModule.blocks.map((block, blockIndex) => {
+              if (block.kind === 'heading') {
+                return (
+                  <h4 key={`${layoutModule.id}-heading-${blockIndex}`} className="text-xs font-semibold text-[#1f4b6e]">
+                    {block.text}
+                  </h4>
+                )
+              }
+
+              const rows = getRowsFromReport(report, block.datasetKey)
+              if (block.kind === 'table') {
+                return (
+                  <CriticalCareTableBlock
+                    key={`${layoutModule.id}-table-${block.datasetKey}-${blockIndex}`}
+                    block={block}
+                    rows={rows}
+                    onPriorityClick={block.priorityClickable ? handlePriorityClick : undefined}
+                  />
+                )
+              }
+
+              return (
+                <CriticalCareChartBlock
+                  key={`${layoutModule.id}-chart-${block.datasetKey}-${blockIndex}`}
+                  block={block}
+                  rows={rows}
+                />
+              )
+            })}
+          </CriticalCareModuleCard>
         ))
       ) : (
         <EmptyState
@@ -363,8 +356,9 @@ export function CriticalCareReportPage({ module }: CriticalCareReportPageProps) 
 
       <PriorityDetailDialog
         open={isPriorityDialogOpen}
-        onOpenChange={setIsPriorityDialogOpen}
+        initialPriority={activePriority}
         details={report?.detailPrioridad ?? []}
+        onOpenChange={setIsPriorityDialogOpen}
       />
     </section>
   )

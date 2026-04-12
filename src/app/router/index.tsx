@@ -49,6 +49,67 @@ const ModuleScaffoldPage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import('@/modules/shared/pages/not-found-clean-page').then((module) => ({ default: module.NotFoundCleanPage })),
 )
+// SIGH pages - datos en línea
+const InformeFamiliaPendientesPage = lazy(() =>
+  import('@/modules/sigh/pages/informe-familia-pendientes-page').then((module) => ({
+    default: module.InformeFamiliaPendientesPage,
+  })),
+)
+const RegistrosNominalesPage = lazy(() =>
+  import('@/modules/sigh/pages/registros-nominales-page').then((module) => ({
+    default: module.RegistrosNominalesPage,
+  })),
+)
+const RegistrosProduccionPage = lazy(() =>
+  import('@/modules/sigh/pages/registros-produccion-page').then((module) => ({
+    default: module.RegistrosProduccionPage,
+  })),
+)
+const ProduccionMedicosPage = lazy(() =>
+  import('@/modules/sigh/pages/produccion-medicos-page').then((module) => ({
+    default: module.ProduccionMedicosPage,
+  })),
+)
+const MonitoreoCamasPage = lazy(() =>
+  import('@/modules/sigh/pages/monitoreo-camas-page').then((module) => ({
+    default: module.MonitoreoCamasPage,
+  })),
+)
+const ResumenCamasPage = lazy(() =>
+  import('@/modules/sigh/pages/resumen-camas-page').then((module) => ({
+    default: module.ResumenCamasPage,
+  })),
+)
+const OcupacionCamaPage = lazy(() =>
+  import('@/modules/sigh/pages/ocupacion-cama-page').then((module) => ({
+    default: module.OcupacionCamaPage,
+  })),
+)
+const GestionEstanciaCamaPage = lazy(() =>
+  import('@/modules/sigh/pages/gestion-estancia-cama-page').then((module) => ({
+    default: module.GestionEstanciaCamaPage,
+  })),
+)
+const GestionCitasPage = lazy(() =>
+  import('@/modules/sigh/pages/gestion-citas-page').then((module) => ({
+    default: module.GestionCitasPage,
+  })),
+)
+const RolConsultaExternaPage = lazy(() =>
+  import('@/modules/sigh/pages/rol-consulta-externa-page').then((module) => ({
+    default: module.RolConsultaExternaPage,
+  })),
+)
+const MonitoreoTicketsPage = lazy(() =>
+  import('@/modules/sigh/pages/monitoreo-tickets-page').then((module) => ({
+    default: module.MonitoreoTicketsPage,
+  })),
+)
+const MonitoreoVentanillaPage = lazy(() =>
+  import('@/modules/sigh/pages/monitoreo-ventanilla-page').then((module) => ({
+    default: module.MonitoreoVentanillaPage,
+  })),
+)
 
 function lazyElement(element: ReactNode) {
   return <Suspense fallback={<LoadingState />}>{element}</Suspense>
@@ -153,51 +214,51 @@ const sighImplementedRoutes = [
   ...legacySighEmbedRoutes,
   {
     path: 'monitoreo-en-linea/informe-familia-pendientes',
-    element: lazyElement(<ModuleScaffoldPage />),
+    element: lazyElement(<InformeFamiliaPendientesPage />),
   },
   {
     path: 'exportar-registros/registros-nominales',
-    element: lazyElement(<ModuleScaffoldPage />),
+    element: lazyElement(<RegistrosNominalesPage />),
   },
   {
     path: 'exportar-registros/registros-produccion',
-    element: lazyElement(<ModuleScaffoldPage />),
+    element: lazyElement(<RegistrosProduccionPage />),
   },
   {
     path: 'produccion-actividades/produccion-medicos',
-    element: lazyElement(<ModuleScaffoldPage />),
+    element: lazyElement(<ProduccionMedicosPage />),
   },
   {
     path: 'gestion-camas/monitoreo-de-camas',
-    element: lazyElement(<ModuleScaffoldPage />),
+    element: lazyElement(<MonitoreoCamasPage />),
   },
   {
     path: 'gestion-camas/resumen-de-camas',
-    element: lazyElement(<ModuleScaffoldPage />),
+    element: lazyElement(<ResumenCamasPage />),
   },
   {
     path: 'gestion-camas/porcentaje-de-ocupacion-cama',
-    element: lazyElement(<ModuleScaffoldPage />),
+    element: lazyElement(<OcupacionCamaPage />),
   },
   {
     path: 'gestion-camas/gestion-estancia-cama',
-    element: lazyElement(<ModuleScaffoldPage />),
+    element: lazyElement(<GestionEstanciaCamaPage />),
   },
   {
     path: 'atencion-al-usuario/gestion-de-citas',
-    element: lazyElement(<ModuleScaffoldPage />),
+    element: lazyElement(<GestionCitasPage />),
   },
   {
     path: 'atencion-al-usuario/rol-consulta-externa',
-    element: lazyElement(<ModuleScaffoldPage />),
+    element: lazyElement(<RolConsultaExternaPage />),
   },
   {
     path: 'atencion-al-usuario/monitoreo-de-tickets',
-    element: lazyElement(<ModuleScaffoldPage />),
+    element: lazyElement(<MonitoreoTicketsPage />),
   },
   {
     path: 'atencion-al-usuario/monitoreo-ventanilla',
-    element: lazyElement(<ModuleScaffoldPage />),
+    element: lazyElement(<MonitoreoVentanillaPage />),
   },
 ]
 

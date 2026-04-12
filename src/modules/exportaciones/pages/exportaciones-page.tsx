@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, Download, Lock } from 'lucide-react'
-import { EmptyState } from '@/components/feedback/empty-state'
-import { PageHeader } from '@/components/data-display/page-header'
+import { AlertCircle, Download } from 'lucide-react'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -22,32 +19,27 @@ import {
   validateLegacyExportUser,
 } from '@/modules/exportaciones/services/legacy-exports.service'
 
-const RANGE_REPORTS = [
-  { key: 'exporta_d_xls_1', legacyKey: 'historias_clinicas', label: 'Historias clinicas', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_2', legacyKey: 'atenciones_telemonitoreo', label: 'Atenciones telemonitoreo', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_3', legacyKey: 'solicitud_teleorientacion', label: 'Solicitud teleorientacion', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_4', legacyKey: 'transferencias', label: 'Transferencias', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_5', legacyKey: 'pac_altas', label: 'Pacientes de alta', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_6', legacyKey: 'pac_fallecidos', label: 'Pacientes fallecidos', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_6_h', legacyKey: 'pac_fallecidos_h', label: 'Pacientes fallecidos hospitalizados', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_7', legacyKey: 'pac_referidos', label: 'Pacientes referidos', fallbackMaxDays: 33 },
-  { key: 'exporta_d_xls_8', legacyKey: 'pac_atendidos', label: 'Pacientes atendidos', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_9', legacyKey: 'interconsulta_uci_adultos', label: 'Interconsulta UCI adultos', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_10', legacyKey: 'interconsulta_otros', label: 'Interconsulta otros', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_11', legacyKey: 'morbilidad_materna', label: 'Morbilidad materna extrema', fallbackMaxDays: 92 },
-  { key: 'exporta_d_xls_12', legacyKey: 'pac_hospitalizados', label: 'Pacientes hospitalizados', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_13', legacyKey: 'pac_nuevos_emergencia', label: 'Pacientes nuevos emergencia', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_14', legacyKey: 'pac_nuevos_uca', label: 'Pacientes nuevos UCA', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_15', legacyKey: 'pac_ficha_covid', label: 'Pacientes ficha COVID', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_16', legacyKey: 'produccion_admision', label: 'Produccion admision', fallbackMaxDays: 31 },
+interface LegacyVisibleReportRow {
+  ord: number
+  key: string
+  label: string
+  fallbackMaxDays: number
+}
+
+const VISIBLE_REPORT_ROWS: LegacyVisibleReportRow[] = [
+  {
+    ord: 1,
+    key: 'exporta_d_xls_11',
+    label: 'BAI - MORBILIDAD MATERNA EXTREMA',
+    fallbackMaxDays: 92,
+  },
 ]
 
 function buildDefaultFilters() {
-  const now = new Date()
-  const year = now.getFullYear()
+  const today = new Date().toISOString().slice(0, 10)
   return {
-    fechaInicio: `${year}-01-01`,
-    fechaFin: `${year}-12-31`,
+    fechaInicio: today,
+    fechaFin: today,
   }
 }
 
@@ -112,7 +104,7 @@ export function ExportacionesPage() {
     }
   }
 
-  const handleDownload = async (reportKey: string, fallbackMaxDays: number) => {
+  const handleDownload = async (report: LegacyVisibleReportRow) => {
     if (!authorizedUser) {
       setError('Debe autorizar un usuario antes de exportar.')
       return
@@ -123,7 +115,7 @@ export function ExportacionesPage() {
       return
     }
 
-    const maxDays = maxDaysByKey[reportKey] ?? fallbackMaxDays
+    const maxDays = maxDaysByKey[report.key] ?? report.fallbackMaxDays
     const diff = daysBetween(filters.fechaInicio, filters.fechaFin)
     if (diff > maxDays) {
       setError(`El rango de fechas para este reporte no debe exceder ${maxDays} dias.`)
@@ -131,11 +123,11 @@ export function ExportacionesPage() {
     }
 
     setError(null)
-    setIsDownloadingKey(reportKey)
+    setIsDownloadingKey(report.key)
     try {
       await downloadLegacyExport({
         catalog: 'range',
-        key: reportKey,
+        key: report.key,
         fechaInicio: filters.fechaInicio,
         fechaFin: filters.fechaFin,
         employeeId: authorizedUser.employeeId,
@@ -149,132 +141,112 @@ export function ExportacionesPage() {
   }
 
   return (
-    <section className="space-y-4">
-      <PageHeader
-        eyebrow={workspaceMeta.main.shortLabel}
-        title={item?.label ?? 'Registros Procesados'}
-        description="Zona de descarga de informacion por periodos con validacion de usuario."
-        actions={
-          <Button variant="outline" onClick={() => setIsAuthDialogOpen(true)}>
-            <Lock className="h-4 w-4" />
-            Cambiar autorizacion
-          </Button>
-        }
-      />
+    <section className="space-y-2.5">
+      <header className="space-y-0.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="rounded-md bg-brand-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-brand-strong">
+            {workspaceMeta.main.shortLabel}
+          </span>
+          <h1 className="text-lg font-semibold text-brand-strong sm:text-xl">
+            {item?.label ?? 'Registros Procesados'}
+          </h1>
+        </div>
+        <p className="text-xs text-muted">Zona de Descarga de Informacion por Periodos.</p>
+      </header>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Filtros de periodo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-muted" htmlFor="range-fecha-inicio">
-                Fecha inicio
-              </label>
-              <Input
-                id="range-fecha-inicio"
-                type="date"
-                value={filters.fechaInicio}
-                onChange={(event) => setFilters((current) => ({ ...current, fechaInicio: event.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-muted" htmlFor="range-fecha-fin">
-                Fecha fin
-              </label>
-              <Input
-                id="range-fecha-fin"
-                type="date"
-                value={filters.fechaFin}
-                onChange={(event) => setFilters((current) => ({ ...current, fechaFin: event.target.value }))}
-              />
-            </div>
+      <div className="rounded-md border border-border/70 bg-canvas/10 px-3 py-2">
+        <div className="flex flex-row items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <label className="shrink-0 text-[12px] font-semibold text-text" htmlFor="range-fecha-inicio">
+              Desde:
+            </label>
+            <Input
+              id="range-fecha-inicio"
+              type="date"
+              className="h-8 w-[128px] text-[12px]"
+              value={filters.fechaInicio}
+              onChange={(event) => setFilters((current) => ({ ...current, fechaInicio: event.target.value }))}
+            />
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Usuario autorizado</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {authorizedUser ? (
-            <p className="text-sm text-muted">
-              <span className="font-semibold text-text">{authorizedUser.employeeName}</span>
-              {` (ID ${authorizedUser.employeeId})`}
-            </p>
-          ) : (
-            <EmptyState title="Sin autorizacion" description="Valide un usuario para habilitar la zona de descarga." />
-          )}
-        </CardContent>
-      </Card>
+          <div className="flex items-center gap-2">
+            <label className="shrink-0 text-[12px] font-semibold text-text" htmlFor="range-fecha-fin">
+              Hasta:
+            </label>
+            <Input
+              id="range-fecha-fin"
+              type="date"
+              className="h-8 w-[128px] text-[12px]"
+              value={filters.fechaFin}
+              onChange={(event) => setFilters((current) => ({ ...current, fechaFin: event.target.value }))}
+            />
+          </div>
+          <div className="min-w-0 text-[12px] text-text md:text-right">
+            <span className="font-semibold">Usuario:</span>{' '}
+            <span className="font-medium">{authorizedUser ? authorizedUser.employeeName : ''}</span>
+          </div>
+        </div>
+      </div>
 
       {error ? (
-        <Alert className="flex items-center gap-2">
+        <Alert className="flex items-center gap-2 py-1.5 text-sm">
           <AlertCircle className="h-4 w-4" />
           <span>{error}</span>
         </Alert>
       ) : null}
+<br></br>
+      <div className="overflow-x-auto rounded-md border border-border/80">
+        <table className="w-full min-w-[760px] border-collapse text-[12px]">
+          <thead>
+            <tr className="bg-brand-strong text-white">
+              <th className="w-14 border-b border-white/15 px-2 py-1 text-right text-[11px] font-semibold uppercase tracking-wide">
+              ORD
+              </th>
+<th className="border-b border-white/15 px-2 py-1 text-left text-[11px] font-semibold uppercase tracking-wide">                TIPO DE REPORTE
+              </th>
+<th className="border-b border-white/15 px-2 py-1 text-left text-[11px] font-semibold uppercase tracking-wide">                ARCHIVO
+              </th>
+            </tr>
+          </thead>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Reportes exportables</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-sm">
-              <thead>
-                <tr className="bg-canvas">
-                  <th className="border-b border-border px-3 py-2 text-left text-xs font-semibold uppercase text-muted">Legacy</th>
-                  <th className="border-b border-border px-3 py-2 text-left text-xs font-semibold uppercase text-muted">Reporte</th>
-                  <th className="border-b border-border px-3 py-2 text-left text-xs font-semibold uppercase text-muted">Rango maximo</th>
-                  <th className="border-b border-border px-3 py-2 text-left text-xs font-semibold uppercase text-muted">Accion</th>
-                </tr>
-              </thead>
-              <tbody>
-                {RANGE_REPORTS.map((report) => {
-                  const maxDays = maxDaysByKey[report.key] ?? report.fallbackMaxDays
-                  return (
-                    <tr key={report.key} className="odd:bg-white even:bg-canvas/40">
-                      <td className="border-b border-border px-3 py-2 font-medium">{report.legacyKey}</td>
-                      <td className="border-b border-border px-3 py-2">{report.label}</td>
-                      <td className="border-b border-border px-3 py-2">{maxDays} dias</td>
-                      <td className="border-b border-border px-3 py-2">
-                        <Button
-                          size="sm"
-                          disabled={!authorizedUser || !isRangeValid || isDownloadingKey === report.key}
-                          onClick={() => void handleDownload(report.key, report.fallbackMaxDays)}
-                        >
-                          <Download className="h-4 w-4" />
-                          Exportar
-                        </Button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+          <tbody>
+            {VISIBLE_REPORT_ROWS.map((report) => (
+              <tr key={report.key} className="bg-white">
+                <td className="border-b border-border px-2 py-0.5 text-[11px] text-right font-medium align-top">{report.ord}</td>
+                <td className="border-b border-border px-2 py-0.5 text-[11px] align-top">{report.label}</td>
+                <td className="border-b border-border px-2 py-0.5 text-[11px] text-left align-middle">
+  <Button
+    size="sm"
+    variant="ghost"
+    className="h-6 gap-1 px-0 text-[10px] font-medium text-[#2b6faa] hover:bg-transparent hover:text-[#1f588b] hover:underline"
+    disabled={!authorizedUser || !isRangeValid || isDownloadingKey === report.key}
+    onClick={() => void handleDownload(report)}
+  >
+    <Download className="h-3 w-3" />
+    Exportar
+  </Button>
+</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Autorizacion de usuario</DialogTitle>
-            <DialogDescription>Ingrese credenciales autorizadas para la Zona de Descarga.</DialogDescription>
+            <DialogTitle>Permisos para acceder a Reportes Nominales</DialogTitle>
+            <DialogDescription>Ingrese numero de DNI y contrasena SISGALEN.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
               <label className="mb-1 block text-xs font-semibold text-muted" htmlFor="range-username">
-                Usuario
+                Numero de DNI
               </label>
               <Input id="range-username" value={username} onChange={(event) => setUsername(event.target.value)} />
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-muted" htmlFor="range-password">
-                Clave
+                Contrasena SISGALEN
               </label>
               <Input
                 id="range-password"
@@ -292,7 +264,7 @@ export function ExportacionesPage() {
           </div>
           <DialogFooter>
             <Button onClick={() => void handleAuthorize()} disabled={isAuthorizing}>
-              {isAuthorizing ? 'Validando...' : 'Validar usuario'}
+              {isAuthorizing ? 'Validando...' : 'Aceptar'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -300,3 +272,4 @@ export function ExportacionesPage() {
     </section>
   )
 }
+

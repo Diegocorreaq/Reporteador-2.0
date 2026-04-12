@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ExternalLink, LogOut, Menu, MoreHorizontal, User } from 'lucide-react'
+import { ChevronLeft, ChevronRight, LogOut, Menu, MoreHorizontal, User } from 'lucide-react'
 import { workspaceMeta } from '@/config/module-registry'
 import { menuService } from '@/services/menu/menu.service'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
+import { WorkspaceQuickLinkAction } from '@/components/navigation/workspace-quick-link-action'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -34,43 +35,6 @@ function getInitials(name?: string) {
     .slice(0, 2)
     .map((segment) => segment[0]?.toUpperCase() ?? '')
     .join('')
-}
-
-function QuickLinkButton({
-  className,
-  link,
-  onSelect,
-}: {
-  className?: string
-  link: WorkspaceQuickLink
-  onSelect?: () => void
-}) {
-  const Icon = link.icon ?? ExternalLink
-
-  if (link.to) {
-    return (
-      <Button asChild className={cn('h-8 rounded-lg px-3 text-xs font-medium', className)} size="sm" variant="outline">
-        <Link to={link.to} onClick={onSelect}>
-          <Icon className="h-3.5 w-3.5" />
-          <span>{link.label}</span>
-        </Link>
-      </Button>
-    )
-  }
-
-  return (
-    <Button asChild className={cn('h-8 rounded-lg px-3 text-xs font-medium', className)} size="sm" variant="outline">
-      <a
-        href={link.href}
-        rel={link.external ? 'noreferrer' : undefined}
-        target={link.external ? '_blank' : undefined}
-        onClick={onSelect}
-      >
-        <Icon className="h-3.5 w-3.5" />
-        <span>{link.label}</span>
-      </a>
-    </Button>
-  )
 }
 
 function WorkspaceSwitchButton({
@@ -137,7 +101,12 @@ function QuickLinksOverflow({ links }: { links: WorkspaceQuickLink[] }) {
       {open ? (
         <div className="absolute right-0 top-full z-30 mt-2 flex min-w-[240px] flex-col gap-1 rounded-xl border border-border bg-white p-2 shadow-lg">
           {links.map((link) => (
-            <QuickLinkButton className="justify-start" key={link.key} link={link} onSelect={() => setOpen(false)} />
+            <WorkspaceQuickLinkAction
+              className="justify-start"
+              key={link.key}
+              link={link}
+              onSelect={() => setOpen(false)}
+            />
           ))}
         </div>
       ) : null}
@@ -203,7 +172,7 @@ export function Topbar({ collapsed, workspace, onOpenMobile, onToggleSidebar }: 
           {/* Quick links - desktop */}
           <div className="hidden items-center gap-1.5 lg:flex 2xl:hidden">
             {compactQuickLinks.map((link) => (
-              <QuickLinkButton key={link.key} link={link} />
+              <WorkspaceQuickLinkAction key={link.key} link={link} />
             ))}
             <QuickLinksOverflow links={overflowQuickLinks} />
           </div>
@@ -211,7 +180,7 @@ export function Topbar({ collapsed, workspace, onOpenMobile, onToggleSidebar }: 
           {/* Quick links - large desktop */}
           <div className="hidden items-center gap-1.5 2xl:flex">
             {quickLinks.map((link) => (
-              <QuickLinkButton key={link.key} link={link} />
+              <WorkspaceQuickLinkAction key={link.key} link={link} />
             ))}
           </div>
 

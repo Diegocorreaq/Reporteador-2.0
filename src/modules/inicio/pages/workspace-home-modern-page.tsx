@@ -3,6 +3,7 @@ import { ArrowRight, BarChart3, FileText, Users } from 'lucide-react'
 import { workspaceMeta } from '@/config/module-registry'
 import { isNavigationGroup } from '@/config/navigation-builders'
 import { menuService } from '@/services/menu/menu.service'
+import { WorkspaceQuickLinkAction } from '@/components/navigation/workspace-quick-link-action'
 import { PageHeader } from '@/components/data-display/page-header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,6 +23,7 @@ const quickStats = [
 export function WorkspaceHomeModernPage({ workspace }: WorkspaceHomeModernPageProps) {
   const user = useAuthStore((state) => state.user)
   const content = menuService.getHomeContent(workspace)
+  const quickLinks = menuService.getQuickLinks(workspace, user)
   const featuredItems = menuService.getFeaturedItems(workspace, user)
   const sections = menuService.getSections(workspace, user).filter((section) => section.key !== 'home')
   const firstFeaturedItem = featuredItems[0]
@@ -60,6 +62,23 @@ export function WorkspaceHomeModernPage({ workspace }: WorkspaceHomeModernPagePr
           </Card>
         ))}
       </div>
+
+      {/* Institutional Quick Links */}
+      {quickLinks.length ? (
+        <Card>
+          <CardHeader className="border-b border-border">
+            <CardTitle>Accesos rapidos institucionales</CardTitle>
+            <p className="text-sm text-muted">
+              Enlaces de uso frecuente disponibles para su perfil.
+            </p>
+          </CardHeader>
+          <CardContent className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
+            {quickLinks.map((link) => (
+              <WorkspaceQuickLinkAction key={link.key} link={link} view="home" />
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Featured Items */}
       <Card>

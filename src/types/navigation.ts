@@ -67,6 +67,7 @@ export interface WorkspaceQuickLink {
   label: string
   description: string
   icon?: LucideIcon
+  actionType?: 'datos-en-linea-launcher'
   href?: string
   to?: string
   external?: boolean

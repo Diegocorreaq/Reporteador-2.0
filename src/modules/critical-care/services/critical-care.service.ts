@@ -1,10 +1,9 @@
 import { httpClient } from '@/services/http/client'
 import type {
   CriticalCareFilters,
+  CriticalCareModule,
   CriticalCareReportResponse,
 } from '@/modules/critical-care/types'
-
-export type CriticalCareModule = 'ucca' | 'uccp'
 
 function normalizeDate(value: string) {
   return value.slice(0, 10)

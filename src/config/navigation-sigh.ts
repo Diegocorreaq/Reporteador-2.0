@@ -264,10 +264,9 @@ export const sighQuickLinks: WorkspaceQuickLink[] = [
   {
     key: 'datos-en-linea',
     label: 'Datos en Linea',
-    href: '/sigh',
-    description: 'Abre Datos en Linea en una nueva pestana, como en el header legacy.',
+    description: 'Seleccione el servidor de Datos en Linea que desea consultar.',
     icon: Home,
-    external: true,
+    actionType: 'datos-en-linea-launcher',
   },
   {
     key: 'manuales',
