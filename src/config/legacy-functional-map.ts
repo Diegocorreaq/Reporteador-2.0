@@ -559,7 +559,19 @@ export const legacyOperationalModules: LegacyModuleMapping[] = [
 
 export const functionalLegacyModules = legacyPowerBiModules.concat(legacyOperationalModules)
 
-export const implementedLegacyPaths = new Set(legacyPowerBiModules.map((module) => module.path))
+const implementedOperationalPaths = new Set([
+  'monitoreo-salud-mental/reportes-monitoreo',
+  'epidemiologia/lavado-de-manos',
+  'emergencia-cuidados-criticos/indicadores-ucca',
+  'emergencia-cuidados-criticos/indicadores-uccp',
+  'zona-descarga/registros-procesados',
+])
+
+export const implementedLegacyPaths = new Set(
+  legacyPowerBiModules
+    .map((module) => module.path)
+    .concat([...implementedOperationalPaths]),
+)
 
 export function toWorkspaceRelativePath(pathname: string) {
   if (pathname.startsWith('/app/')) {

@@ -22,10 +22,90 @@ const CURRENT_EXPORTS_SIGH = {
 }
 
 const RANGE_EXPORTS = {
+  exporta_d_xls_1: {
+    procedure: 'SP_REPORTE_D_EXCEL1',
+    fileName: 'historias-clinicas.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_2: {
+    procedure: 'SP_REPORTE_D_EXCEL2',
+    fileName: 'atenciones-telemonitoreo.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_3: {
+    procedure: 'SP_REPORTE_D_EXCEL3',
+    fileName: 'solicitud-teleorientacion.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_4: {
+    procedure: 'SP_REPORTE_D_EXCEL4',
+    fileName: 'transferencias.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_5: {
+    procedure: 'SP_REPORTE_D_EXCEL5',
+    fileName: 'pacientes-altas.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_6: {
+    procedure: 'SP_REPORTE_D_EXCEL6',
+    fileName: 'pacientes-fallecidos.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_6_h: {
+    procedure: 'SP_REPORTE_D_EXCEL6_H',
+    fileName: 'pacientes-fallecidos-hospitalizados.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_7: {
+    procedure: 'SP_REPORTE_D_EXCEL7',
+    fileName: 'pacientes-referidos.xls',
+    maxDays: 33,
+  },
+  exporta_d_xls_8: {
+    procedure: 'SP_REPORTE_D_EXCEL8',
+    fileName: 'pacientes-atendidos.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_9: {
+    procedure: 'SP_REPORTE_D_EXCEL9',
+    fileName: 'interconsulta-uci-adultos.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_10: {
+    procedure: 'SP_REPORTE_D_EXCEL10',
+    fileName: 'interconsulta-otros.xls',
+    maxDays: 31,
+  },
   exporta_d_xls_11: {
     procedure: 'SP_REPORTE_D_EXCEL11_A_2026',
     fileName: 'bai-morbilidad-materna-extrema.xls',
     maxDays: 92,
+  },
+  exporta_d_xls_12: {
+    procedure: 'SP_REPORTE_D_EXCEL12',
+    fileName: 'pacientes-hospitalizados.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_13: {
+    procedure: 'SP_REPORTE_D_EXCEL13',
+    fileName: 'pacientes-nuevos-emergencia.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_14: {
+    procedure: 'SP_REPORTE_D_EXCEL14',
+    fileName: 'pacientes-nuevos-uca.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_15: {
+    procedure: 'SP_REPORTE_D_EXCEL15',
+    fileName: 'pacientes-ficha-covid.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_16: {
+    procedure: 'SP_REPORTE_D_EXCEL16',
+    fileName: 'produccion-admision.xls',
+    maxDays: 31,
   },
 }
 
@@ -126,23 +206,20 @@ export async function validateLegacyUser({ dni, password, ip, scope = 'general' 
 }
 
 function getExportDefinition(key, catalog) {
-  if (catalog === 'current') {
-    return CURRENT_EXPORTS[key]
+  const catalogs = {
+    current: CURRENT_EXPORTS,
+    'current-sigh': CURRENT_EXPORTS_SIGH,
+    range: RANGE_EXPORTS,
+    'salud-mental': SALUD_MENTAL_EXPORTS,
+    lavado: LAVADO_EXPORTS,
   }
 
-  if (catalog === 'current-sigh') {
-    return CURRENT_EXPORTS_SIGH[key]
+  const selected = catalogs[catalog]
+  if (!selected) {
+    return null
   }
 
-  if (catalog === 'salud-mental') {
-    return SALUD_MENTAL_EXPORTS[key]
-  }
-
-  if (catalog === 'lavado') {
-    return LAVADO_EXPORTS[key]
-  }
-
-  return RANGE_EXPORTS[key]
+  return selected[key] ?? null
 }
 
 function daysBetween(startDate, endDate) {
@@ -207,4 +284,25 @@ export async function executeConfiguredExport({
     content: buildSpreadsheetHtml(exportDefinition.fileName, rows),
     rowCount: rows.length,
   }
+}
+
+export function listCatalogExports(catalog) {
+  const catalogs = {
+    current: CURRENT_EXPORTS,
+    'current-sigh': CURRENT_EXPORTS_SIGH,
+    range: RANGE_EXPORTS,
+    'salud-mental': SALUD_MENTAL_EXPORTS,
+    lavado: LAVADO_EXPORTS,
+  }
+
+  const selected = catalogs[catalog]
+  if (!selected) {
+    return []
+  }
+
+  return Object.entries(selected).map(([key, definition]) => ({
+    key,
+    fileName: definition.fileName,
+    maxDays: definition.maxDays ?? null,
+  }))
 }

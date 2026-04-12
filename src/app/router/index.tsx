@@ -20,6 +20,23 @@ const CentroObstetricoPage = lazy(() =>
 const MainHomePage = lazy(() =>
   import('@/modules/inicio/pages/main-home-page').then((module) => ({ default: module.MainHomePage })),
 )
+const UccaPage = lazy(() =>
+  import('@/modules/ucca/pages/ucca-page').then((module) => ({ default: module.UccaPage })),
+)
+const UccpPage = lazy(() =>
+  import('@/modules/uccp/pages/uccp-page').then((module) => ({ default: module.UccpPage })),
+)
+const SaludMentalReportesPage = lazy(() =>
+  import('@/modules/salud-mental-reportes/pages/salud-mental-reportes-page').then((module) => ({
+    default: module.SaludMentalReportesPage,
+  })),
+)
+const ExportacionesPage = lazy(() =>
+  import('@/modules/exportaciones/pages/exportaciones-page').then((module) => ({ default: module.ExportacionesPage })),
+)
+const LavadoManosPage = lazy(() =>
+  import('@/modules/lavado-manos/pages/lavado-manos-page').then((module) => ({ default: module.LavadoManosPage })),
+)
 const SighHomePage = lazy(() =>
   import('@/modules/inicio/pages/sigh-home-page').then((module) => ({ default: module.SighHomePage })),
 )
@@ -61,7 +78,14 @@ const legacySighEmbedRoutes = getWorkspaceLegacyPowerBiModules('sigh').map((modu
 const explicitMainRoutePaths = new Set(
   legacyMainEmbedRoutes
     .map((route) => route.path)
-    .concat(['atencion-ambulatoria-hospitalizacion/centro-obstetrico', 'zona-descarga/registros-procesados']),
+    .concat([
+      'atencion-ambulatoria-hospitalizacion/centro-obstetrico',
+      'emergencia-cuidados-criticos/indicadores-ucca',
+      'emergencia-cuidados-criticos/indicadores-uccp',
+      'monitoreo-salud-mental/reportes-monitoreo',
+      'zona-descarga/registros-procesados',
+      'epidemiologia/lavado-de-manos',
+    ]),
 )
 
 const explicitSighRoutePaths = new Set(
@@ -104,8 +128,24 @@ const mainImplementedRoutes = [
     element: lazyElement(<CentroObstetricoPage />),
   },
   {
+    path: 'emergencia-cuidados-criticos/indicadores-ucca',
+    element: lazyElement(<UccaPage />),
+  },
+  {
+    path: 'emergencia-cuidados-criticos/indicadores-uccp',
+    element: lazyElement(<UccpPage />),
+  },
+  {
+    path: 'monitoreo-salud-mental/reportes-monitoreo',
+    element: lazyElement(<SaludMentalReportesPage />),
+  },
+  {
     path: 'zona-descarga/registros-procesados',
-    element: lazyElement(<ModuleScaffoldPage />),
+    element: lazyElement(<ExportacionesPage />),
+  },
+  {
+    path: 'epidemiologia/lavado-de-manos',
+    element: lazyElement(<LavadoManosPage />),
   },
 ]
 
