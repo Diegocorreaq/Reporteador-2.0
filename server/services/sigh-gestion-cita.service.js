@@ -1,4 +1,4 @@
-import { executeProcedure, sql } from './legacy-sql.service.js'
+import { executeProcedure_Sigh1 as executeProcedure, sql } from './sigh-sql-helpers.js'
 
 const REPORT_TIMEOUT_MS = 180000
 

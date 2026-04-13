@@ -1,5 +1,15 @@
 import { executeProcedure, sql } from './legacy-sql.service.js'
 
+function resolveCatalogConnection(catalog) {
+  // SIGH catalogs use sigh1
+  if (['range', 'current-sigh'].includes(catalog)) {
+    return 'sigh1'
+  }
+
+  // Everything else uses general
+  return 'general'
+}
+
 const CURRENT_EXPORTS = {
   exportaxls_1: { procedure: 'SP_REPORTE_EXCEL1', fileName: 'reporte-informe-familia.xls' },
   exportaxls_2: { procedure: 'SP_REPORTE_EXCEL2', fileName: 'reporte-oxigenoterapia-hospitalizacion.xls' },
@@ -276,6 +286,7 @@ export async function executeConfiguredExport({
 
   const rows = await executeProcedure(exportDefinition.procedure, params, {
     timeoutMs: 120000,
+    connection: resolveCatalogConnection(catalog),
   })
 
   return {

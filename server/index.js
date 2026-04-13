@@ -10,9 +10,19 @@ app.use(express.json())
 app.use('/legacy-api', reportsRouter)
 
 app.use((error, _request, response, _next) => {
-  console.error('legacy-api error', error)
+  // Log full error details including stack trace for debugging
+  const errorMessage = error instanceof Error ? error.message : String(error)
+  const errorStack = error instanceof Error ? error.stack : ''
+  
+  console.error('legacy-api error:', {
+    message: errorMessage,
+    stack: errorStack,
+    timestamp: new Date().toISOString(),
+  })
+  
+  // Return appropriate error message
   response.status(500).json({
-    message: 'Error interno del servidor.',
+    message: errorMessage || 'Error interno del servidor.',
   })
 })
 

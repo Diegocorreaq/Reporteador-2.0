@@ -135,7 +135,7 @@ function mapRow(record) {
 
 export async function getCentroObstetricoReport(rawFilters) {
   const filters = parseDateRange(rawFilters)
-  const pool = await getSqlPool()
+  const pool = await getSqlPool('general')
 
   const lastUpdatedResult = await pool.request().query(lastUpdatedQuery)
   const rowsResult = await pool

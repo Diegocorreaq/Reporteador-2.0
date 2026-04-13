@@ -1,5 +1,5 @@
 import { executeConfiguredExport } from './legacy-export.service.js'
-import { executeProcedure, executeQuery, sql } from './legacy-sql.service.js'
+import { executeProcedure_General as executeProcedure, executeQuery_General as executeQuery, sql } from './sigh-sql-helpers.js'
 
 const REPORT_TIMEOUT_MS = 120000
 

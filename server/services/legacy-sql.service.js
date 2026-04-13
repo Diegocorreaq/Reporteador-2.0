@@ -39,8 +39,18 @@ function applyParams(request, params = []) {
   return params.map((param, index) => `@${param.name ?? `p${index}`}`).join(', ')
 }
 
+/**
+ * Execute a stored procedure with automatic connection resolution
+ * @param {string} name - Procedure name
+ * @param {Array} params - Parameters
+ * @param {Object} options - Options
+ * @param {number} [options.timeoutMs] - Query timeout
+ * @param {string} [options.connection] - Connection name: 'general' (default), 'sigh1', or 'sigh2'
+ * @returns {Promise<Array>} Recordset
+ */
 export async function executeProcedure(name, params = [], options = {}) {
-  const pool = await getSqlPool()
+  const connectionName = options.connection ?? 'general'
+  const pool = await getSqlPool(connectionName)
   const request = pool.request()
 
   if (options.timeoutMs) {
@@ -54,8 +64,18 @@ export async function executeProcedure(name, params = [], options = {}) {
   return normalizeRecordset(result.recordset)
 }
 
+/**
+ * Execute a SQL query with automatic connection resolution
+ * @param {string} query - SQL query
+ * @param {Array} params - Parameters
+ * @param {Object} options - Options
+ * @param {number} [options.timeoutMs] - Query timeout
+ * @param {string} [options.connection] - Connection name: 'general' (default), 'sigh1', or 'sigh2'
+ * @returns {Promise<Array>} Recordset
+ */
 export async function executeQuery(query, params = [], options = {}) {
-  const pool = await getSqlPool()
+  const connectionName = options.connection ?? 'general'
+  const pool = await getSqlPool(connectionName)
   const request = pool.request()
 
   if (options.timeoutMs) {
