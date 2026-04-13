@@ -98,7 +98,7 @@ export async function anularLavadoRegistro(id: number) {
   return response.data
 }
 
-export async function exportLavadoRegistros(filters: Omit<LavadoFilters, 'tipo'>) {
+export async function exportLavadoRegistros(filters: LavadoFilters) {
   const response = await httpClient.get<Blob>('/epidemiologia/lavado/export', {
     params: filters,
     responseType: 'blob',

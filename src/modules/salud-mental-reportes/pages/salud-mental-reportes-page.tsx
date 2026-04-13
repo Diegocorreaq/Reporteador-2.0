@@ -218,7 +218,13 @@ export function SaludMentalReportesPage() {
 
       <div className="overflow-x-auto rounded-md border border-border/70">
         <table className="w-full min-w-[980px] border-collapse text-[11px] leading-snug">
-          
+          <thead>
+            <tr className="bg-[#123B63] text-white">
+              <th className="w-10 border-b border-white/15 px-2 py-1.5 text-right text-[10px] font-semibold uppercase tracking-wide">N°</th>
+              <th className="border-b border-white/15 px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide">Tipo de Reporte</th>
+              <th className="w-28 border-b border-white/15 px-2 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide">Archivo</th>
+            </tr>
+          </thead>
           <tbody>
             {REPORT_GROUPS.map((group) => (
               <Fragment key={group.title}>
@@ -226,25 +232,26 @@ export function SaludMentalReportesPage() {
                   <td
                     colSpan={3}
                     style={group.headerStyle}
-                    className="border-b border-[#d6e4f0] px-2 py-[3px] text-left text-[10px] font-semibold uppercase tracking-wide"
+                    className="border-b border-[#d6e4f0] px-2 py-[4px] text-left text-[10px] font-bold uppercase tracking-wide"
                   >
                     {group.title}
                   </td>
                 </tr>
                 {group.rows.map((report, index) => (
                   <tr key={`${group.title}-${report.technicalKey}`} className="odd:bg-white even:bg-canvas/30">
-                    <td className="border-b border-border/70 px-2 py-[3px] text-right font-medium align-top">{index + 1}</td>
-                    <td className="border-b border-border/70 px-2 py-[3px] align-top">{report.label}</td>
-                    <td className="border-b border-border/70 px-2 py-[3px] text-right align-middle">
+                    <td className="border-b border-border/70 px-2 py-1 text-right font-medium align-middle">{index + 1}</td>
+                    <td className="border-b border-border/70 px-2 py-1 align-middle font-medium text-[#123B63]">{report.label}</td>
+                    <td className="border-b border-border/70 px-2 py-1 text-center align-middle">
                       <Button
                         size="sm"
-                        variant="ghost"
+                        className="h-7 gap-1.5 px-3 text-[11px] font-semibold"
+                        style={authorizedUser && isRangeValid ? { backgroundColor: '#005F8F', color: '#fff' } : undefined}
+                        variant={authorizedUser && isRangeValid ? 'default' : 'outline'}
                         disabled={!authorizedUser || !isRangeValid || isDownloadingKey === report.technicalKey}
-                        className="h-6 gap-1 px-1 text-[10px] font-medium text-[#2b6faa] hover:bg-transparent hover:text-[#1f588b] hover:underline"
                         onClick={() => void handleDownload(report.technicalKey)}
                       >
-                        <Download className="h-3 w-3" />
-                        Exportar
+                        <Download className="h-3.5 w-3.5" />
+                        {isDownloadingKey === report.technicalKey ? 'Descargando...' : 'Exportar'}
                       </Button>
                     </td>
                   </tr>

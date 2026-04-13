@@ -107,13 +107,23 @@ export function MonitoreoCamasPage() {
             <RefreshCcw className="h-4 w-4" />
             Actualizar
           </Button>
-          <Button size="sm" variant="outline" onClick={() => void downloadMonitoreoCamasResumen()}>
+          <Button
+            size="sm"
+            className="gap-1.5 font-semibold"
+            style={{ backgroundColor: '#005F8F', color: '#fff' }}
+            onClick={() => void downloadMonitoreoCamasResumen()}
+          >
             <Download className="h-4 w-4" />
-            Exportar resumen
+            Resumen por Piso
           </Button>
-          <Button size="sm" variant="outline" onClick={() => void downloadMonitoreoCamasSusalud()}>
+          <Button
+            size="sm"
+            className="gap-1.5 font-semibold"
+            style={{ backgroundColor: '#2C6E99', color: '#fff' }}
+            onClick={() => void downloadMonitoreoCamasSusalud()}
+          >
             <Download className="h-4 w-4" />
-            Exportar SUSALUD
+            Resumen Susalud
           </Button>
         </>
       }

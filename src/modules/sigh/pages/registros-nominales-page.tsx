@@ -16,11 +16,11 @@ interface ExportItem {
 }
 
 const NOMINAL_EXPORT_ITEMS: ExportItem[] = [
-  { key: 'exportaxls_10', label: 'Pacientes hospitalizados corte' },
-  { key: 'exportaxls_4', label: 'Pacientes hospitalizados programado' },
-  { key: 'exportaxls_5', label: 'Pacientes de alta' },
-  { key: 'exportaxls_6', label: 'Pacientes fallecidos' },
-  { key: 'exportaxls_7', label: 'Camas' },
+  { key: 'exportaxls_10', label: 'Reporte Diario de Pacientes Hospitalizados — cortes del momento' },
+  { key: 'exportaxls_4', label: 'Reporte Diario de Pacientes Hospitalizados — corte programado 07:00 AM y 07:00 PM' },
+  { key: 'exportaxls_5', label: 'Reporte Diario de Pacientes de Alta — corte programado 07:00 AM y 07:00 PM' },
+  { key: 'exportaxls_6', label: 'Reporte Diario de Pacientes Fallecidos — corte programado 07:00 AM y 07:00 PM' },
+  { key: 'exportaxls_7', label: 'Reporte Diario de Camas — corte programado 07:00 AM y 07:00 PM' },
 ]
 
 export function RegistrosNominalesPage() {
@@ -117,31 +117,35 @@ export function RegistrosNominalesPage() {
     >
       <Card className="border-border/70">
         <CardHeader className="border-b border-border/60 pb-3">
-          <CardTitle className="text-sm">
-            Usuario autorizado:{' '}
-            <span className="font-semibold text-brand-strong">{authorizedUser?.employeeName ?? 'No validado'}</span>
-          </CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-sm">
+              Usuario autorizado:{' '}
+              <span className="font-semibold text-brand-strong">{authorizedUser?.employeeName ?? 'No validado'}</span>
+            </CardTitle>
+            <p className="text-[11px] text-muted">Exportación nominal al momento — requiere validación SISGALEN</p>
+          </div>
         </CardHeader>
         <CardContent className="pt-4">
           <div className="overflow-x-auto rounded-md border border-border/70">
-            <table className="min-w-full border-collapse text-[12px]">
+            <table className="min-w-[700px] border-collapse text-[12px]">
               <thead>
-                <tr className="bg-[#eef5fb] text-[#123B63]">
-                  <th className="border-b border-border px-2 py-1 text-right font-semibold uppercase">Ord</th>
-                  <th className="border-b border-border px-2 py-1 text-left font-semibold uppercase">Tipo de reporte</th>
-                  <th className="border-b border-border px-2 py-1 text-left font-semibold uppercase">Archivo</th>
+                <tr className="bg-[#123B63] text-white">
+                  <th className="w-10 border-b border-white/15 px-2 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wide">Ord</th>
+                  <th className="border-b border-white/15 px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide">Tipo de Reporte</th>
+                  <th className="w-28 border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide">Archivo</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.key} className="odd:bg-white even:bg-[#f8fbff]">
-                    <td className="border-b border-border/70 px-2 py-1 text-right">{row.order}</td>
-                    <td className="border-b border-border/70 px-2 py-1">{row.label}</td>
-                    <td className="border-b border-border/70 px-2 py-1">
+                    <td className="border-b border-border/70 px-2 py-1 text-right align-middle">{row.order}</td>
+                    <td className="border-b border-border/70 px-2 py-1 align-middle font-medium text-[#123B63]">{row.label}</td>
+                    <td className="border-b border-border/70 px-2 py-1 align-middle">
                       <Button
                         size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-[11px] text-brand-strong hover:text-brand"
+                        className="h-7 gap-1.5 px-3 text-[11px] font-semibold"
+                        style={row.enabled && authorizedUser ? { backgroundColor: '#005F8F', color: '#fff' } : undefined}
+                        variant={row.enabled && authorizedUser ? 'default' : 'outline'}
                         onClick={() => void handleDownload(row.key, row.enabled)}
                         disabled={!authorizedUser || downloadKey === row.key || !row.enabled}
                       >

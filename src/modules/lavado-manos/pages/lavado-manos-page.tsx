@@ -480,6 +480,7 @@ export function LavadoManosPage() {
       await exportLavadoRegistros({
         fechaInicio: filters.fechaInicio,
         fechaFin: filters.fechaFin,
+        tipo: filters.tipo,
       })
     } catch (exportError) {
       const message =

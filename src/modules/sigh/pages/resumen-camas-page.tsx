@@ -112,16 +112,16 @@ export function ResumenCamasPage() {
       <div className="overflow-x-auto rounded-md border border-border/70 bg-white">
         <table className="min-w-[980px] border-collapse text-[12px]">
           <thead>
-            <tr className="bg-[#eef5fb] text-[#123B63]">
-              <th className="border-b border-border px-2 py-1 font-semibold uppercase">Piso</th>
-              <th className="border-b border-border px-2 py-1 font-semibold uppercase">Servicio</th>
-              <th className="border-b border-border px-2 py-1 font-semibold uppercase">Tipo</th>
-              <th className="border-b border-border px-2 py-1 font-semibold uppercase">Operativas</th>
-              <th className="border-b border-border px-2 py-1 font-semibold uppercase">Ocupadas</th>
-              <th className="border-b border-border px-2 py-1 font-semibold uppercase">% Ocupacion</th>
-              <th className="border-b border-border px-2 py-1 font-semibold uppercase">Disponibles</th>
-              <th className="border-b border-border px-2 py-1 font-semibold uppercase">Transitorias</th>
-              <th className="border-b border-border px-2 py-1 font-semibold uppercase">Inhabilitadas</th>
+            <tr className="bg-[#123B63] text-white">
+              <th className="border-b border-white/15 px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide">Piso</th>
+              <th className="border-b border-white/15 px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide">Servicio</th>
+              <th className="border-b border-white/15 px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide">Tipo</th>
+              <th className="border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide">Operativas</th>
+              <th className="border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide">Ocupadas</th>
+              <th className="border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide">% Ocupación</th>
+              <th className="border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide">Disponibles</th>
+              <th className="border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide">Transitorias</th>
+              <th className="border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide">Inhabilitadas</th>
             </tr>
           </thead>
           <tbody>

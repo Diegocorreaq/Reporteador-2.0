@@ -218,18 +218,6 @@ export function ProduccionMedicosPage() {
     <SighPageShell
       error={error}
       description="Produccion de actividades realizadas y registradas por medico con detalle y exportacion."
-      actions={
-        <>
-          <Button size="sm" variant="outline" onClick={() => void handleExportPdf()} disabled={!selectedEmployee}>
-            <FileText className="h-4 w-4" />
-            PDF
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => void handleExportExcel()} disabled={!selectedEmployee}>
-            <Download className="h-4 w-4" />
-            Excel
-          </Button>
-        </>
-      }
     >
       <SighFilterPanel onProcess={() => void handleProcess()}>
         <div className="min-w-[280px] flex-1 space-y-1" ref={autocompleteRef}>
@@ -303,27 +291,64 @@ export function ProduccionMedicosPage() {
           />
         </div>
 
+        <div className="flex items-end gap-2 pb-2">
+          <Button
+            size="sm"
+            className="h-9 gap-1.5 px-3 font-semibold"
+            style={selectedEmployee ? { backgroundColor: '#D98B27', color: '#fff' } : undefined}
+            variant={selectedEmployee ? 'default' : 'outline'}
+            onClick={() => void handleExportPdf()}
+            disabled={!selectedEmployee}
+            title="Exportar producción en PDF"
+          >
+            <FileText className="h-4 w-4" />
+            PDF
+          </Button>
+          <Button
+            size="sm"
+            className="h-9 gap-1.5 px-3 font-semibold"
+            style={selectedEmployee ? { backgroundColor: '#005F8F', color: '#fff' } : undefined}
+            variant={selectedEmployee ? 'default' : 'outline'}
+            onClick={() => void handleExportExcel()}
+            disabled={!selectedEmployee}
+            title="Exportar producción en Excel"
+          >
+            <Download className="h-4 w-4" />
+            Excel
+          </Button>
+        </div>
         <div className="pb-2 text-xs text-muted">Rango: {rangeDays} dias</div>
       </SighFilterPanel>
 
       <Card className="border-border/70">
         <CardHeader className="border-b border-border/60 pb-3">
-          <CardTitle className="text-sm">Produccion por actividad</CardTitle>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <CardTitle className="text-sm">Produccion por actividad</CardTitle>
+            {selectedEmployee ? (
+              <div className="text-[11px] text-right text-muted leading-snug">
+                <span className="font-semibold text-[#123B63]">{selectedEmployee.empleado}</span>
+                {' · '}
+                <span>{selectedEmployee.especialidad}</span>
+                {' · '}
+                <span>{filters.fechaInicio} al {filters.fechaFin}</span>
+              </div>
+            ) : null}
+          </div>
         </CardHeader>
         <CardContent className="pt-4">
           <div className="overflow-x-auto rounded-md border border-border/70">
             <table className="min-w-full border-collapse text-[12px]">
               <thead>
-                <tr className="bg-[#eef5fb] text-[#123B63]">
-                  <th className="border-b border-border px-2 py-1 text-center font-semibold uppercase">Codigo</th>
-                  <th className="border-b border-border px-2 py-1 text-left font-semibold uppercase">Actividad</th>
+                <tr className="bg-[#123B63] text-white">
+                  <th className="border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide">Codigo</th>
+                  <th className="border-b border-white/15 px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide">Actividad</th>
                   {days.map((day) => (
-                    <th key={day} className="border-b border-border px-2 py-1 text-center font-semibold uppercase">
+                    <th key={day} className="border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase">
                       {day}
                     </th>
                   ))}
-                  <th className="border-b border-border px-2 py-1 text-center font-semibold uppercase">Total</th>
-                  <th className="border-b border-border px-2 py-1 text-center font-semibold uppercase">Detalle</th>
+                  <th className="border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide">Total</th>
+                  <th className="border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide">Detalle</th>
                 </tr>
               </thead>
               <tbody>
@@ -376,6 +401,24 @@ export function ProduccionMedicosPage() {
           <DialogHeader>
             <DialogTitle>Detalle de actividad: {detailTitle || '-'}</DialogTitle>
           </DialogHeader>
+          {selectedEmployee ? (
+            <div className="rounded-md border border-[#d1dbe7] bg-[#f3f8fd] px-3 py-2 text-[12px]">
+              <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <span>
+                  <span className="font-semibold text-[#123B63]">Profesional:</span>{' '}
+                  <span className="text-text">{selectedEmployee.empleado}</span>
+                </span>
+                <span>
+                  <span className="font-semibold text-[#123B63]">Especialidad:</span>{' '}
+                  <span className="text-text">{selectedEmployee.especialidad}</span>
+                </span>
+                <span>
+                  <span className="font-semibold text-[#123B63]">Periodo:</span>{' '}
+                  <span className="text-text">{filters.fechaInicio} al {filters.fechaFin}</span>
+                </span>
+              </div>
+            </div>
+          ) : null}
           <SighTable
             rows={detailRows}
             columns={detailColumns}

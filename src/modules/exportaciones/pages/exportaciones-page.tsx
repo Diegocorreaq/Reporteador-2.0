@@ -193,38 +193,35 @@ export function ExportacionesPage() {
           <span>{error}</span>
         </Alert>
       ) : null}
-<br></br>
+
       <div className="overflow-x-auto rounded-md border border-border/80">
         <table className="w-full min-w-[760px] border-collapse text-[12px]">
           <thead>
-            <tr className="bg-brand-strong text-white">
-              <th className="w-14 border-b border-white/15 px-2 py-1 text-right text-[11px] font-semibold uppercase tracking-wide">
-              ORD
-              </th>
-<th className="border-b border-white/15 px-2 py-1 text-left text-[11px] font-semibold uppercase tracking-wide">                TIPO DE REPORTE
-              </th>
-<th className="border-b border-white/15 px-2 py-1 text-left text-[11px] font-semibold uppercase tracking-wide">                ARCHIVO
-              </th>
+            <tr className="bg-[#123B63] text-white">
+              <th className="w-14 border-b border-white/15 px-2 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wide">ORD</th>
+              <th className="border-b border-white/15 px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide">TIPO DE REPORTE</th>
+              <th className="w-28 border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide">ARCHIVO</th>
             </tr>
           </thead>
 
           <tbody>
             {VISIBLE_REPORT_ROWS.map((report) => (
-              <tr key={report.key} className="bg-white">
-                <td className="border-b border-border px-2 py-0.5 text-[11px] text-right font-medium align-top">{report.ord}</td>
-                <td className="border-b border-border px-2 py-0.5 text-[11px] align-top">{report.label}</td>
-                <td className="border-b border-border px-2 py-0.5 text-[11px] text-left align-middle">
-  <Button
-    size="sm"
-    variant="ghost"
-    className="h-6 gap-1 px-0 text-[10px] font-medium text-[#2b6faa] hover:bg-transparent hover:text-[#1f588b] hover:underline"
-    disabled={!authorizedUser || !isRangeValid || isDownloadingKey === report.key}
-    onClick={() => void handleDownload(report)}
-  >
-    <Download className="h-3 w-3" />
-    Exportar
-  </Button>
-</td>
+              <tr key={report.key} className="bg-white hover:bg-[#f6fbff]">
+                <td className="border-b border-border/70 px-2 py-1.5 text-[11px] text-right font-medium align-middle">{report.ord}</td>
+                <td className="border-b border-border/70 px-2 py-1.5 text-[11px] align-middle font-medium text-[#123B63]">{report.label}</td>
+                <td className="border-b border-border/70 px-2 py-1.5 text-[11px] text-center align-middle">
+                  <Button
+                    size="sm"
+                    className="h-7 gap-1.5 px-3 text-[11px] font-semibold"
+                    style={authorizedUser && isRangeValid ? { backgroundColor: '#005F8F', color: '#fff' } : undefined}
+                    variant={authorizedUser && isRangeValid ? 'default' : 'outline'}
+                    disabled={!authorizedUser || !isRangeValid || isDownloadingKey === report.key}
+                    onClick={() => void handleDownload(report)}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    {isDownloadingKey === report.key ? 'Descargando...' : 'Exportar'}
+                  </Button>
+                </td>
               </tr>
             ))}
           </tbody>
