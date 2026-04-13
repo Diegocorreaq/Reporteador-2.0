@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { History, Search } from 'lucide-react'
+import { History, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select } from '@/components/ui/select'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { SighFilterPanel } from '@/modules/sigh/components/sigh-filter-panel'
 import { SighPageShell } from '@/modules/sigh/components/sigh-page-shell'
 import { SighTable, type SighTableColumn } from '@/modules/sigh/components/sigh-table'
@@ -23,32 +24,16 @@ interface ServicioOption {
 
 const ESTANCIA_COLUMNS: SighTableColumn[] = [
   {
-    key: 'servicio',
-    label: 'Servicio',
-    render: (_, row) => resolveRowText(row, 'servicio', ['SERVICIO']),
-  },
-  {
     key: 'idcuenta',
     label: 'IdCuenta',
     align: 'center',
     render: (_, row) => resolveRowText(row, 'idcuenta', ['IDCUENTA']),
   },
   {
-    key: 'paciente',
-    label: 'Paciente',
-    render: (_, row) => resolveRowText(row, 'paciente', ['PACIENTE']),
-  },
-  {
-    key: 'edad',
-    label: 'Edad',
+    key: 'fechaing',
+    label: 'Fecha Ing',
     align: 'center',
-    render: (_, row) => resolveRowText(row, 'edad', ['EDAD']),
-  },
-  {
-    key: 'tedad',
-    label: 'Tipo edad',
-    align: 'center',
-    render: (_, row) => resolveRowText(row, 'tedad', ['TIPOEDAD']),
+    render: (_, row) => resolveRowText(row, 'fechaing', ['FECHAING']),
   },
   {
     key: 'ffto',
@@ -57,31 +42,60 @@ const ESTANCIA_COLUMNS: SighTableColumn[] = [
     render: (_, row) => resolveRowText(row, 'ffto', ['FTEFTO']),
   },
   {
-    key: 'diash',
-    label: 'Dias hosp',
-    align: 'center',
-    render: (_, row) => resolveRowText(row, 'diash', ['DIAHOSP']),
+    key: 'paciente',
+    label: 'Paciente',
+    render: (_, row) => resolveRowText(row, 'paciente', ['PACIENTE']),
   },
   {
-    key: 'diass',
-    label: 'Dias serv',
+    key: 'cama',
+    label: 'Cama',
     align: 'center',
-    render: (_, row) => resolveRowText(row, 'diass', ['DIASERV', 'horas']),
+    render: (_, row) => resolveRowText(row, 'cama', ['CAMA']),
+  },
+  {
+    key: 'lado',
+    label: 'Lado',
+    align: 'center',
+    render: (_, row) => resolveRowText(row, 'lado', ['LADO']),
+  },
+  {
+    key: 'especialidad',
+    label: 'Especialidad',
+    render: (_, row) => resolveRowText(row, 'especialidad', ['ESPECIALIDAD']),
+  },
+  {
+    key: 'servicioing',
+    label: 'Servicio Ingreso',
+    render: (_, row) => resolveRowText(row, 'servicioing', ['SERVICIOING']),
+  },
+  {
+    key: 'fechaocupa',
+    label: 'Fecha Ocupa Servicio',
+    align: 'center',
+    render: (_, row) => resolveRowText(row, 'fechaocupa', ['FECHAOCUPA']),
+  },
+  {
+    key: 'dia',
+    label: 'Dias',
+    align: 'center',
+    render: (_, row) => resolveRowText(row, 'dia', ['DIA']),
+  },
+  {
+    key: 'hora',
+    label: 'Horas',
+    align: 'center',
+    render: (_, row) => resolveRowText(row, 'hora', ['HORA']),
+  },
+  {
+    key: 'totdias',
+    label: 'Tot. Dias',
+    align: 'center',
+    render: (_, row) => resolveRowText(row, 'totdias', ['TOTDIAS']),
   },
   {
     key: 'dxing1',
     label: 'Dx ingreso',
     render: (_, row) => resolveRowText(row, 'dxing1', ['dxing', 'DESDX']),
-  },
-  {
-    key: 'dxevo1',
-    label: 'Dx evolucion 1',
-    render: (_, row) => resolveRowText(row, 'dxevo1', ['DXEVO1']),
-  },
-  {
-    key: 'dxevo2',
-    label: 'Dx evolucion 2',
-    render: (_, row) => resolveRowText(row, 'dxevo2', ['DXEVO2']),
   },
 ]
 
@@ -103,6 +117,11 @@ export function GestionEstanciaCamaPage() {
   const [movementTitle, setMovementTitle] = useState('')
   const [openMovements, setOpenMovements] = useState(false)
   const [loadingMovements, setLoadingMovements] = useState(false)
+  const [summaryData, setSummaryData] = useState<{
+    disponible: number
+    ocupado: number
+    libre: number
+  } | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -123,10 +142,12 @@ export function GestionEstanciaCamaPage() {
 
     setLoading(true)
     setError(null)
+    setSummaryData(null)
     try {
       const info = await getCamasServicioInfo(selectedServicio)
       if (!info) {
         setRows([])
+        setSummaryData(null)
         return
       }
 
@@ -136,6 +157,16 @@ export function GestionEstanciaCamaPage() {
         idTipo: resolveRowText(info, 'idTipo', ['idtipo']),
       })
       setRows(payload)
+      
+      // Calcular resumen de camas
+      if (payload.length > 0) {
+        const summary = {
+          disponible: resolveRowNumber(payload[0], 'disponible', ['DISPONIBLE']) || 0,
+          ocupado: resolveRowNumber(payload[0], 'ocupado', ['OCUPADO']) || 0,
+          libre: resolveRowNumber(payload[0], 'libre', ['LIBRE']) || 0,
+        }
+        setSummaryData(summary)
+      }
     } catch (fetchError) {
       const message = fetchError instanceof Error ? fetchError.message : 'No se pudo consultar gestion de estancia.'
       setError(message)
@@ -228,36 +259,87 @@ export function GestionEstanciaCamaPage() {
       description="Gestion de estancia por cama con consulta nominal y trazabilidad de movimientos."
     >
       <SighFilterPanel processLabel="Consultar" onProcess={() => void handleFetch()}>
-        <div className="w-[340px] space-y-1">
-          <label className="text-xs font-semibold text-brand-strong" htmlFor="estancia-servicio-select">
-            Servicio
-          </label>
-          <Select
-            id="estancia-servicio-select"
-            value={selectedServicio}
-            onChange={(event) => setSelectedServicio(event.target.value)}
-          >
-            <option value="">Seleccionar</option>
-            {servicios.map((service) => (
-              <option key={`${service.tipo}-${service.nombre}`} value={service.nombre}>
-                {service.nombre}
-              </option>
-            ))}
-          </Select>
+        <div className="flex gap-4">
+          <div className="w-[340px] space-y-1">
+            <label className="text-xs font-semibold text-brand-strong" htmlFor="estancia-servicio-select">
+              Servicio
+            </label>
+            <Select
+              id="estancia-servicio-select"
+              value={selectedServicio}
+              onChange={(event) => setSelectedServicio(event.target.value)}
+            >
+              <option value="">Seleccionar</option>
+              {servicios.map((service) => (
+                <option key={`${service.tipo}-${service.nombre}`} value={service.nombre}>
+                  {service.nombre}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
       </SighFilterPanel>
 
+      {/* Tabla de Resumen de Camas */}
+      {summaryData && (
+        <Card className="border-border/70">
+          <CardHeader className="border-b border-border/60 pb-3">
+            <CardTitle className="text-sm">Resumen de Camas</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="overflow-x-auto rounded-md border border-border/70 bg-white">
+              <table className="min-w-full border-collapse text-[12px]">
+                <thead>
+                  <tr className="bg-[#eef5fb] text-[#123B63]">
+                    <th className="border-b border-border px-4 py-2 text-center font-semibold">Nro Camas Disponibles</th>
+                    <th className="border-b border-border px-4 py-2 text-center font-semibold">Nro Camas Ocupadas</th>
+                    <th className="border-b border-border px-4 py-2 text-center font-semibold">Nro Camas Libres</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="text-center">
+                    <td className="border-b border-border/70 px-4 py-2 bg-[#F99652]">
+                      <span className="text-lg font-bold">{summaryData.disponible}</span>
+                    </td>
+                    <td className="border-b border-border/70 px-4 py-2 bg-[#FFA7A7]">
+                      <span className="text-lg font-bold">{summaryData.ocupado}</span>
+                    </td>
+                    <td className="border-b border-border/70 px-4 py-2 bg-[#bcfd99]">
+                      <span className="text-lg font-bold">{summaryData.libre}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tabla de Estancia Hospitalaria */}
       <Card className="border-border/70">
         <CardHeader className="border-b border-border/60 pb-3">
-          <CardTitle className="text-sm">Estancia hospitalaria por cama</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">Estancia hospitalaria por cama</CardTitle>
+            {rows.length > 0 && (
+              <Button size="sm" variant="outline" className="gap-2">
+                <Download className="h-4 w-4" />
+                Excel
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="pt-4">
           <div className="overflow-x-auto rounded-md border border-border/70 bg-white">
-            <table className="min-w-[1300px] border-collapse text-[12px]">
+            <table className="min-w-full border-collapse text-[12px]">
               <thead>
                 <tr className="bg-[#eef5fb] text-[#123B63]">
                   {ESTANCIA_COLUMNS.map((column) => (
-                    <th key={column.key} className="border-b border-border px-2 py-1 font-semibold uppercase">
+                    <th
+                      key={column.key}
+                      className={`border-b border-border px-2 py-1 font-semibold uppercase ${
+                        column.align === 'center' ? 'text-center' : ''
+                      }`}
+                    >
                       {column.label}
                     </th>
                   ))}
@@ -266,21 +348,36 @@ export function GestionEstanciaCamaPage() {
               </thead>
               <tbody>
                 {rows.length ? (
-                  rows.map((row, index) => (
-                    <tr key={`estancia-${index}`} className="odd:bg-white even:bg-[#f8fbff]">
-                      {ESTANCIA_COLUMNS.map((column) => (
-                        <td key={`${index}-${column.key}`} className="border-b border-border/70 px-2 py-1">
-                          {column.render ? column.render(row[column.key], row, index) : resolveRowText(row, column.key)}
+                  rows.map((row, index) => {
+                    const diaValue = resolveRowNumber(row, 'dia', ['DIA'])
+                    const isHighlighted = diaValue && diaValue > 7
+
+                    return (
+                      <tr
+                        key={`estancia-${index}`}
+                        className={`${
+                          isHighlighted === true ? 'bg-[#FFA7A7]' : 'odd:bg-white even:bg-[#f8fbff]'
+                        }`}
+                      >
+                        {ESTANCIA_COLUMNS.map((column) => (
+                          <td
+                            key={`${index}-${column.key}`}
+                            className={`border-b border-border/70 px-2 py-1 ${
+                              column.align === 'center' ? 'text-center' : ''
+                            }`}
+                          >
+                            {column.render ? column.render(row[column.key], row, index) : resolveRowText(row, column.key)}
+                          </td>
+                        ))}
+                        <td className="border-b border-border/70 px-2 py-1 text-center">
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => void openMovementHistory(row)}>
+                            <History className="h-3.5 w-3.5" />
+                            Ver
+                          </Button>
                         </td>
-                      ))}
-                      <td className="border-b border-border/70 px-2 py-1 text-center">
-                        <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={() => void openMovementHistory(row)}>
-                          <History className="h-3.5 w-3.5" />
-                          Ver
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
+                      </tr>
+                    )
+                  })
                 ) : (
                   <tr>
                     <td colSpan={ESTANCIA_COLUMNS.length + 1} className="px-3 py-5 text-center text-xs text-muted">

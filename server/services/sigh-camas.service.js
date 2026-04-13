@@ -240,7 +240,7 @@ function buildSpreadsheetHtml(title, rows) {
 }
 
 export async function exportMonitoreoCamasResumen() {
-  const rows = await executeProcedure('SP_CAMA_MONITOREO', [], { timeoutMs: REPORT_TIMEOUT_MS })
+  const rows = await executeProcedure('SP_CAMA_RESUMEN', [], { timeoutMs: REPORT_TIMEOUT_MS })
   const normalizedRows = normalizeRows(rows)
 
   return {
@@ -252,8 +252,7 @@ export async function exportMonitoreoCamasResumen() {
 }
 
 export async function exportMonitoreoCamasSusalud() {
-  // SUSALUD export typically uses monitoreo data
-  const rows = await executeProcedure('SP_CAMA_MONITOREO', [], { timeoutMs: REPORT_TIMEOUT_MS })
+  const rows = await executeProcedure('SP_CAMA_RESUMEN', [], { timeoutMs: REPORT_TIMEOUT_MS })
   const normalizedRows = normalizeRows(rows)
 
   return {

@@ -117,6 +117,26 @@ const RANGE_EXPORTS = {
     fileName: 'produccion-admision.xls',
     maxDays: 31,
   },
+  exporta_d_xls_17: {
+    procedure: 'SP_REPORTE_D_EXCEL17',
+    fileName: 'pacientes-triaje-temperatura.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_18: {
+    procedure: 'SP_REPORTE_D_EXCEL18',
+    fileName: 'usuarios-apertura-cuentas.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_19: {
+    procedure: 'SP_REPORTE_D_EXCEL19',
+    fileName: 'ticket-ventanilla.xls',
+    maxDays: 31,
+  },
+  exporta_d_xls_20: {
+    procedure: 'SP_REPORTE_D_EXCEL20',
+    fileName: 'historias-recetas-sin-firma.xls',
+    maxDays: 31,
+  },
 }
 
 const SALUD_MENTAL_EXPORTS = {

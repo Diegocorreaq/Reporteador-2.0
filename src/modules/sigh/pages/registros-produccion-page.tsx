@@ -20,22 +20,17 @@ interface ExportItem {
 
 const RANGE_EXPORT_ITEMS: ExportItem[] = [
   { key: 'exporta_d_xls_1', label: 'Historias clinicas aperturadas', fallbackMaxDays: 31 },
+  { key: 'exporta_d_xls_19', label: 'Ticket de ventanilla', fallbackMaxDays: 31 },
   { key: 'exporta_d_xls_2', label: 'Programados y atendidos consulta externa', fallbackMaxDays: 31 },
   { key: 'exporta_d_xls_13', label: 'Ingresos nuevos emergencia', fallbackMaxDays: 31 },
   { key: 'exporta_d_xls_14', label: 'Ingresos nuevos UCA', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_3', label: 'Solicitudes de teleorientacion', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_4', label: 'Transferencias a UCI', fallbackMaxDays: 31 },
   { key: 'exporta_d_xls_5', label: 'Pacientes con alta', fallbackMaxDays: 31 },
   { key: 'exporta_d_xls_6', label: 'Fallecidos SISGALEN', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_6_h', label: 'Fallecidos con certificado HEVES', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_12', label: 'Hospitalizados', fallbackMaxDays: 31 },
   { key: 'exporta_d_xls_7', label: 'Referencias enviadas/recibidas', fallbackMaxDays: 33 },
   { key: 'exporta_d_xls_8', label: 'Admisionados', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_9', label: 'Interconsultas UCI adultos', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_10', label: 'Interconsultas otros', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_11', label: 'BAI morbilidad materna extrema', fallbackMaxDays: 92 },
-  { key: 'exporta_d_xls_15', label: 'Fichas epidemiologicas PCR/antigenos', fallbackMaxDays: 31 },
-  { key: 'exporta_d_xls_16', label: 'Produccion de registros admision', fallbackMaxDays: 31 },
+  { key: 'exporta_d_xls_17', label: 'Triaje y temperatura >= 37.5', fallbackMaxDays: 31 },
+  { key: 'exporta_d_xls_18', label: 'Apertura de cuentas', fallbackMaxDays: 31 },
+  { key: 'exporta_d_xls_20', label: 'Historias y recetas sin firma electronica', fallbackMaxDays: 31 },
 ]
 
 export function RegistrosProduccionPage() {

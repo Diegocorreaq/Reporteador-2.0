@@ -16,19 +16,11 @@ interface ExportItem {
 }
 
 const NOMINAL_EXPORT_ITEMS: ExportItem[] = [
-  { key: 'exportaxls_1', label: 'Informe a familia' },
-  { key: 'exportaxls_2', label: 'Oxigenoterapia hospitalizacion' },
-  { key: 'exportaxls_3', label: 'Oxigenoterapia emergencia/UCI' },
   { key: 'exportaxls_10', label: 'Pacientes hospitalizados corte' },
-  { key: 'exportaxls_int_a', label: 'Interconsultas UCI + hospitalizacion' },
-  { key: 'exportaxls_int_b', label: 'Interconsultas UCI hospitalizacion' },
-  { key: 'exportaxls_int_c', label: 'Interconsultas a diferentes' },
   { key: 'exportaxls_4', label: 'Pacientes hospitalizados programado' },
   { key: 'exportaxls_5', label: 'Pacientes de alta' },
   { key: 'exportaxls_6', label: 'Pacientes fallecidos' },
   { key: 'exportaxls_7', label: 'Camas' },
-  { key: 'exportaxls_8', label: 'Familia programado' },
-  { key: 'exportaxls_13', label: 'Pacientes hospitalizados con vacunas' },
 ]
 
 export function RegistrosNominalesPage() {
