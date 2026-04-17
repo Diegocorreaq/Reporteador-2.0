@@ -1,4 +1,5 @@
 import { executeProcedure, sql } from './legacy-sql.service.js'
+import { buildSimpleWorkbook, buildStructuredWorkbook, buildTabulatedWorkbook, MIME_XLSX } from './excel-export.service.js'
 
 function resolveCatalogConnection(catalog) {
   // SIGH catalogs use sigh1
@@ -11,156 +12,212 @@ function resolveCatalogConnection(catalog) {
 }
 
 const CURRENT_EXPORTS = {
-  exportaxls_1: { procedure: 'SP_REPORTE_EXCEL1', fileName: 'reporte-informe-familia.xls' },
-  exportaxls_2: { procedure: 'SP_REPORTE_EXCEL2', fileName: 'reporte-oxigenoterapia-hospitalizacion.xls' },
-  exportaxls_3: { procedure: 'SP_REPORTE_EXCEL3', fileName: 'reporte-oxigenoterapia-emergencia-y-uci.xls' },
-  exportaxls_10: { procedure: 'SP_REPORTE_EXCEL10', fileName: 'reporte-pacientes-hospitalizados-corte.xls' },
-  exportaxls_int_a: { procedure: 'SP_REPORTE_EXCEL8A', fileName: 'reporte-interconsultas-uci.xls' },
-  exportaxls_int_b: { procedure: 'SP_REPORTE_EXCEL8B', fileName: 'reporte-interconsultas-hospitalizacion.xls' },
-  exportaxls_int_c: { procedure: 'SP_REPORTE_EXCEL8C', fileName: 'reporte-interconsultas-otros.xls' },
-  exportaxls_4: { procedure: 'SP_REPORTE_EXCEL4', fileName: 'reporte-diario-pacientes-hospitalizados.xls' },
-  exportaxls_5: { procedure: 'SP_REPORTE_EXCEL5', fileName: 'reporte-diario-pacientes-alta.xls' },
-  exportaxls_6: { procedure: 'SP_REPORTE_EXCEL6', fileName: 'reporte-diario-pacientes-fallecidos.xls' },
-  exportaxls_7: { procedure: 'SP_REPORTE_EXCEL7', fileName: 'reporte-diario-camas.xls' },
-  exportaxls_8: { procedure: 'SP_REPORTE_EXCEL1_FAM', fileName: 'reporte-familia-programado.xls' },
-  exportaxls_13: { procedure: 'SP_REPORTE_EXCEL13', fileName: 'reporte-pacientes-con-vacunas.xls' },
+  exportaxls_1:     { procedure: 'SP_REPORTE_EXCEL1',    fileName: 'reporte-informe-familia.xlsx' },
+  exportaxls_2:     { procedure: 'SP_REPORTE_EXCEL2',    fileName: 'reporte-oxigenoterapia-hospitalizacion.xlsx' },
+  exportaxls_3:     { procedure: 'SP_REPORTE_EXCEL3',    fileName: 'reporte-oxigenoterapia-emergencia-y-uci.xlsx' },
+  exportaxls_10:    { procedure: 'SP_REPORTE_EXCEL10',   fileName: 'reporte-pacientes-hospitalizados-corte.xlsx' },
+  exportaxls_int_a: { procedure: 'SP_REPORTE_EXCEL8A',   fileName: 'reporte-interconsultas-uci.xlsx' },
+  exportaxls_int_b: { procedure: 'SP_REPORTE_EXCEL8B',   fileName: 'reporte-interconsultas-hospitalizacion.xlsx' },
+  exportaxls_int_c: { procedure: 'SP_REPORTE_EXCEL8C',   fileName: 'reporte-interconsultas-otros.xlsx' },
+  exportaxls_4:     { procedure: 'SP_REPORTE_EXCEL4',    fileName: 'reporte-diario-pacientes-hospitalizados.xlsx' },
+  exportaxls_5:     { procedure: 'SP_REPORTE_EXCEL5',    fileName: 'reporte-diario-pacientes-alta.xlsx' },
+  exportaxls_6:     { procedure: 'SP_REPORTE_EXCEL6',    fileName: 'reporte-diario-pacientes-fallecidos.xlsx' },
+  exportaxls_7:     { procedure: 'SP_REPORTE_EXCEL7',    fileName: 'reporte-diario-camas.xlsx' },
+  exportaxls_8:     { procedure: 'SP_REPORTE_EXCEL1_FAM', fileName: 'reporte-familia-programado.xlsx' },
+  exportaxls_13:    { procedure: 'SP_REPORTE_EXCEL13',   fileName: 'reporte-pacientes-con-vacunas.xlsx' },
 }
 
 const CURRENT_EXPORTS_SIGH = {
   ...CURRENT_EXPORTS,
-  exportaxls_10: { procedure: 'SP_REPORTE_EXCEL10_2026', fileName: 'reporte-pacientes-hospitalizados-corte.xls' },
+  exportaxls_10: { procedure: 'SP_REPORTE_EXCEL10_2026', fileName: 'reporte-pacientes-hospitalizados-corte.xlsx' },
+}
+
+// ---------------------------------------------------------------------------
+// Tabulated templates — explicit column selection, labels, colors, and widths
+// for range exports whose visual layout differs from a raw SP dump.
+// ---------------------------------------------------------------------------
+
+const MORBILIDAD_MATERNA_TEMPLATE = {
+  sheetName: 'Morbilidad Materna',
+  freezeRows: 1,
+  columns: [
+    { key: 'ANIO',            label: 'Año',                              width: 6,  headerColor: '79C9FD' },
+    { key: 'MES',             label: 'Mes',                              width: 6,  headerColor: '79C9FD' },
+    { key: 'FH_ING',          label: 'Fecha y Hora de Ingreso',          width: 22, headerColor: '79C9FD', format: 'datetime-legacy' },
+    { key: 'CUENTA',          label: 'Nro Cuenta',                       width: 12, headerColor: '79C9FD' },
+    { key: 'SERV_INGRESO',    label: 'Servicio Ingreso',                 width: 28, headerColor: '79C9FD' },
+    { key: 'NOMBRE_PACIENTE', label: 'Nombre del Paciente',              width: 36, headerColor: '79C9FD' },
+    { key: 'EDAD',            label: 'Edad',                             width: 7,  headerColor: '79C9FD' },
+    { key: 'TIP_EDAD',        label: 'Tipo Edad',                        width: 10, headerColor: '79C9FD' },
+    { key: 'DIST_PROC',       label: 'Distrito Procedencia',             width: 22, headerColor: '79C9FD' },
+    { key: 'CM_ING',          label: 'Condicion Materno de Ingreso',     width: 20, headerColor: '79C9FD' },
+    { key: 'TIP_PARTO',       label: 'Tipo Parto',                       width: 14, headerColor: '79C9FD' },
+    { key: 'G',               label: 'Nro de Gestacion',                 width: 8,  headerColor: '79C9FD' },
+    { key: 'EG',              label: 'Edad Gestacional',                 width: 8,  headerColor: '79C9FD' },
+    { key: 'COVID',           label: 'COVID',                            width: 8,  headerColor: '79C9FD' },
+    { key: 'EST_TOTAL',       label: 'Estacia (Minutos)',                width: 10, headerColor: '79C9FD' },
+    { key: 'COND_EGRESO',     label: 'Condicion de Egreso',              width: 18, headerColor: '79C9FD' },
+    { key: 'D1',  label: 'Shock',                                                                                                                      width: 14, headerColor: '84E8CE' },
+    { key: 'D2',  label: 'Paro Cardiaco',                                                                                                              width: 14, headerColor: '84E8CE' },
+    { key: 'D3',  label: 'pH < 7.1 (Acidosis severa)',                                                                                                 width: 14, headerColor: '84E8CE' },
+    { key: 'D4',  label: 'Lactato > 5 mmol/l o 45 mg/dl (Hipoperfusión severa)',                                                                      width: 14, headerColor: '84E8CE' },
+    { key: 'D5',  label: 'Administración continua de agentes vasoactivos',                                                                             width: 14, headerColor: '84E8CE' },
+    { key: 'D6',  label: 'Reanimación cardiopulmonar',                                                                                                 width: 14, headerColor: '84E8CE' },
+    { key: 'D7',  label: 'Cianosis aguda',                                                                                                             width: 14, headerColor: '84E8CE' },
+    { key: 'D8',  label: 'Respiración jadeante',                                                                                                       width: 14, headerColor: '84E8CE' },
+    { key: 'D9',  label: 'FR > 40 rpm (Taquipnea severa)',                                                                                             width: 14, headerColor: '84E8CE' },
+    { key: 'D10', label: 'FR < 6 rpm (Bradicardia severa)',                                                                                            width: 14, headerColor: '84E8CE' },
+    { key: 'D11', label: 'Saturación de oxigeno < 90% durante ? 1 hora o PaO2/FiO2 < 200 mmHg (Hipoxia severa)',                                      width: 14, headerColor: '84E8CE' },
+    { key: 'D12', label: 'Intubación y ventilación, no relacionadas con la anestesia',                                                                  width: 14, headerColor: '84E8CE' },
+    { key: 'D13', label: 'Oliguría resistente a los líquidos o diuréticos',                                                                            width: 14, headerColor: '84E8CE' },
+    { key: 'D14', label: 'Creatinina >= 300 µmol/l o mg/dl (azotemia aguda severa)',                                                                   width: 14, headerColor: '84E8CE' },
+    { key: 'D15', label: 'Diálisis en caso de insuficiencia renal aguda',                                                                              width: 14, headerColor: '84E8CE' },
+    { key: 'D16', label: 'Alteraciones de la coagulación (No formación de coágulo)',                                                                   width: 14, headerColor: '84E8CE' },
+    { key: 'D17', label: 'Plaquetas < 50.000 plaquetas/ml (Trombocitopenia aguda severa)',                                                             width: 14, headerColor: '84E8CE' },
+    { key: 'D18', label: 'Transfusión de >= 3 vol (Transfusión masiva de unidades de sangre, globulos rojos, hemoderivados, paquete globular)',        width: 14, headerColor: '84E8CE' },
+    { key: 'D19', label: 'Ictericia en presencia de preeclampsia',                                                                                     width: 14, headerColor: '84E8CE' },
+    { key: 'D20', label: 'Bilirrubina > 100 µmol/l o 6 mg/dl (Hiperbilirrubinemia aguda severa)',                                                     width: 14, headerColor: '84E8CE' },
+    { key: 'D21', label: 'Coma/Pérdida de conocimiento > 12 horas',                                                                                    width: 14, headerColor: '84E8CE' },
+    { key: 'D22', label: 'Crisis epilépticas incontroladas/estado epliléptico',                                                                        width: 14, headerColor: '84E8CE' },
+    { key: 'D23', label: 'Accidente cerebrovascular',                                                                                                  width: 14, headerColor: '84E8CE' },
+    { key: 'D24', label: 'Parálisis generalizada',                                                                                                     width: 14, headerColor: '84E8CE' },
+    { key: 'D25', label: 'Histerectomía (Después de infección o hemorragía uterina)',                                                                  width: 14, headerColor: '84E8CE' },
+    { key: 'D26', label: 'Ingreso a UCI > 72 horas',                                                                                                   width: 14, headerColor: '84E8CE' },
+  ],
 }
 
 const RANGE_EXPORTS = {
   exporta_d_xls_1: {
     procedure: 'SP_REPORTE_D_EXCEL1',
-    fileName: 'historias-clinicas.xls',
+    fileName: 'historias-clinicas.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_2: {
     procedure: 'SP_REPORTE_D_EXCEL2',
-    fileName: 'atenciones-telemonitoreo.xls',
+    fileName: 'atenciones-telemonitoreo.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_3: {
     procedure: 'SP_REPORTE_D_EXCEL3',
-    fileName: 'solicitud-teleorientacion.xls',
+    fileName: 'solicitud-teleorientacion.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_4: {
     procedure: 'SP_REPORTE_D_EXCEL4',
-    fileName: 'transferencias.xls',
+    fileName: 'transferencias.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_5: {
     procedure: 'SP_REPORTE_D_EXCEL5',
-    fileName: 'pacientes-altas.xls',
+    fileName: 'pacientes-altas.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_6: {
     procedure: 'SP_REPORTE_D_EXCEL6',
-    fileName: 'pacientes-fallecidos.xls',
+    fileName: 'pacientes-fallecidos.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_6_h: {
     procedure: 'SP_REPORTE_D_EXCEL6_H',
-    fileName: 'pacientes-fallecidos-hospitalizados.xls',
+    fileName: 'pacientes-fallecidos-hospitalizados.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_7: {
     procedure: 'SP_REPORTE_D_EXCEL7',
-    fileName: 'pacientes-referidos.xls',
+    fileName: 'pacientes-referidos.xlsx',
     maxDays: 33,
   },
   exporta_d_xls_8: {
     procedure: 'SP_REPORTE_D_EXCEL8',
-    fileName: 'pacientes-atendidos.xls',
+    fileName: 'pacientes-atendidos.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_9: {
     procedure: 'SP_REPORTE_D_EXCEL9',
-    fileName: 'interconsulta-uci-adultos.xls',
+    fileName: 'interconsulta-uci-adultos.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_10: {
     procedure: 'SP_REPORTE_D_EXCEL10',
-    fileName: 'interconsulta-otros.xls',
+    fileName: 'interconsulta-otros.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_11: {
     procedure: 'SP_REPORTE_D_EXCEL11_A_2026',
-    fileName: 'bai-morbilidad-materna-extrema.xls',
+    fileName: 'bai-morbilidad-materna-extrema.xlsx',
     maxDays: 92,
+    connection: 'general',
+    template: MORBILIDAD_MATERNA_TEMPLATE,
   },
   exporta_d_xls_12: {
     procedure: 'SP_REPORTE_D_EXCEL12',
-    fileName: 'pacientes-hospitalizados.xls',
+    fileName: 'pacientes-hospitalizados.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_13: {
     procedure: 'SP_REPORTE_D_EXCEL13',
-    fileName: 'pacientes-nuevos-emergencia.xls',
+    fileName: 'pacientes-nuevos-emergencia.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_14: {
     procedure: 'SP_REPORTE_D_EXCEL14',
-    fileName: 'pacientes-nuevos-uca.xls',
+    fileName: 'pacientes-nuevos-uca.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_15: {
     procedure: 'SP_REPORTE_D_EXCEL15',
-    fileName: 'pacientes-ficha-covid.xls',
+    fileName: 'pacientes-ficha-covid.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_16: {
     procedure: 'SP_REPORTE_D_EXCEL16',
-    fileName: 'produccion-admision.xls',
+    fileName: 'produccion-admision.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_17: {
     procedure: 'SP_REPORTE_D_EXCEL17',
-    fileName: 'pacientes-triaje-temperatura.xls',
+    fileName: 'pacientes-triaje-temperatura.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_18: {
     procedure: 'SP_REPORTE_D_EXCEL18',
-    fileName: 'usuarios-apertura-cuentas.xls',
+    fileName: 'usuarios-apertura-cuentas.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_19: {
     procedure: 'SP_REPORTE_D_EXCEL19',
-    fileName: 'ticket-ventanilla.xls',
+    fileName: 'ticket-ventanilla.xlsx',
     maxDays: 31,
   },
   exporta_d_xls_20: {
     procedure: 'SP_REPORTE_D_EXCEL20',
-    fileName: 'historias-recetas-sin-firma.xls',
+    fileName: 'historias-recetas-sin-firma.xlsx',
     maxDays: 31,
   },
 }
 
 // File names corrected to match legacy exactly
 const SALUD_MENTAL_EXPORTS = {
-  exporta_xls_1:  { procedure: 'SP_REPORTE_SM_EXCEL_1',  fileName: 'P_0070610.xls' },
-  exporta_xls_2:  { procedure: 'SP_REPORTE_SM_EXCEL_2',  fileName: 'P_0060614.xls' },
-  exporta_xls_3:  { procedure: 'SP_REPORTE_SM_EXCEL_3',  fileName: 'P_0070611.xls' },
-  exporta_xls_4:  { procedure: 'SP_REPORTE_SM_EXCEL_4',  fileName: 'P_0070612.xls' },
-  exporta_xls_5:  { procedure: 'SP_REPORTE_SM_EXCEL_5',  fileName: 'P_5005190.xls' },
-  exporta_xls_6:  { procedure: 'SP_REPORTE_SM_EXCEL6',   fileName: 'P_5005190B.xls' },
-  exporta_xls_7:  { procedure: 'SP_REPORTE_SM_EXCEL_7',  fileName: 'P_5005927.xls' },
-  exporta_xls_8:  { procedure: 'SP_REPORTE_SM_EXCEL_8',  fileName: 'P_0070615.xls' },
-  exporta_xls_9:  { procedure: 'SP_REPORTE_SM_EXCEL_9',  fileName: 'P_0070616.xls' },
-  exporta_xls_10: { procedure: 'SP_REPORTE_SM_EXCEL_10', fileName: 'P_5005195.xls' },
-  exporta_xls_11: { procedure: 'SP_REPORTE_SM_EXCEL_11', fileName: 'P_5005192.xls' },
-  exporta_xls_12: { procedure: 'SP_REPORTE_SM_EXCEL_12', fileName: 'P_TAMBCONG.xls' },
-  exporta_xls_13: { procedure: 'SP_REPORTE_SM_EXCEL_13', fileName: 'P_TESPVSEX.xls' },
-  exporta_xls_14: { procedure: 'SP_REPORTE_SM_EXCEL_14', fileName: 'P_INTALTAB.xls' },
+  exporta_xls_1:  { procedure: 'SP_REPORTE_SM_EXCEL_1',  fileName: 'P_0070610.xlsx' },
+  exporta_xls_2:  { procedure: 'SP_REPORTE_SM_EXCEL_2',  fileName: 'P_0060614.xlsx' },
+  exporta_xls_3:  { procedure: 'SP_REPORTE_SM_EXCEL_3',  fileName: 'P_0070611.xlsx' },
+  exporta_xls_4:  { procedure: 'SP_REPORTE_SM_EXCEL_4',  fileName: 'P_0070612.xlsx' },
+  exporta_xls_5:  { procedure: 'SP_REPORTE_SM_EXCEL_5',  fileName: 'P_5005190.xlsx' },
+  exporta_xls_6:  { procedure: 'SP_REPORTE_SM_EXCEL6',   fileName: 'P_5005190B.xlsx' },
+  exporta_xls_7:  { procedure: 'SP_REPORTE_SM_EXCEL_7',  fileName: 'P_5005927.xlsx' },
+  exporta_xls_8:  { procedure: 'SP_REPORTE_SM_EXCEL_8',  fileName: 'P_0070615.xlsx' },
+  exporta_xls_9:  { procedure: 'SP_REPORTE_SM_EXCEL_9',  fileName: 'P_0070616.xlsx' },
+  exporta_xls_10: { procedure: 'SP_REPORTE_SM_EXCEL_10', fileName: 'P_5005195.xlsx' },
+  exporta_xls_11: { procedure: 'SP_REPORTE_SM_EXCEL_11', fileName: 'P_5005192.xlsx' },
+  exporta_xls_12: { procedure: 'SP_REPORTE_SM_EXCEL_12', fileName: 'P_TAMBCONG.xlsx' },
+  exporta_xls_13: { procedure: 'SP_REPORTE_SM_EXCEL_13', fileName: 'P_TESPVSEX.xlsx' },
+  exporta_xls_14: { procedure: 'SP_REPORTE_SM_EXCEL_14', fileName: 'P_INTALTAB.xlsx' },
 }
 
 const LAVADO_EXPORTS = {
   listado_registro: {
     procedure: 'SP_EPI_REPORTE_LAVADO',
-    fileName: 'registro-lavado-de-manos.xls',
+    fileName: 'registro-lavado-de-manos.xlsx',
   },
 }
 
@@ -632,26 +689,36 @@ export async function executeConfiguredExport({
 
   const rows = await executeProcedure(exportDefinition.procedure, params, {
     timeoutMs: 120000,
-    connection: resolveCatalogConnection(catalog),
+    connection: exportDefinition.connection ?? resolveCatalogConnection(catalog),
   })
 
-  // Use the mental-health template builder when a config exists for this key;
-  // fall back to the generic flat-table builder for all other catalogs.
+  // Build real XLSX — pick builder by priority:
+  //   1. salud-mental   → structured two-level header workbook
+  //   2. template       → tabulated workbook with explicit column mapping
+  //   3. default        → simple flat-dump workbook
   const mhConfig = catalog === 'salud-mental' ? getMentalHealthConfig(key) : null
 
-  const content = mhConfig
-    ? buildMentalHealthSpreadsheetHtml({
+  const content = await (mhConfig
+    ? buildStructuredWorkbook({
         config: mhConfig,
         rows,
         startDate,
         endDate,
         title: exportDefinition.fileName,
       })
-    : buildSpreadsheetHtml(exportDefinition.fileName, rows)
+    : exportDefinition.template
+      ? buildTabulatedWorkbook({
+          template: exportDefinition.template,
+          rows,
+        })
+      : buildSimpleWorkbook({
+          title: exportDefinition.fileName,
+          rows,
+        }))
 
   return {
     fileName: exportDefinition.fileName,
-    mimeType: 'application/vnd.ms-excel; charset=utf-8',
+    mimeType: MIME_XLSX,
     content,
     rowCount: rows.length,
   }
