@@ -31,7 +31,7 @@ export interface FamiliaPendienteRow {
   tiempoSinInforme: string
   fechaCorte: string
   estado: string
-  alertState: 'normal' | 'over12' | 'over24'
+  alertState: 'over12' | 'over24'
 }
 
 export interface FamiliaPendienteReport {

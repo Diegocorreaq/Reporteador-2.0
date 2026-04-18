@@ -7,67 +7,15 @@ function parseNumeric(value) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-function parseHoursFromLegacyTime(value) {
-  if (value === null || value === undefined) {
-    return 0
-  }
-
-  if (typeof value === 'number') {
-    return value
-  }
-
-  const raw = String(value).trim()
-  if (!raw) {
-    return 0
-  }
-
-  if (/^\d+(\.\d+)?$/.test(raw)) {
-    return Number(raw)
-  }
-
-  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(raw)) {
-    const [hours, minutes] = raw.split(':')
-    return parseNumeric(hours) + parseNumeric(minutes) / 60
-  }
-
-  const dayMatch = raw.match(/(\d+(?:\.\d+)?)\s*d/i)
-  const hourMatch = raw.match(/(\d+(?:\.\d+)?)\s*h/i)
-  const minuteMatch = raw.match(/(\d+(?:\.\d+)?)\s*m/i)
-
-  if (dayMatch || hourMatch || minuteMatch) {
-    const days = dayMatch ? parseNumeric(dayMatch[1]) : 0
-    const hours = hourMatch ? parseNumeric(hourMatch[1]) : 0
-    const minutes = minuteMatch ? parseNumeric(minuteMatch[1]) : 0
-    return days * 24 + hours + minutes / 60
-  }
-
-  const hoursFromWords = raw.match(/(\d+(?:\.\d+)?)\s*hora/i)
-  const daysFromWords = raw.match(/(\d+(?:\.\d+)?)\s*dia/i)
-  const minutesFromWords = raw.match(/(\d+(?:\.\d+)?)\s*min/i)
-  if (hoursFromWords || daysFromWords || minutesFromWords) {
-    const days = daysFromWords ? parseNumeric(daysFromWords[1]) : 0
-    const hours = hoursFromWords ? parseNumeric(hoursFromWords[1]) : 0
-    const minutes = minutesFromWords ? parseNumeric(minutesFromWords[1]) : 0
-    return days * 24 + hours + minutes / 60
-  }
-
-  return 0
-}
-
 function resolveAlertState(row) {
   const legacyState = String(row.ESTADO_REGISTRO_LLAMA ?? row.estado ?? '').trim().toUpperCase()
   const days = parseNumeric(row.DIASHOSP ?? row.dias)
-  const hoursWithoutReport = parseHoursFromLegacyTime(row.TIEMPO_SIN_INFORME ?? row.tiempo)
 
-  if ((days >= 1 && (legacyState === 'MAY24' || legacyState === 'NO')) || hoursWithoutReport >= 24) {
+  if (days >= 1 && (legacyState === 'MAY24' || legacyState === 'NO')) {
     return 'over24'
   }
 
-  if (hoursWithoutReport >= 12 || legacyState === 'MAY12') {
-    return 'over12'
-  }
-
-  return 'normal'
+  return 'over12'
 }
 
 export async function listFamiliaPendienteUpss() {

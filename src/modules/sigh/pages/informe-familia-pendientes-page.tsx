@@ -144,8 +144,6 @@ export function InformeFamiliaPendientesPage() {
       }
     >
       <SighFilterPanel
-        processLabel="Consultar"
-        onProcess={() => void handleFetch()}
         rightSlot={
           <div className="flex flex-wrap gap-4 text-xs">
             <div className="flex items-center gap-2">
@@ -174,7 +172,7 @@ export function InformeFamiliaPendientesPage() {
         </div>
         <Button size="sm" variant="outline" onClick={() => void handleFetch()} className="mb-0.5">
           <RefreshCcw className="h-4 w-4" />
-          Actualizar
+          Consultar
         </Button>
       </SighFilterPanel>
 
@@ -185,12 +183,9 @@ export function InformeFamiliaPendientesPage() {
         rowClassName={(row) => {
           const typedRow = row as FamiliaPendienteRow
           if (typedRow.alertState === 'over24') {
-            return 'bg-[#ffdede] even:!bg-[#ffdede]'
+            return '[&>td:nth-child(2)]:bg-[#ffdede] [&>td:nth-child(3)]:bg-[#ffdede]'
           }
-          if (typedRow.alertState === 'over12') {
-            return 'bg-[#fff4c9] even:!bg-[#fff4c9]'
-          }
-          return undefined
+          return '[&>td:nth-child(2)]:bg-[#fff4c9] [&>td:nth-child(3)]:bg-[#fff4c9]'
         }}
       />
 

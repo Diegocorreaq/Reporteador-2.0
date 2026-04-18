@@ -12,15 +12,48 @@ import {
 
 interface ExportItem {
   key: string
+  order: number
   label: string
+  badgeText: string
+  badgeTone: 'moment' | 'scheduled'
 }
 
 const NOMINAL_EXPORT_ITEMS: ExportItem[] = [
-  { key: 'exportaxls_10', label: 'Reporte Diario de Pacientes Hospitalizados — cortes del momento' },
-  { key: 'exportaxls_4', label: 'Reporte Diario de Pacientes Hospitalizados — corte programado 07:00 AM y 07:00 PM' },
-  { key: 'exportaxls_5', label: 'Reporte Diario de Pacientes de Alta — corte programado 07:00 AM y 07:00 PM' },
-  { key: 'exportaxls_6', label: 'Reporte Diario de Pacientes Fallecidos — corte programado 07:00 AM y 07:00 PM' },
-  { key: 'exportaxls_7', label: 'Reporte Diario de Camas — corte programado 07:00 AM y 07:00 PM' },
+  {
+    key: 'exportaxls_10',
+    order: 4,
+    label: 'REPORTE DIARIO DE PACIENTES HOSPITALIZADOS',
+    badgeText: 'Cortes del momento',
+    badgeTone: 'moment',
+  },
+  {
+    key: 'exportaxls_4',
+    order: 8,
+    label: 'REPORTE DIARIO DE PACIENTES HOSPITALIZADOS',
+    badgeText: 'Corte Programados 07:00 AM y 07:00 PM',
+    badgeTone: 'scheduled',
+  },
+  {
+    key: 'exportaxls_5',
+    order: 9,
+    label: 'REPORTE DIARIO DE PACIENTES DE ALTA',
+    badgeText: 'Corte Programados 07:00 AM y 07:00 PM',
+    badgeTone: 'scheduled',
+  },
+  {
+    key: 'exportaxls_6',
+    order: 10,
+    label: 'REPORTE DIARIO DE PACIENTES FALLECIDOS',
+    badgeText: 'Corte Programados 07:00 AM y 07:00 PM',
+    badgeTone: 'scheduled',
+  },
+  {
+    key: 'exportaxls_7',
+    order: 11,
+    label: 'REPORTE DIARIO DE CAMAS',
+    badgeText: 'Corte Programados 07:00 AM y 07:00 PM',
+    badgeTone: 'scheduled',
+  },
 ]
 
 export function RegistrosNominalesPage() {
@@ -47,9 +80,8 @@ export function RegistrosNominalesPage() {
 
   const rows = useMemo(
     () =>
-      NOMINAL_EXPORT_ITEMS.map((item, index) => ({
+      NOMINAL_EXPORT_ITEMS.map((item) => ({
         ...item,
-        order: index + 1,
         enabled: availableKeys.has(item.key),
       })),
     [availableKeys],
@@ -139,7 +171,17 @@ export function RegistrosNominalesPage() {
                 {rows.map((row) => (
                   <tr key={row.key} className="odd:bg-white even:bg-[#f8fbff]">
                     <td className="border-b border-border/70 px-2 py-1 text-right align-middle">{row.order}</td>
-                    <td className="border-b border-border/70 px-2 py-1 align-middle font-medium text-[#123B63]">{row.label}</td>
+                    <td className="border-b border-border/70 px-2 py-1 align-middle font-medium text-[#123B63]">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span>{row.label}</span>
+                        <span
+                          className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white"
+                          style={row.badgeTone === 'moment' ? { backgroundColor: '#58B35E' } : { backgroundColor: '#69BCD7' }}
+                        >
+                          {row.badgeText}
+                        </span>
+                      </div>
+                    </td>
                     <td className="border-b border-border/70 px-2 py-1 align-middle">
                       <Button
                         size="sm"
@@ -175,3 +217,4 @@ export function RegistrosNominalesPage() {
     </SighPageShell>
   )
 }
+
