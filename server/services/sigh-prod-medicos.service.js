@@ -1,4 +1,5 @@
 import { executeProcedure_Sigh2 as executeProcedure, executeQuery_Sigh2 as executeQuery, sql } from './sigh-sql-helpers.js'
+import { buildProduccionMedicosWorkbook, MIME_XLSX } from './excel-export.service.js'
 
 const REPORT_TIMEOUT_MS = 180000
 const MAX_RANGE_DAYS = 31
@@ -254,12 +255,36 @@ export async function getProduccionMedicosDetalle(filters) {
 }
 
 export async function exportProduccionMedicosExcel(filters) {
-  const report = await getProduccionMedicosResumen(filters)
-  const content = buildSpreadsheetHtml('produccion-medicos.xls', report.rows)
+  const fechaInicio = toDateOnly(filters.fechaInicio)
+  const fechaFin = toDateOnly(filters.fechaFin)
+  const empleadoId = Number(filters.empleadoId ?? 0)
+
+  if (!empleadoId) {
+    throw new Error('Debe seleccionar un profesional valido.')
+  }
+
+  validateDateRange(fechaInicio, fechaFin)
+
+  const rows = await executeProcedure(
+    'SP_REPORTE_PRODUCCION_P2',
+    [
+      { name: 'feci', type: sql.NVarChar, value: fechaInicio },
+      { name: 'fecf', type: sql.NVarChar, value: fechaFin },
+      { name: 'idemp', type: sql.Int, value: empleadoId },
+    ],
+    { timeoutMs: REPORT_TIMEOUT_MS },
+  )
+
+  const content = await buildProduccionMedicosWorkbook({
+    rows,
+    startDate: fechaInicio,
+    endDate: fechaFin,
+    title: 'produccion-medicos.xlsx',
+  })
 
   return {
-    fileName: 'produccion-medicos.xls',
-    mimeType: 'application/vnd.ms-excel; charset=utf-8',
+    fileName: 'produccion-medicos.xlsx',
+    mimeType: MIME_XLSX,
     content,
   }
 }

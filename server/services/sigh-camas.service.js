@@ -8,6 +8,51 @@ function normalizeRows(rows = []) {
   )
 }
 
+function pick(row, ...keys) {
+  for (const k of keys) {
+    if (k in row && row[k] !== null && row[k] !== undefined && row[k] !== '') return row[k]
+  }
+  return ''
+}
+
+function pickNum(row, ...keys) {
+  const v = pick(row, ...keys)
+  if (v === '') return 0
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
+function mapCamasRow(row) {
+  return {
+    idservicio: pickNum(row, 'IDSERVICIO', 'idservicio'),
+    piso:       String(pick(row, 'PISO', 'piso') ?? '').trim(),
+    servicio:   String(pick(row, 'CONSULTORIO', 'SERVICIO', 'servicio') ?? '').trim(),
+    tipo:       String(pick(row, 'TIPO', 'tipo') ?? '').trim(),
+    camas:      pickNum(row, 'CAMASARQ', 'CAMAS', 'camas'),
+    total:      pickNum(row, 'TOTCAMAS', 'TOTAL', 'total', 'tcamas'),
+    tocupa:     pickNum(row, 'TOTOCUPA', 'TOCUPA', 'tocupa'),
+    chabi:      pickNum(row, 'CHABI', 'chabi'),
+    cocup:      pickNum(row, 'COCUP', 'cocup'),
+    clibr:      pickNum(row, 'CLIBR', 'clibr'),
+    ctran:      pickNum(row, 'CTRAN', 'ctran'),
+    cinah:      pickNum(row, 'CINAH', 'cinah'),
+    pcr:        pickNum(row, 'PCR', 'pcr'),
+    espera:     pickNum(row, 'ESPERA', 'espera'),
+    espera_ant: pickNum(row, 'ESPERA_ANT', 'espera_ant'),
+    espera_mol: pickNum(row, 'ESPERA_MOL', 'espera_mol'),
+    c_vm:       pickNum(row, 'C_VM', 'c_vm'),
+    totalvm:    pickNum(row, 'VENTILADOR_M', 'TOTALVM', 'totalvm'),
+    vmopera:    pickNum(row, 'VENTILADOR_M_O', 'VMOPERA', 'vmopera'),
+    vminopera:  pickNum(row, 'VENTILADOR_M_I', 'VMINOPERA', 'vminopera'),
+    c_fl:       pickNum(row, 'C_FL', 'c_fl'),
+    totalaf:    pickNum(row, 'VENTILADOR_AF', 'TOTALAF', 'totalaf'),
+    afopera:    pickNum(row, 'VENTILADOR_AF_O', 'AFOPERA', 'afopera'),
+    afinopera:  pickNum(row, 'VENTILADOR_AF_I', 'AFINOPERA', 'afinopera'),
+    veces:      pickNum(row, 'VECES', 'veces') || 1,
+    veces1:     pickNum(row, 'VECES1', 'veces1') || 1,
+  }
+}
+
 const DETAIL_PROCEDURE_BY_TYPE = {
   '1': { procedure: 'SP_CAMA_DETALLE_1', params: ['idServicio', 'tipo'] },
   '2': { procedure: 'SP_CAMA_DETALLE_2', params: ['idServicio', 'tipo'] },
@@ -135,7 +180,7 @@ export function getGestionEstanciaMovimientoDxCqx(orden) {
 
 export async function getMonitoreoCamasReport() {
   const rows = await executeProcedure('SP_CAMA_RESUMEN', [], { timeoutMs: REPORT_TIMEOUT_MS })
-  return normalizeRows(rows)
+  return rows.map(mapCamasRow)
 }
 
 export async function listTiposCama() {

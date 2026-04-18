@@ -2176,7 +2176,7 @@ const RANGE_EXPORTS = {
   },
   exporta_d_xls_19: {
     procedure: 'SP_REPORTE_D_EXCEL18',
-    fileName: 'produccion_ticket.xls',
+    fileName: 'produccion_ticket.xlsx',
     maxDays: 10,
     template: PRODUCCION_TICKET_RANGE_TEMPLATE,
     rowsMapper: mapRangeProduccionTicketRows,

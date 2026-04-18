@@ -1278,6 +1278,176 @@ export async function buildCamasResumenWorkbook({ summary = {}, rows = [], title
 }
 
 // ---------------------------------------------------------------------------
+// E. Produccion Medicos workbook
+// ---------------------------------------------------------------------------
+//
+// Layout:
+//   Rows 1-4 : metadata (Desde / Hasta / Fecha y Hora / Tipo de reporte)
+//   Row  5   : group headers (empty | DATOS DE ATENCION | DIAGNOSTICO-CPTS-RECETA | ATENCION CQX)
+//   Row  6   : individual column headers (33 columns)
+//   Row  7+  : data rows (nominal detail)
+// ---------------------------------------------------------------------------
+
+const PROD_MEDICOS_COLS = [
+  { key: 'COD_ACT',            label: 'CODIGO',             width: 10  },
+  { key: 'TIPO_ACTIVIDAD',     label: 'ACTIVIDAD',          width: 18  },
+  { key: 'NOMBRE_PROFESIONAL', label: 'NOMBRE_PROFESIONAL', width: 26  },
+  { key: 'DNI',                label: 'NRO DNI',            width: 12,  asText: true },
+  { key: 'TIPO_EMPLEADO',      label: 'TIPO_EMPLEADO',      width: 16  },
+  { key: 'SERVICIO_ACTIVIDAD', label: 'SERVICIO_ACTIVIDAD', width: 22  },
+  { key: 'CUENTA',             label: 'N\u00b0_CUENTA',     width: 12  },
+  { key: 'CANTIDAD',           label: 'CANTIDAD',           width: 10  },
+  { key: 'FECHA',              label: 'FECHA_REGISTRO',     width: 14,  format: 'excel-date',     numFmt: 'dd/mm/yyyy' },
+  { key: 'HORA',               label: 'HORA_REGISTRO',      width: 12,  format: 'excel-time',     numFmt: 'hh:mm' },
+  { key: 'NOMBRE_PACIENTE',    label: 'NOMBRE_PACIENTE',    width: 32  },
+  { key: 'NRO_DOCUMENTO',      label: 'NRO_DOCUMENTO',      width: 13,  asText: true },
+  { key: 'NRO_HISTORIA',       label: 'NRO HISTORIA',       width: 13,  asText: true },
+  { key: 'PRIORIDAD',          label: 'PRIORIDAD',          width: 11  },
+  { key: 'TIPO_ATENCION_CE',   label: 'TIPO_ATENCION_CE',   width: 15  },
+  { key: 'COD_DX1',            label: 'COD CIE 10',         width: 12  },
+  { key: 'DESCRIPCION_DX1',    label: 'DIAGNOSTICO',        width: 30  },
+  { key: 'CODIGO_CPT',         label: 'COD CMPS',           width: 12  },
+  { key: 'DESCRIPCION_CPT',    label: 'DESCRIPCION CMPS',   width: 24  },
+  { key: 'IDRECETA',           label: 'IDRECETA',           width: 12  },
+  { key: 'PUNTO_CARGA',        label: 'PUNTO CARGA',        width: 14  },
+  { key: 'FUNCION',            label: 'FUNCION',            width: 14  },
+  { key: 'COMPLEJIDAD',        label: 'COMPLEJIDAD',        width: 13  },
+  { key: 'FECHA_INI_CIRUGIA',  label: 'INICIO DE CIRUGIA', width: 18,  format: 'excel-datetime', numFmt: 'dd/mm/yyyy hh:mm' },
+  { key: 'FECHA_FIN_CIRUGIA',  label: 'FIN DE CIRUGIA',    width: 18,  format: 'excel-datetime', numFmt: 'dd/mm/yyyy hh:mm' },
+  { key: 'CODCPT1',            label: 'CODIGO CPT 1',       width: 13  },
+  { key: 'DESCPT1',            label: 'DESCRIPCION CPT 1',  width: 22  },
+  { key: 'CODCPT2',            label: 'CODIGO CPT 2',       width: 13  },
+  { key: 'DESCPT2',            label: 'DESCRIPCION CPT 2',  width: 22  },
+  { key: 'CODCPT3',            label: 'CODIGO CPT 3',       width: 13  },
+  { key: 'DESCPT3',            label: 'DESCRIPCION CPT 3',  width: 22  },
+  { key: 'CODCPT4',            label: 'CODIGO CPT 4',       width: 13  },
+  { key: 'DESCPT4',            label: 'DESCRIPCION CPT 4',  width: 22  },
+]
+
+export async function buildProduccionMedicosWorkbook({ rows, startDate, endDate, title }) {
+  const wb = new ExcelJS.Workbook()
+  wb.creator = 'Reporteador-2.0'
+
+  const ws = wb.addWorksheet(getSheetNameFromFileName(title || 'produccion-medicos'))
+
+  const totalCols = PROD_MEDICOS_COLS.length // 33
+
+  ws.columns = PROD_MEDICOS_COLS.map((c) => ({ width: c.width }))
+
+  // Rows 1-4: metadata
+  const metaItems = [
+    ['Desde', startDate ?? ''],
+    ['Hasta', endDate ?? ''],
+    ['Fecha y Hora de Reporte', formatDateTime()],
+    ['Tipo de reporte', 'Produccion de Medicos'],
+  ]
+
+  metaItems.forEach(([label, value], i) => {
+    const rowNum = i + 1
+    mergeCellsAndStyle(ws, rowNum, 1, rowNum, 2, {
+      value: label,
+      fill: META_LABEL_FILL,
+      font: DATA_FONT,
+      border: THIN_BORDER,
+      alignment: { vertical: 'middle', horizontal: 'left', wrapText: true },
+    })
+    mergeCellsAndStyle(ws, rowNum, 3, rowNum, totalCols, {
+      value: String(value ?? ''),
+      font: { bold: true, size: 10 },
+      border: THIN_BORDER,
+      alignment: { vertical: 'middle', horizontal: 'left', wrapText: true },
+    })
+    ws.getRow(rowNum).height = 18
+  })
+
+  // Row 5: group header row
+  const GRP_ROW = 5
+  ws.getRow(GRP_ROW).height = 22
+
+  // cols 1-2: empty gray placeholder
+  mergeCellsAndStyle(ws, GRP_ROW, 1, GRP_ROW, 2, {
+    fill: argbFill('E1E1E0'),
+    border: THIN_BORDER,
+    alignment: { vertical: 'middle', horizontal: 'center' },
+  })
+  // cols 3-15: DATOS DE ATENCION (13 cols)
+  mergeCellsAndStyle(ws, GRP_ROW, 3, GRP_ROW, 15, {
+    value: 'DATOS DE ATENCION',
+    fill: argbFill('9BDEFA'),
+    font: HEADER_FONT,
+    border: THIN_BORDER,
+    alignment: { vertical: 'middle', horizontal: 'center', wrapText: true },
+  })
+  // cols 16-21: DIAGNOSTICO - CPTS - RECETA (6 cols)
+  mergeCellsAndStyle(ws, GRP_ROW, 16, GRP_ROW, 21, {
+    value: 'DIAGNOSTICO - CPTS - RECETA',
+    fill: argbFill('FEF593'),
+    font: HEADER_FONT,
+    border: THIN_BORDER,
+    alignment: { vertical: 'middle', horizontal: 'center', wrapText: true },
+  })
+  // cols 22-33: ATENCION EN CENTRO QUIRURGICO (12 cols)
+  mergeCellsAndStyle(ws, GRP_ROW, 22, GRP_ROW, 33, {
+    value: 'ATENCION EN CENTRO QUIRURGICO',
+    fill: argbFill('A0E7E6'),
+    font: HEADER_FONT,
+    border: THIN_BORDER,
+    alignment: { vertical: 'middle', horizontal: 'center', wrapText: true },
+  })
+
+  // Row 6: individual column headers
+  const HDR_ROW = 6
+  ws.getRow(HDR_ROW).height = 20
+  PROD_MEDICOS_COLS.forEach((c, i) => {
+    const cell = ws.getCell(HDR_ROW, i + 1)
+    cell.value = c.label
+    applyHeaderStyle(cell, 'E1E1E0', { horizontal: 'center', wrapText: true })
+  })
+
+  // Freeze rows 1-6
+  applyFreezePane(ws, 6)
+
+  // Rows 7+: data
+  const DATA_START = 7
+  const sourceRows = Array.isArray(rows) ? rows : []
+
+  if (sourceRows.length === 0) {
+    mergeCellsAndStyle(ws, DATA_START, 1, DATA_START, totalCols, {
+      value: 'No se encontraron registros para los filtros solicitados.',
+      font: DATA_FONT,
+      border: THIN_BORDER,
+      alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+    })
+    ws.getRow(DATA_START).height = 16
+  } else {
+    sourceRows.forEach((row, rowIdx) => {
+      const excelRowNum = DATA_START + rowIdx
+      ws.getRow(excelRowNum).height = 16
+
+      PROD_MEDICOS_COLS.forEach((c, colIdx) => {
+        const cell = ws.getCell(excelRowNum, colIdx + 1)
+        const raw = col(row, c.key)
+
+        if (c.asText) {
+          cell.value = raw === '' || raw == null ? '' : String(raw)
+          cell.numFmt = '@'
+        } else if (c.format) {
+          const payload = normalizeTabulatedCellPayload(raw, c)
+          cell.value = payload.value
+          if (payload.numFmt) cell.numFmt = payload.numFmt
+        } else {
+          cell.value = raw === '' || raw == null ? '' : raw
+        }
+
+        applyDataStyle(cell, { horizontal: resolveDataHorizontal(c.label, c.align) })
+      })
+    })
+  }
+
+  return wb.xlsx.writeBuffer()
+}
+
+// ---------------------------------------------------------------------------
 // Re-export MIME type so callers do not hardcode the string
 // ---------------------------------------------------------------------------
 export { MIME_XLSX }
