@@ -10,6 +10,29 @@ interface AuthState {
   setWorkspace: (workspace: WorkspaceKey) => void
 }
 
+function shouldResetPersistedUser(user: AuthUser | null | undefined) {
+  if (!user) {
+    return false
+  }
+
+  const name = String(user.name ?? '').trim()
+  const username = String(user.username ?? '').trim()
+
+  if (!name) {
+    return true
+  }
+
+  if (/^\d+$/.test(name)) {
+    return true
+  }
+
+  if (username && name.toLowerCase() === username.toLowerCase()) {
+    return true
+  }
+
+  return false
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -32,6 +55,24 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'reporteador-next-auth',
+      version: 2,
+      migrate: (persistedState) => {
+        if (!persistedState || typeof persistedState !== 'object') {
+          return persistedState as AuthState
+        }
+
+        const state = persistedState as Partial<AuthState>
+
+        if (shouldResetPersistedUser(state.user ?? null)) {
+          return {
+            ...state,
+            user: null,
+            activeWorkspace: 'main',
+          } as AuthState
+        }
+
+        return state as AuthState
+      },
     },
   ),
 )

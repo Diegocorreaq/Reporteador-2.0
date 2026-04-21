@@ -1,40 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, LogOut, Menu, MoreHorizontal, User } from 'lucide-react'
-import { workspaceMeta } from '@/config/module-registry'
+import { LogOut, Menu, MoreHorizontal, User } from 'lucide-react'
 import { menuService } from '@/services/menu/menu.service'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
 import { WorkspaceQuickLinkAction } from '@/components/navigation/workspace-quick-link-action'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import type { WorkspaceQuickLink } from '@/types/navigation'
 import type { WorkspaceKey } from '@/types/auth'
 
 interface TopbarProps {
-  collapsed: boolean
   workspace: WorkspaceKey
   onOpenMobile: () => void
-  onToggleSidebar: () => void
-}
-
-function getInitials(name?: string) {
-  if (!name) return 'US'
-
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((segment) => segment[0]?.toUpperCase() ?? '')
-    .join('')
 }
 
 function WorkspaceSwitchButton({
@@ -114,7 +91,88 @@ function QuickLinksOverflow({ links }: { links: WorkspaceQuickLink[] }) {
   )
 }
 
-export function Topbar({ collapsed, workspace, onOpenMobile, onToggleSidebar }: TopbarProps) {
+function resolveUserDisplayName(rawName?: string | null) {
+  const cleanName = rawName?.trim().replace(/\s+/g, ' ') ?? ''
+
+  return cleanName || null
+}
+
+function UserMenu({
+  onLogout,
+  userName,
+}: {
+  onLogout: () => void
+  userName?: string | null
+}) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const displayName = resolveUserDisplayName(userName) ?? 'Usuario'
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
+  const handleLogout = () => {
+    setOpen(false)
+    onLogout()
+  }
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <Button
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label="Opciones de usuario"
+        className="h-8 max-w-[220px] rounded-lg bg-brand-soft px-2.5 text-brand-strong hover:bg-brand-soft/80 hover:text-brand-strong"
+        size="sm"
+        title="Opciones de usuario"
+        type="button"
+        variant="ghost"
+        onClick={() => setOpen((current) => !current)}
+      >
+        <User className="h-4 w-4" />
+        <span className="hidden max-w-[150px] truncate whitespace-nowrap text-xs font-semibold md:inline">
+          {displayName}
+        </span>
+      </Button>
+      {open ? (
+        <div className="absolute right-0 top-full z-30 mt-2 min-w-[180px] rounded-xl border border-border bg-white p-1.5 shadow-lg">
+          <button
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-text transition hover:bg-canvas"
+            type="button"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4" />
+            Cerrar sesion
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+export function Topbar({ workspace, onOpenMobile }: TopbarProps) {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const signOut = useAuthStore((state) => state.signOut)
@@ -140,29 +198,8 @@ export function Topbar({ collapsed, workspace, onOpenMobile, onToggleSidebar }: 
           <Menu className="h-4 w-4" />
         </Button>
 
-        {/* Desktop sidebar toggle */}
-        <Button
-          className="hidden h-8 w-8 rounded-lg lg:inline-flex"
-          size="icon"
-          title={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
-          variant="outline"
-          onClick={onToggleSidebar}
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </Button>
-
-        {/* Logo and workspace name */}
-        <Link className="flex items-center gap-2.5" to={workspace === 'main' ? '/app' : '/sigh'}>
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-soft">
-            <img alt="Reporteador" className="h-5 w-5" src="/logo-mark.svg" />
-          </span>
-          <span className="hidden text-sm font-semibold text-brand-strong sm:inline">
-            Reporteador HEVES
-          </span>
-        </Link>
-
         {/* Workspace switcher */}
-        <div className="ml-1 flex items-center rounded-lg border border-border bg-canvas p-0.5">
+        <div className="flex items-center rounded-lg border border-border bg-canvas p-0.5">
           <WorkspaceSwitchButton active={workspace === 'main'} label="Principal" to="/app" />
           <WorkspaceSwitchButton active={workspace === 'sigh'} label="Datos en Linea" to="/sigh" />
         </div>
@@ -170,7 +207,7 @@ export function Topbar({ collapsed, workspace, onOpenMobile, onToggleSidebar }: 
         {/* Right side actions */}
         <div className="ml-auto flex items-center gap-2">
           {/* Quick links - desktop */}
-          <div className="hidden items-center gap-1.5 lg:flex 2xl:hidden">
+          <div className="hidden items-center gap-1.5 lg:flex xl:hidden">
             {compactQuickLinks.map((link) => (
               <WorkspaceQuickLinkAction key={link.key} link={link} />
             ))}
@@ -178,7 +215,7 @@ export function Topbar({ collapsed, workspace, onOpenMobile, onToggleSidebar }: 
           </div>
 
           {/* Quick links - large desktop */}
-          <div className="hidden items-center gap-1.5 2xl:flex">
+          <div className="hidden items-center gap-1.5 xl:flex">
             {quickLinks.map((link) => (
               <WorkspaceQuickLinkAction key={link.key} link={link} />
             ))}
@@ -190,59 +227,7 @@ export function Topbar({ collapsed, workspace, onOpenMobile, onToggleSidebar }: 
           </div>
 
           {/* User menu */}
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="h-8 w-8 rounded-lg bg-brand-soft hover:bg-brand-soft/80" size="icon" variant="ghost">
-                <span className="text-xs font-bold text-brand-strong">{getInitials(user?.name)}</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-soft">
-                    <User className="h-6 w-6 text-brand-strong" />
-                  </div>
-                  <div>
-                    <DialogTitle>Mi Cuenta</DialogTitle>
-                    <DialogDescription>Informacion de usuario y sesion activa</DialogDescription>
-                  </div>
-                </div>
-              </DialogHeader>
-              
-              <div className="space-y-3">
-                <div className="rounded-xl border border-border bg-canvas p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">Usuario</p>
-                  <p className="mt-1.5 text-sm font-semibold text-text">{user?.name ?? 'Usuario'}</p>
-                  <p className="mt-0.5 text-sm text-muted">{user?.email ?? 'sin correo registrado'}</p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-border bg-canvas p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">Perfil</p>
-                    <p className="mt-1.5 text-sm font-semibold text-text">{user?.role ?? 'Sin perfil'}</p>
-                  </div>
-                  <div className="rounded-xl border border-border bg-canvas p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">Servicio</p>
-                    <p className="mt-1.5 text-sm font-semibold text-text">{user?.service ?? 'Sin asignar'}</p>
-                  </div>
-                </div>
-                
-                <div className="rounded-xl border border-brand/20 bg-brand-soft/50 p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand">Ambiente Actual</p>
-                  <p className="mt-1.5 text-sm font-semibold text-brand-strong">
-                    {workspaceMeta[workspace].label}
-                  </p>
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button className="w-full rounded-xl sm:w-auto" variant="danger" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4" />
-                  Cerrar sesion
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <UserMenu onLogout={handleLogout} userName={user?.name} />
         </div>
       </div>
     </header>

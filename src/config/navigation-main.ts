@@ -596,16 +596,26 @@ export const mainSections: NavigationSection[] = [
       }),
     ],
   }),
+  section({
+    key: 'others',
+    title: 'Otros',
+    entries: [
+      item({
+        key: 'main-reportes-historicos',
+        legacyKey: 'historicos',
+        legacyRoute: '/reportes-historicos',
+        label: 'Reportes historicos',
+        to: '/app/reportes-historicos',
+        description: 'Consulta tableros institucionales anteriores o de referencia.',
+        icon: Archive,
+        access: { permissions: ['menu.main.inicio'] },
+      }),
+    ],
+  }),
 ]
 
 export const mainQuickLinks: WorkspaceQuickLink[] = [
-  {
-    key: 'datos-en-linea',
-    label: 'Datos en Linea',
-    description: 'Seleccione el servidor de Datos en Linea que desea consultar.',
-    icon: Home,
-    actionType: 'datos-en-linea-launcher',
-  },
+  
   {
     key: 'manuales',
     label: 'Ver manuales y tutoriales',
@@ -620,22 +630,6 @@ export const mainQuickLinks: WorkspaceQuickLink[] = [
     href: 'https://docs.google.com/forms/d/e/1FAIpQLSe2MFZojk3J2nIPS_UCGmDIHjID3s1qwDb9OYEvG6XwG2fKew/viewform',
     description: 'Permite registrar nuevas solicitudes de informacion.',
     icon: FileText,
-    external: true,
-  },
-  {
-    key: 'desembalse',
-    label: 'Desembalse Quirurgico 2024',
-    href: 'https://app.powerbi.com/view?r=eyJrIjoiNDFlMTdmNGQtMWM3MC00NTI3LWFjYmEtNWU2NjBhMTk0NjVmIiwidCI6ImIwZDQ1ZmViLTM5MzUtNGE4ZS04YTc1LTNhYWM4MGQ4NTMzYSJ9',
-    description: 'Acceso historico al tablero institucional.',
-    icon: Activity,
-    external: true,
-  },
-  {
-    key: 'operacion-vida',
-    label: 'Operacion VIDA',
-    href: 'https://app.powerbi.com/view?r=eyJrIjoiZDQ2Y2ZmNTktMzY4Ny00NzQxLTk3OTgtOWRhYmQyY2RmYzU2IiwidCI6ImIwZDQ1ZmViLTM5MzUtNGE4ZS04YTc1LTNhYWM4MGQ4NTMzYSJ9',
-    description: 'Acceso historico al tablero institucional.',
-    icon: Activity,
     external: true,
   },
 ]

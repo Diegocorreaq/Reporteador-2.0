@@ -2619,6 +2619,42 @@ ${dataTable}
 // Auth helper
 // ---------------------------------------------------------------------------
 
+function normalizeAuthText(value) {
+  if (value === null || value === undefined) {
+    return ''
+  }
+
+  return String(value).trim().replace(/\s+/g, ' ')
+}
+
+function hasLetters(value) {
+  return /[A-Za-zÁÉÍÓÚÑáéíóúñ]/.test(value)
+}
+
+function resolveEmployeeName(row) {
+  const candidates = [
+    row.NOMBRES,
+    row.nombres,
+    row.EMPLEADO,
+    row.empleado,
+    row.NOMBRE_COMPLETO,
+    row.nombre_completo,
+    row.NOMBRE,
+    row.nombre,
+    row.USUARIO_NOMBRE,
+    row.usuario_nombre,
+    row.USU_NOMBRE,
+    row.usu_nombre,
+  ]
+    .map(normalizeAuthText)
+    .filter(Boolean)
+
+  // Prioriza valores con letras para evitar propagar DNI/identificadores numericos.
+  const namedCandidate = candidates.find(hasLetters)
+
+  return namedCandidate ?? candidates[0] ?? ''
+}
+
 export async function validateLegacyUser({ dni, password, ip, scope = 'general' }) {
   const procedure = scope === 'lavado' ? 'SP_USUARIO_VALIDA_LM' : 'SP_USUARIO_VALIDA'
   const rows = await executeProcedure(procedure, [
@@ -2640,7 +2676,7 @@ export async function validateLegacyUser({ dni, password, ip, scope = 'general' 
   return {
     ok: true,
     employeeId: row.IDEMPLEADO ?? row.idempleado ?? null,
-    employeeName: row.EMPLEADO ?? row.empleado ?? '',
+    employeeName: resolveEmployeeName(row),
     message: 'Usuario aceptado.',
   }
 }

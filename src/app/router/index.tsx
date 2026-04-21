@@ -40,6 +40,16 @@ const LavadoManosPage = lazy(() =>
 const SighHomePage = lazy(() =>
   import('@/modules/inicio/pages/sigh-home-page').then((module) => ({ default: module.SighHomePage })),
 )
+const MainReportesHistoricosPage = lazy(() =>
+  import('@/modules/reportes-historicos/pages/main-reportes-historicos-page').then((module) => ({
+    default: module.MainReportesHistoricosPage,
+  })),
+)
+const SighReportesHistoricosPage = lazy(() =>
+  import('@/modules/reportes-historicos/pages/sigh-reportes-historicos-page').then((module) => ({
+    default: module.SighReportesHistoricosPage,
+  })),
+)
 const LegacyEmbedPage = lazy(() =>
   import('@/modules/shared/pages/legacy-embed-page').then((module) => ({ default: module.LegacyEmbedPage })),
 )
@@ -146,6 +156,7 @@ const explicitMainRoutePaths = new Set(
       'monitoreo-salud-mental/reportes-monitoreo',
       'zona-descarga/registros-procesados',
       'epidemiologia/lavado-de-manos',
+      'reportes-historicos',
     ]),
 )
 
@@ -165,6 +176,7 @@ const explicitSighRoutePaths = new Set(
       'atencion-al-usuario/rol-consulta-externa',
       'atencion-al-usuario/monitoreo-de-tickets',
       'atencion-al-usuario/monitoreo-ventanilla',
+      'reportes-historicos',
     ]),
 )
 
@@ -207,6 +219,10 @@ const mainImplementedRoutes = [
   {
     path: 'epidemiologia/lavado-de-manos',
     element: lazyElement(<LavadoManosPage />),
+  },
+  {
+    path: 'reportes-historicos',
+    element: lazyElement(<MainReportesHistoricosPage />),
   },
 ]
 
@@ -259,6 +275,10 @@ const sighImplementedRoutes = [
   {
     path: 'atencion-al-usuario/monitoreo-ventanilla',
     element: lazyElement(<MonitoreoVentanillaPage />),
+  },
+  {
+    path: 'reportes-historicos',
+    element: lazyElement(<SighReportesHistoricosPage />),
   },
 ]
 

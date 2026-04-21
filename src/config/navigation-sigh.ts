@@ -1,4 +1,5 @@
 import {
+  Archive,
   BedDouble,
   BookOpenText,
   CalendarRange,
@@ -242,32 +243,26 @@ export const sighSections: NavigationSection[] = [
       }),
     ],
   }),
+  section({
+    key: 'others',
+    title: 'Otros',
+    entries: [
+      item({
+        key: 'sigh-reportes-historicos',
+        legacyKey: 'historicos',
+        legacyRoute: '/sigh/reportes-historicos',
+        label: 'Reportes historicos',
+        to: '/sigh/reportes-historicos',
+        description: 'Consulta tableros institucionales anteriores o de referencia.',
+        icon: Archive,
+        access: { permissions: ['menu.sigh.inicio'] },
+      }),
+    ],
+  }),
 ]
 
 export const sighQuickLinks: WorkspaceQuickLink[] = [
-  {
-    key: 'desembalse',
-    label: 'Desembalse Quirurgico 2024',
-    href: 'https://app.powerbi.com/view?r=eyJrIjoiNDFlMTdmNGQtMWM3MC00NTI3LWFjYmEtNWU2NjBhMTk0NjVmIiwidCI6ImIwZDQ1ZmViLTM5MzUtNGE4ZS04YTc1LTNhYWM4MGQ4NTMzYSJ9',
-    description: 'Abre el tablero institucional historico en Power BI.',
-    icon: MonitorDot,
-    external: true,
-  },
-  {
-    key: 'operacion-vida',
-    label: 'Operacion VIDA',
-    href: 'https://app.powerbi.com/view?r=eyJrIjoiZDQ2Y2ZmNTktMzY4Ny00NzQxLTk3OTgtOWRhYmQyY2RmYzU2IiwidCI6ImIwZDQ1ZmViLTM5MzUtNGE4ZS04YTc1LTNhYWM4MGQ4NTMzYSJ9',
-    description: 'Abre el tablero institucional Operacion VIDA.',
-    icon: MonitorDot,
-    external: true,
-  },
-  {
-    key: 'datos-en-linea',
-    label: 'Datos en Linea',
-    description: 'Seleccione el servidor de Datos en Linea que desea consultar.',
-    icon: Home,
-    actionType: 'datos-en-linea-launcher',
-  },
+  
   {
     key: 'manuales',
     label: 'Ver manuales y tutoriales',

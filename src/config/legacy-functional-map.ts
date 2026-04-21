@@ -20,24 +20,7 @@ export interface LegacyQuickLinkMapping {
 }
 
 export const legacyQuickLinks: LegacyQuickLinkMapping[] = [
-  {
-    key: 'desembalse',
-    label: 'Desembalse Quirurgico 2024',
-    href: 'https://app.powerbi.com/view?r=eyJrIjoiNDFlMTdmNGQtMWM3MC00NTI3LWFjYmEtNWU2NjBhMTk0NjVmIiwidCI6ImIwZDQ1ZmViLTM5MzUtNGE4ZS04YTc1LTNhYWM4MGQ4NTMzYSJ9',
-    openInNewTab: true,
-  },
-  {
-    key: 'operacion-vida',
-    label: 'Operacion VIDA',
-    href: 'https://app.powerbi.com/view?r=eyJrIjoiZDQ2Y2ZmNTktMzY4Ny00NzQxLTk3OTgtOWRhYmQyY2RmYzU2IiwidCI6ImIwZDQ1ZmViLTM5MzUtNGE4ZS04YTc1LTNhYWM4MGQ4NTMzYSJ9',
-    openInNewTab: true,
-  },
-  {
-    key: 'datos-en-linea',
-    label: 'Datos en Linea',
-    href: '/sigh',
-    openInNewTab: true,
-  },
+ 
   {
     key: 'manuales',
     label: 'Ver Manuales y Tutoriales',

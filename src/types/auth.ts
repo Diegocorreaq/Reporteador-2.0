@@ -2,6 +2,8 @@ export type WorkspaceKey = 'main' | 'sigh'
 
 export interface AuthUser {
   id: string
+  username: string
+  employeeId: number | null
   name: string
   role: string
   service: string

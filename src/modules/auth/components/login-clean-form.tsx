@@ -41,8 +41,12 @@ export function LoginCleanForm() {
       const session = await authService.signIn(values)
       saveSession(session)
       navigate('/app')
-    } catch {
-      setSubmitError('No fue posible iniciar sesión. Verifica tus datos e inténtalo nuevamente.')
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : 'No fue posible iniciar sesión. Verifica tus datos e inténtalo nuevamente.'
+      setSubmitError(message)
     } finally {
       setSubmitting(false)
     }

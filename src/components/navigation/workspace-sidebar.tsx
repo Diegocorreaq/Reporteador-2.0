@@ -139,7 +139,13 @@ export function WorkspaceSidebar({
   )
 
   useEffect(() => {
-    setFlyout(null)
+    const timeoutId = window.setTimeout(() => {
+      setFlyout(null)
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
   }, [effectiveCollapsed, location.pathname])
 
   useEffect(
@@ -200,39 +206,38 @@ export function WorkspaceSidebar({
         )}
       >
         {/* Header */}
-        <div
-          className={cn(
-            'flex items-center border-b border-white/10 px-4 py-4',
-            effectiveCollapsed ? 'lg:justify-center lg:px-3' : 'justify-between',
-          )}
-        >
-          <div className={cn('flex items-center gap-3', effectiveCollapsed ? 'lg:flex-col lg:gap-2' : '')}>
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
-              <img alt="Reporteador" className="h-7 w-7" src="/logo-mark.svg" />
+        {effectiveCollapsed ? (
+          <div className="border-b border-white/10 px-3 py-3">
+            <div className="flex items-center justify-center">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
+                <img alt="Reporteador" className="h-7 w-7" src="/logo-mark.svg" />
+              </div>
             </div>
-            {effectiveCollapsed ? null : (
-              <div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
+                <img alt="Reporteador" className="h-6 w-6" src="/logo-mark.svg" />
+              </div>
+              <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
                   Reporteador HEVES
                 </p>
-                <p className="text-sm font-semibold text-accent">{workspaceMeta[workspace].label}</p>
+                <p className="truncate text-sm font-semibold text-accent">{workspaceMeta[workspace].label}</p>
               </div>
-            )}
+            </div>
+            <Button
+              className="hidden h-8 w-8 rounded-lg border-0 bg-white/10 text-white hover:bg-white/20 hover:text-white lg:inline-flex"
+              size="icon"
+              title="Colapsar sidebar"
+              variant="ghost"
+              onClick={onToggleCollapse}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
           </div>
-
-          <Button
-            className={cn(
-              'hidden h-8 w-8 rounded-lg border-0 bg-white/10 text-white hover:bg-white/20 hover:text-white lg:inline-flex',
-              effectiveCollapsed ? 'lg:hidden' : '',
-            )}
-            size="icon"
-            title={effectiveCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
-            variant="ghost"
-            onClick={onToggleCollapse}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        </div>
+        )}
 
         {/* Expand button when collapsed */}
         {effectiveCollapsed ? (
@@ -250,8 +255,8 @@ export function WorkspaceSidebar({
         ) : null}
 
         {/* Navigation */}
-        <div className="flex-1 overflow-y-auto px-3 py-4">
-          <div className="space-y-6">
+        <div className={cn('sidebar-scroll flex-1 overflow-y-auto px-3', effectiveCollapsed ? 'py-4' : 'py-2.5')}>
+          <div className={cn(effectiveCollapsed ? 'space-y-6' : 'space-y-5')}>
             {sections.map((section) => (
               <div key={section.key}>
                 {section.title && !effectiveCollapsed ? (

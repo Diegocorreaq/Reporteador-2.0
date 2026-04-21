@@ -40,9 +40,7 @@ export function WorkspaceShellFrame({ workspace }: WorkspaceShellFrameProps) {
       />
       <div className="flex min-h-screen min-w-0 flex-1 flex-col bg-canvas">
         <Topbar
-          collapsed={sidebarCollapsed}
           onOpenMobile={() => setMobileOpen(true)}
-          onToggleSidebar={toggleSidebarCollapsed}
           workspace={workspace}
         />
         <main className="flex-1">
