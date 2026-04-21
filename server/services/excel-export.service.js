@@ -1278,7 +1278,870 @@ export async function buildCamasResumenWorkbook({ summary = {}, rows = [], title
 }
 
 // ---------------------------------------------------------------------------
-// E. Produccion Medicos workbook
+// E. Monitoreo de camas workbook - resumen operativo (.xlsx real)
+// ---------------------------------------------------------------------------
+//
+// Layout:
+//   Rows 1-3 : metadata del reporte
+//   Row  4   : separador
+//   Row  5   : encabezado agrupado por bloques
+//   Row  6   : sub-encabezado de columnas
+//   Row  7+  : detalle + subtotales por piso + total general
+// ---------------------------------------------------------------------------
+
+function semaforoPorcentajeFill(pct) {
+  const value = clamp(toFiniteNumber(pct), 0, 100)
+  if (value <= 60) return argbFill('9DDE58')
+  if (value <= 80) return argbFill('F6F871')
+  if (value <= 90) return argbFill('F2B66D')
+  return argbFill('FB6C5D')
+}
+
+function semaforoPresionFill(value) {
+  const amount = toFiniteNumber(value)
+  if (amount <= 0) return null
+  if (amount <= 2) return argbFill('F6F3A2')
+  if (amount <= 5) return argbFill('F2C27A')
+  return argbFill('F4A6A6')
+}
+
+function semaforoDisponiblesFill(disponibles, total) {
+  const totalSeguro = toFiniteNumber(total)
+  const disponiblesSeguro = toFiniteNumber(disponibles)
+
+  if (totalSeguro <= 0) return argbFill('F8FAFC')
+  if (disponiblesSeguro <= 0) return argbFill('F4A6A6')
+
+  const ratio = disponiblesSeguro / totalSeguro
+  if (ratio <= 0.15) return argbFill('F2C27A')
+  if (ratio <= 0.3) return argbFill('F6F3A2')
+  return argbFill('BFFCB3')
+}
+
+function semaforoInhabilitadasFill(inhabilitadas, total) {
+  const totalSeguro = toFiniteNumber(total)
+  const inhabilitadasSeguro = toFiniteNumber(inhabilitadas)
+
+  if (inhabilitadasSeguro <= 0) return null
+  const ratio = totalSeguro > 0 ? inhabilitadasSeguro / totalSeguro : 1
+  if (ratio <= 0.1) return argbFill('F6F3A2')
+  if (ratio <= 0.25) return argbFill('F2C27A')
+  return argbFill('F4A6A6')
+}
+
+function makeMonitoreoCamasSummary(values) {
+  const camas = toFiniteNumber(values.camas)
+  const tocupa = toFiniteNumber(values.tocupa)
+  const ocupacionBase = Math.min(tocupa, camas)
+  const afPctDisplay = resolveAfPercentDisplay(values.c_fl, values.afopera, values.totalaf)
+
+  return {
+    camas,
+    demanda: toFiniteNumber(values.demanda),
+    pctOcupacion: Math.round(clamp(safePercentValue(ocupacionBase, camas), 0, 100)),
+    total: toFiniteNumber(values.total),
+    chabi: toFiniteNumber(values.chabi),
+    cocup: toFiniteNumber(values.cocup),
+    clibr: toFiniteNumber(values.clibr),
+    ctran: toFiniteNumber(values.ctran),
+    cinah: toFiniteNumber(values.cinah),
+    pcr: toFiniteNumber(values.pcr),
+    espera: toFiniteNumber(values.espera),
+    espera_ant: toFiniteNumber(values.espera_ant),
+    espera_mol: toFiniteNumber(values.espera_mol),
+    c_vm: toFiniteNumber(values.c_vm),
+    totalvm: toFiniteNumber(values.totalvm),
+    vmopera: toFiniteNumber(values.vmopera),
+    vminopera: toFiniteNumber(values.vminopera),
+    pctVm: Math.round(clamp(safePercentValue(values.c_vm, values.vmopera), 0, 100)),
+    c_fl: toFiniteNumber(values.c_fl),
+    totalaf: toFiniteNumber(values.totalaf),
+    afopera: toFiniteNumber(values.afopera),
+    afinopera: toFiniteNumber(values.afinopera),
+    pctAf:
+      typeof afPctDisplay === 'number'
+        ? afPctDisplay
+        : Math.round(clamp(safePercentValue(values.c_fl, values.afopera), 0, 100)),
+    pctAfDisplay: afPctDisplay,
+    monitor_total: toFiniteNumber(values.monitor_total),
+    monitor_operativos: toFiniteNumber(values.monitor_operativos),
+    monitor_inoperativos: toFiniteNumber(values.monitor_inoperativos),
+  }
+}
+
+function safePercentValue(numerator, denominator) {
+  const safeNumerator = toFiniteNumber(numerator)
+  const safeDenominator = toFiniteNumber(denominator)
+  if (safeDenominator <= 0) {
+    return 0
+  }
+  return (safeNumerator / safeDenominator) * 100
+}
+
+function resolveAfPercentDisplay(enUso, operativas, total) {
+  const operativasSeguras = toFiniteNumber(operativas)
+  const totalSeguro = toFiniteNumber(total)
+  if (operativasSeguras <= 0 && totalSeguro <= 0) {
+    return '—'
+  }
+  if (operativasSeguras <= 0) {
+    return '—'
+  }
+  return Math.round(clamp(safePercentValue(enUso, operativasSeguras), 0, 100))
+}
+
+function applyTopBorder(ws, rowNumber, totalCols, style = 'medium') {
+  for (let col = 1; col <= totalCols; col++) {
+    const cell = ws.getCell(rowNumber, col)
+    const current = cell.border ?? {}
+    cell.border = {
+      ...current,
+      top: { style },
+      left: current.left ?? { style: 'thin' },
+      right: current.right ?? { style: 'thin' },
+      bottom: current.bottom ?? { style: 'thin' },
+    }
+  }
+}
+
+export async function buildMonitoreoCamasWorkbook({ title, sheetName, generatedAt, rows = [] }) {
+  const wb = new ExcelJS.Workbook()
+  wb.creator = 'Reporteador-2.0'
+
+  const ws = wb.addWorksheet(getSheetNameFromFileName(sheetName || 'Resumen de Camas'))
+
+  const columns = [
+    { key: 'piso', label: 'Piso', width: 18, align: 'left' },
+    { key: 'servicio', label: 'Servicio', width: 40, align: 'left' },
+    { key: 'tipo', label: 'Tipo', width: 18, align: 'left' },
+    { key: 'camas_aprobadas', label: 'Camas aprobadas', width: 13, align: 'center' },
+    { key: 'demanda_adicional', label: 'Demanda adicional', width: 13, align: 'center' },
+    { key: 'pct_ocupacion', label: '% ocupación', width: 11, align: 'center' },
+    { key: 'camas_totales', label: 'Camas totales', width: 11, align: 'center' },
+    { key: 'camas_operativas', label: 'Camas operativas', width: 12, align: 'center' },
+    { key: 'camas_ocupadas', label: 'Camas ocupadas', width: 11, align: 'center' },
+    { key: 'camas_disponibles', label: 'Camas disponibles', width: 12, align: 'center' },
+    { key: 'camas_transitorias', label: 'Camas transitorias', width: 12, align: 'center' },
+    { key: 'camas_inhabilitadas', label: 'Camas inhabilitadas', width: 12, align: 'center' },
+    { key: 'pacientes_pos', label: 'Pacientes (+)', width: 11, align: 'center' },
+    { key: 'espera_resultado', label: 'Espera resultado', width: 12, align: 'center' },
+    { key: 'espera_antigena', label: 'Antígena', width: 10, align: 'center' },
+    { key: 'espera_molecular', label: 'Molecular', width: 10, align: 'center' },
+    { key: 'vm_en_uso', label: 'VM en uso', width: 10, align: 'center' },
+    { key: 'vm_total', label: 'VM total', width: 10, align: 'center' },
+    { key: 'vm_operativas', label: 'VM operativas', width: 11, align: 'center' },
+    { key: 'vm_inoperativas', label: 'VM inoperativas', width: 12, align: 'center' },
+    { key: 'vm_pct', label: '% uso VM', width: 10, align: 'center' },
+    { key: 'af_en_uso', label: 'AF en uso', width: 10, align: 'center' },
+    { key: 'af_total', label: 'AF total', width: 10, align: 'center' },
+    { key: 'af_operativos', label: 'AF operativos', width: 11, align: 'center' },
+    { key: 'af_inoperativos', label: 'AF inoperativos', width: 12, align: 'center' },
+    { key: 'af_pct', label: '% uso AF', width: 10, align: 'center' },
+    { key: 'mon_total', label: 'Total', width: 10, align: 'center' },
+    { key: 'mon_operativos', label: 'Operativos', width: 11, align: 'center' },
+    { key: 'mon_inoperativos', label: 'Inoperativos', width: 11, align: 'center' },
+  ]
+
+  const totalCols = columns.length
+  ws.columns = columns.map((column) => ({ width: column.width }))
+
+  const reportDate = generatedAt instanceof Date ? generatedAt : new Date(generatedAt ?? Date.now())
+  const reportDateTime = isValidDateValue(reportDate) ? formatDateTime(reportDate) : formatDateTime()
+
+  const metadata = [
+    ['Fecha y Hora de Reporte', reportDateTime],
+    ['Tipo de reporte', 'Resumen de Camas'],
+    ['Módulo', 'Gestión de Camas / Monitoreo de Camas'],
+  ]
+
+  metadata.forEach(([label, value], index) => {
+    const row = index + 1
+    mergeCellsAndStyle(ws, row, 1, row, 3, {
+      value: label,
+      fill: argbFill('E7F5FE'),
+      font: HEADER_FONT,
+      border: THIN_BORDER,
+      alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
+    })
+    mergeCellsAndStyle(ws, row, 4, row, totalCols, {
+      value: String(value ?? ''),
+      font: { bold: true, size: 10 },
+      border: THIN_BORDER,
+      alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
+    })
+    ws.getRow(row).height = 18
+  })
+
+  const spacerRow = metadata.length + 1
+  ws.getRow(spacerRow).height = 6
+
+  const GROUP_ROW = spacerRow + 1
+  const SUBHEADER_ROW = GROUP_ROW + 1
+  const DATA_START = SUBHEADER_ROW + 1
+
+  const groupedHeaders = [
+    { title: 'Ubicación', start: 1, end: 3 },
+    { title: 'Escenario / Capacidad', start: 4, end: 6 },
+    { title: 'Camas según condición', start: 7, end: 12 },
+    { title: 'Resultado Espera', start: 13, end: 16 },
+    { title: 'Ventilación Mecánica', start: 17, end: 21 },
+    { title: 'Oxígeno Alto Flujo', start: 22, end: 26 },
+    { title: 'Monitores', start: 27, end: 29 },
+  ]
+
+  ws.getRow(GROUP_ROW).height = 22
+  groupedHeaders.forEach((group) => {
+    mergeCellsAndStyle(ws, GROUP_ROW, group.start, GROUP_ROW, group.end, {
+      value: group.title,
+      fill: argbFill('005F8F'),
+      font: { bold: true, size: 10, color: { argb: 'FFFFFFFF' } },
+      border: THIN_BORDER,
+      alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+    })
+  })
+
+  const headerRow = ws.getRow(SUBHEADER_ROW)
+  headerRow.height = 20
+  columns.forEach((column, index) => {
+    const cell = ws.getCell(SUBHEADER_ROW, index + 1)
+    cell.value = column.label
+    applyHeaderStyle(cell, '2C6E99', {
+      horizontal: 'center',
+      wrapText: true,
+      fontColor: 'FFFFFF',
+    })
+  })
+
+  applyFreezePane(ws, SUBHEADER_ROW)
+  ws.autoFilter = {
+    from: { row: SUBHEADER_ROW, column: 1 },
+    to: { row: SUBHEADER_ROW, column: totalCols },
+  }
+
+  const safeRows = Array.isArray(rows) ? rows : []
+  if (safeRows.length === 0) {
+    mergeCellsAndStyle(ws, DATA_START, 1, DATA_START, totalCols, {
+      value: 'No se encontraron registros para los filtros solicitados.',
+      font: DATA_FONT,
+      border: THIN_BORDER,
+      alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+    })
+    ws.getRow(DATA_START).height = 18
+    return wb.xlsx.writeBuffer()
+  }
+
+  safeRows.forEach((item) => {
+    if (item.kind === 'data') {
+      const metrics = item.metrics ?? {}
+      const detail = item.detail ?? {}
+      const isFirstServiceRow = Boolean(item.isFirstOfService)
+
+      const valuesByKey = {
+        piso: String(item.piso ?? ''),
+        servicio: String(item.servicio ?? ''),
+        tipo: String(item.tipo ?? ''),
+        camas_aprobadas: toFiniteNumber(metrics.camas),
+        demanda_adicional: toFiniteNumber(metrics.demanda),
+        pct_ocupacion: Math.round(toFiniteNumber(metrics.porcentaje)),
+        camas_totales: toFiniteNumber(detail.camasTotales),
+        camas_operativas: toFiniteNumber(detail.camasOperativas),
+        camas_ocupadas: toFiniteNumber(detail.camasOcupadas),
+        camas_disponibles: toFiniteNumber(detail.camasDisponibles),
+        camas_transitorias: toFiniteNumber(detail.camasTransitorias),
+        camas_inhabilitadas: toFiniteNumber(detail.camasInhabilitadas),
+        pacientes_pos: toFiniteNumber(detail.pacientesPositivos),
+        espera_resultado: toFiniteNumber(detail.esperaResultado),
+        espera_antigena: toFiniteNumber(detail.esperaAntigena),
+        espera_molecular: toFiniteNumber(detail.esperaMolecular),
+        vm_en_uso: toFiniteNumber(metrics.c_vm),
+        vm_total: toFiniteNumber(metrics.totalvm),
+        vm_operativas: toFiniteNumber(metrics.vmopera),
+        vm_inoperativas: toFiniteNumber(metrics.vminopera),
+        vm_pct: Math.round(toFiniteNumber(metrics.vmPct)),
+        af_en_uso: toFiniteNumber(metrics.c_fl),
+        af_total: toFiniteNumber(metrics.totalaf),
+        af_operativos: toFiniteNumber(metrics.afopera),
+        af_inoperativos: toFiniteNumber(metrics.afinopera),
+        af_pct: resolveAfPercentDisplay(metrics.c_fl, metrics.afopera, metrics.totalaf),
+        mon_total: toFiniteNumber(metrics.monitor_total),
+        mon_operativos: toFiniteNumber(metrics.monitor_operativos),
+        mon_inoperativos: toFiniteNumber(metrics.monitor_inoperativos),
+      }
+
+      const dataRow = ws.addRow(columns.map((column) => valuesByKey[column.key]))
+      dataRow.height = 17
+
+      columns.forEach((column, idx) => {
+        const cell = dataRow.getCell(idx + 1)
+        applyDataStyle(cell, { horizontal: column.align, borderStyle: 'thin' })
+      })
+
+      const tipoCell = dataRow.getCell(3)
+      tipoCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true }
+
+      if (isFirstServiceRow) {
+        const servicioCell = dataRow.getCell(2)
+        servicioCell.font = { ...HEADER_FONT, color: { argb: 'FF123B63' } }
+        servicioCell.fill = argbFill('F3F7FC')
+        applyTopBorder(ws, dataRow.number, totalCols, 'medium')
+      }
+
+      const pctOcupCell = dataRow.getCell(6)
+      pctOcupCell.fill = semaforoPorcentajeFill(valuesByKey.pct_ocupacion)
+
+      const demandaCell = dataRow.getCell(5)
+      const demandaFill = semaforoPresionFill(valuesByKey.demanda_adicional)
+      if (demandaFill) {
+        demandaCell.fill = demandaFill
+        demandaCell.font = { ...HEADER_FONT, color: { argb: 'FF8A3D00' } }
+      }
+
+      const vmPctCell = dataRow.getCell(21)
+      if (toFiniteNumber(metrics.vmopera) > 0) {
+        vmPctCell.fill = semaforoPorcentajeFill(valuesByKey.vm_pct)
+      }
+
+      const afPctCell = dataRow.getCell(26)
+      if (typeof valuesByKey.af_pct === 'number') {
+        afPctCell.fill = semaforoPorcentajeFill(valuesByKey.af_pct)
+      }
+
+      const afInactive =
+        toFiniteNumber(metrics.c_fl) === 0 &&
+        toFiniteNumber(metrics.totalaf) === 0 &&
+        toFiniteNumber(metrics.afopera) === 0 &&
+        toFiniteNumber(metrics.afinopera) === 0
+
+      if (afInactive) {
+        for (let col = 22; col <= 26; col++) {
+          const cell = dataRow.getCell(col)
+          cell.fill = argbFill('F8FAFC')
+          cell.font = { ...DATA_FONT, color: { argb: 'FF94A3B8' } }
+        }
+      }
+
+      const disponiblesCell = dataRow.getCell(10)
+      disponiblesCell.fill = semaforoDisponiblesFill(valuesByKey.camas_disponibles, valuesByKey.camas_totales)
+
+      const inhabilitadasCell = dataRow.getCell(12)
+      const inhabilitadasFill = semaforoInhabilitadasFill(valuesByKey.camas_inhabilitadas, valuesByKey.camas_totales)
+      if (inhabilitadasFill) {
+        inhabilitadasCell.fill = inhabilitadasFill
+      }
+
+      const antigenaCell = dataRow.getCell(15)
+      const antigenaFill = semaforoPresionFill(valuesByKey.espera_antigena)
+      if (antigenaFill) {
+        antigenaCell.fill = antigenaFill
+      }
+
+      const molecularCell = dataRow.getCell(16)
+      const molecularFill = semaforoPresionFill(valuesByKey.espera_molecular)
+      if (molecularFill) {
+        molecularCell.fill = molecularFill
+      }
+
+      return
+    }
+
+    if (item.kind === 'subtotal') {
+      const sums = makeMonitoreoCamasSummary(item.sums ?? {})
+      const subtotalRow = ws.addRow([
+        `Sub Total ${String(item.piso ?? '').trim()}`,
+        '',
+        '',
+        sums.camas,
+        sums.demanda,
+        sums.pctOcupacion,
+        sums.total,
+        sums.chabi,
+        sums.cocup,
+        sums.clibr,
+        sums.ctran,
+        sums.cinah,
+        sums.pcr,
+        sums.espera,
+        sums.espera_ant,
+        sums.espera_mol,
+        sums.c_vm,
+        sums.totalvm,
+        sums.vmopera,
+        sums.vminopera,
+        sums.pctVm,
+        sums.c_fl,
+        sums.totalaf,
+        sums.afopera,
+        sums.afinopera,
+        sums.pctAfDisplay,
+        sums.monitor_total,
+        sums.monitor_operativos,
+        sums.monitor_inoperativos,
+      ])
+
+      subtotalRow.height = 19
+      ws.mergeCells(subtotalRow.number, 1, subtotalRow.number, 3)
+      forEachCellInRange(ws, subtotalRow.number, 1, subtotalRow.number, totalCols, (cell, _row, col) => {
+        applyDataStyle(cell, { horizontal: col === 1 ? 'left' : 'center', borderStyle: 'thin' })
+        cell.fill = argbFill('E8EEF5')
+        cell.font = HEADER_FONT
+      })
+      applyTopBorder(ws, subtotalRow.number, totalCols, 'medium')
+      return
+    }
+
+    if (item.kind === 'total') {
+      const sums = makeMonitoreoCamasSummary(item.sums ?? {})
+      const totalRow = ws.addRow([
+        'Total General',
+        '',
+        '',
+        sums.camas,
+        sums.demanda,
+        sums.pctOcupacion,
+        sums.total,
+        sums.chabi,
+        sums.cocup,
+        sums.clibr,
+        sums.ctran,
+        sums.cinah,
+        sums.pcr,
+        sums.espera,
+        sums.espera_ant,
+        sums.espera_mol,
+        sums.c_vm,
+        sums.totalvm,
+        sums.vmopera,
+        sums.vminopera,
+        sums.pctVm,
+        sums.c_fl,
+        sums.totalaf,
+        sums.afopera,
+        sums.afinopera,
+        sums.pctAfDisplay,
+        sums.monitor_total,
+        sums.monitor_operativos,
+        sums.monitor_inoperativos,
+      ])
+
+      totalRow.height = 22
+      ws.mergeCells(totalRow.number, 1, totalRow.number, 3)
+      forEachCellInRange(ws, totalRow.number, 1, totalRow.number, totalCols, (cell, _row, col) => {
+        applyDataStyle(cell, { horizontal: col === 1 ? 'left' : 'center', borderStyle: 'thin' })
+        cell.fill = argbFill('D6E4F1')
+        cell.font = { bold: true, size: 11, color: { argb: 'FF123B63' } }
+      })
+      applyTopBorder(ws, totalRow.number, totalCols, 'thick')
+    }
+  })
+
+  return wb.xlsx.writeBuffer()
+}
+
+// ---------------------------------------------------------------------------
+// F. Monitoreo de camas SUSALUD workbook - resumen por bloques
+// ---------------------------------------------------------------------------
+
+function addSusaludBlock(ws, {
+  startRow,
+  totalCols,
+  title,
+  columns,
+  rows,
+  includeTotal = true,
+  theme = {},
+  addSpacerAfter = true,
+}) {
+  const resolvedTheme = {
+    titleFill: 'D7EDF7',
+    titleFontColor: 'FF123B63',
+    headerFill: '96FCF3',
+    headerFontColor: 'FF123B63',
+    categoryFill: 'DFF4FB',
+    categoryFontColor: 'FF123B63',
+    totalFill: 'EAF1F6',
+    exceptionFill: 'F9C8C4',
+    rowTitleHeight: 13.2,
+    rowHeaderHeight: 13.2,
+    rowDataHeight: 13,
+    rowTotalHeight: 13.2,
+    ...theme,
+  }
+
+  const normalize = (value) =>
+    String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .trim()
+
+  mergeCellsAndStyle(ws, startRow, 1, startRow, totalCols, {
+    value: title,
+    fill: argbFill(resolvedTheme.titleFill),
+    font: { bold: true, size: 9, color: { argb: resolvedTheme.titleFontColor } },
+    border: THIN_BORDER,
+    alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
+  })
+  ws.getRow(startRow).height = resolvedTheme.rowTitleHeight
+
+  const headerRowNumber = startRow + 1
+  const headerRow = ws.getRow(headerRowNumber)
+  headerRow.height = resolvedTheme.rowHeaderHeight
+  columns.forEach((column, index) => {
+    const cell = ws.getCell(headerRowNumber, index + 1)
+    cell.value = column.label
+    applyHeaderStyle(cell, resolvedTheme.headerFill, {
+      horizontal: 'center',
+      wrapText: true,
+      fontColor: resolvedTheme.headerFontColor.replace(/^FF/, ''),
+    })
+  })
+
+  let currentRow = headerRowNumber + 1
+  const safeRows = Array.isArray(rows) ? rows : []
+
+  if (safeRows.length === 0) {
+    mergeCellsAndStyle(ws, currentRow, 1, currentRow, columns.length, {
+      value: 'Sin registros',
+      font: DATA_FONT,
+      border: THIN_BORDER,
+      alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+    })
+    ws.getRow(currentRow).height = resolvedTheme.rowDataHeight
+    currentRow += 1
+  } else {
+    for (const item of safeRows) {
+      const row = ws.getRow(currentRow)
+      row.height = resolvedTheme.rowDataHeight
+
+      const isException =
+        normalize(item[columns[0]?.key]).includes('NO SUSALUD') ||
+        normalize(item[columns[1]?.key]).includes('NO SUSALUD')
+
+      columns.forEach((column, index) => {
+        const cell = ws.getCell(currentRow, index + 1)
+        cell.value = item[column.key] ?? ''
+        applyDataStyle(cell, { horizontal: column.align ?? 'center', wrapText: Boolean(column.wrapText) })
+        if (index === 0) {
+          cell.fill = argbFill(resolvedTheme.categoryFill)
+          cell.font = { ...DATA_FONT, bold: true, color: { argb: resolvedTheme.categoryFontColor } }
+        }
+      })
+
+      if (isException) {
+        const exceptionLabelCell = ws.getCell(currentRow, 1)
+        exceptionLabelCell.fill = argbFill(resolvedTheme.exceptionFill)
+        exceptionLabelCell.font = { ...DATA_FONT, bold: true, color: { argb: 'FF7A2F2A' } }
+        if (columns.length > 1) {
+          const exceptionAreaCell = ws.getCell(currentRow, 2)
+          exceptionAreaCell.fill = argbFill(resolvedTheme.exceptionFill)
+          exceptionAreaCell.font = { ...DATA_FONT, color: { argb: 'FF7A2F2A' } }
+        }
+      }
+
+      currentRow += 1
+    }
+
+    if (includeTotal) {
+      const totalRowNumber = currentRow
+      const totalRow = ws.getRow(totalRowNumber)
+      totalRow.height = resolvedTheme.rowTotalHeight
+
+      columns.forEach((column, index) => {
+        const cell = ws.getCell(totalRowNumber, index + 1)
+        if (index === 0) {
+          cell.value = 'Total bloque'
+          applyDataStyle(cell, { horizontal: 'left' })
+        } else if (column.numeric) {
+          const total = safeRows.reduce((sum, item) => sum + (Number(item[column.key]) || 0), 0)
+          cell.value = total
+          applyDataStyle(cell, { horizontal: 'center' })
+        } else {
+          cell.value = ''
+          applyDataStyle(cell, { horizontal: 'center' })
+        }
+        cell.fill = argbFill(resolvedTheme.totalFill)
+        cell.font = HEADER_FONT
+      })
+      applyTopBorder(ws, totalRowNumber, columns.length, 'medium')
+      currentRow += 1
+    }
+  }
+
+  if (addSpacerAfter) {
+    ws.getRow(currentRow).height = 7
+    return currentRow + 1
+  }
+
+  return currentRow
+}
+
+export async function buildMonitoreoCamasSusaludWorkbook({
+  title,
+  sheetName,
+  generatedAt,
+  uciRows = [],
+  ucinRows = [],
+  hospitalizacionRows = [],
+  emergenciaRows = [],
+  emergenciaAmpliadaRows = [],
+  ventiladoresMonitores = [],
+  dengueSections = [],
+  auditRows = [],
+  includeAuditSheet = true,
+}) {
+  const wb = new ExcelJS.Workbook()
+  wb.creator = 'Reporteador-2.0'
+
+  const ws = wb.addWorksheet(getSheetNameFromFileName(sheetName || title || 'Resumen SUSALUD'))
+  const totalCols = 11
+  ws.columns = [
+    { width: 32 }, // categoria
+    { width: 56 }, // areas
+    { width: 12 },
+    { width: 12 },
+    { width: 12 },
+    { width: 12 },
+    { width: 12 },
+    { width: 12 },
+    { width: 12 },
+    { width: 12 },
+    { width: 12 },
+  ]
+
+  const reportDate = generatedAt instanceof Date ? generatedAt : new Date(generatedAt ?? Date.now())
+  const reportDateTime = isValidDateValue(reportDate) ? formatDateTime(reportDate) : formatDateTime()
+
+  const metadata = [
+    ['Fecha y Hora de Reporte', reportDateTime],
+    ['Tipo de reporte', 'Resumen de Camas SUSALUD'],
+    ['Modulo', 'Gestion de Camas / Exportable SUSALUD'],
+  ]
+
+  metadata.forEach(([label, value], index) => {
+    const row = index + 1
+    mergeCellsAndStyle(ws, row, 1, row, 2, {
+      value: label,
+      fill: argbFill('E7F5FE'),
+      font: HEADER_FONT,
+      border: THIN_BORDER,
+      alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
+    })
+    mergeCellsAndStyle(ws, row, 3, row, totalCols, {
+      value: String(value ?? ''),
+      font: { bold: true, size: 10 },
+      border: THIN_BORDER,
+      alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
+    })
+    ws.getRow(row).height = 13.2
+  })
+
+  ws.getRow(4).height = 7
+  applyFreezePane(ws, 4)
+
+  const standardTheme = {
+    titleFill: 'D7EDF7',
+    titleFontColor: 'FF123B63',
+    headerFill: '96FCF3',
+    headerFontColor: 'FF123B63',
+    categoryFill: 'DFF4FB',
+    categoryFontColor: 'FF123B63',
+    totalFill: 'EAF1F6',
+    exceptionFill: 'F9C8C4',
+    rowTitleHeight: 13.2,
+    rowHeaderHeight: 13.2,
+    rowDataHeight: 13,
+    rowTotalHeight: 13.2,
+  }
+
+  const dengueTheme = {
+    titleFill: 'F7DB77',
+    titleFontColor: 'FF7B5A00',
+    headerFill: 'FFECA6',
+    headerFontColor: 'FF6E5600',
+    categoryFill: 'FFF4C9',
+    categoryFontColor: 'FF6E5600',
+    totalFill: 'FDEFB5',
+    exceptionFill: 'F9C8C4',
+    rowTitleHeight: 13.2,
+    rowHeaderHeight: 13.2,
+    rowDataHeight: 13,
+    rowTotalHeight: 13.2,
+  }
+
+  let rowCursor = 5
+  rowCursor = addSusaludBlock(ws, {
+    startRow: rowCursor,
+    totalCols,
+    title: 'UCI',
+    columns: [
+      { key: 'upssUci', label: 'UPSS UCI', align: 'left' },
+      { key: 'areas', label: 'ÁREAS QUE COMPONEN', align: 'left', wrapText: true },
+      { key: 'total', label: 'TOTAL', numeric: true },
+      { key: 'inoperativos', label: 'INOPERATIVOS', numeric: true },
+      { key: 'operativos', label: 'OPERATIVOS', numeric: true },
+      { key: 'libres', label: 'LIBRES', numeric: true },
+      { key: 'ocupados', label: 'OCUPADOS', numeric: true },
+      { key: 'sinVm', label: 'Sin VM', numeric: true },
+      { key: 'conVm', label: 'Con VM', numeric: true },
+      { key: 'reserva', label: 'RESERVA', numeric: true },
+    ],
+    rows: uciRows,
+    theme: standardTheme,
+  })
+
+  rowCursor = addSusaludBlock(ws, {
+    startRow: rowCursor,
+    totalCols,
+    title: 'UCIN',
+    columns: [
+      { key: 'upssUcin', label: 'UPSS UCIN', align: 'left' },
+      { key: 'areas', label: 'ÁREAS QUE COMPONEN', align: 'left', wrapText: true },
+      { key: 'total', label: 'TOTAL', numeric: true },
+      { key: 'inoperativos', label: 'INOPERATIVOS', numeric: true },
+      { key: 'operativos', label: 'OPERATIVOS', numeric: true },
+      { key: 'libres', label: 'LIBRES', numeric: true },
+      { key: 'ocupados', label: 'OCUPADOS', numeric: true },
+      { key: 'sinOxigeno', label: 'S/OXIGENO', numeric: true },
+      { key: 'conOxigeno', label: 'C/OXIGENO', numeric: true },
+      { key: 'conVm', label: 'Con VM', numeric: true },
+      { key: 'reserva', label: 'RESERVA', numeric: true },
+    ],
+    rows: ucinRows,
+    theme: standardTheme,
+  })
+
+  rowCursor = addSusaludBlock(ws, {
+    startRow: rowCursor,
+    totalCols,
+    title: 'Hospitalizacion',
+    columns: [
+      { key: 'upssHospitalizacion', label: 'UPSS Hospitalizacion', align: 'left' },
+      { key: 'areas', label: 'ÁREAS QUE COMPONEN', align: 'left', wrapText: true },
+      { key: 'total', label: 'TOTAL', numeric: true },
+      { key: 'inoperativos', label: 'INOPERATIVOS', numeric: true },
+      { key: 'operativos', label: 'OPERATIVOS', numeric: true },
+      { key: 'libres', label: 'LIBRES', numeric: true },
+      { key: 'ocupados', label: 'OCUPADOS', numeric: true },
+      { key: 'sinOxigeno', label: 'S/OXIGENO', numeric: true },
+      { key: 'conOxigeno', label: 'C/OXIGENO', numeric: true },
+      { key: 'reserva', label: 'RESERVA', numeric: true },
+    ],
+    rows: hospitalizacionRows,
+    theme: standardTheme,
+  })
+
+  rowCursor = addSusaludBlock(ws, {
+    startRow: rowCursor,
+    totalCols,
+    title: 'Emergencia',
+    columns: [
+      { key: 'upssEmergencia', label: 'UPSS Emergencia', align: 'left' },
+      { key: 'areas', label: 'ÁREAS QUE COMPONEN', align: 'left', wrapText: true },
+      { key: 'total', label: 'TOTAL', numeric: true },
+      { key: 'inoperativos', label: 'INOPERATIVOS', numeric: true },
+      { key: 'operativos', label: 'OPERATIVOS', numeric: true },
+      { key: 'libres', label: 'LIBRES', numeric: true },
+      { key: 'ocupados', label: 'OCUPADOS', numeric: true },
+      { key: 'sinOxigeno', label: 'S/OXIGENO', numeric: true },
+      { key: 'conOxigeno', label: 'C/OXIGENO', numeric: true },
+      { key: 'conVm', label: 'Con VM', numeric: true },
+      { key: 'reserva', label: 'RESERVA', numeric: true },
+    ],
+    rows: emergenciaRows,
+    theme: standardTheme,
+  })
+
+  rowCursor = addSusaludBlock(ws, {
+    startRow: rowCursor,
+    totalCols,
+    title: 'ZONA DE EMERGENCIA AMPLIADA',
+    columns: [
+      { key: 'area', label: 'DETALLE', align: 'left', wrapText: true },
+      { key: 'total', label: 'TOTAL', numeric: true },
+      { key: 'conOxigeno', label: 'C/OXIGENO', numeric: true },
+      { key: 'sinOxigeno', label: 'S/OXIGENO', numeric: true },
+    ],
+    rows: emergenciaAmpliadaRows,
+    theme: standardTheme,
+  })
+
+  rowCursor = addSusaludBlock(ws, {
+    startRow: rowCursor,
+    totalCols,
+    title: 'RESUMEN DE VENTILADORES Y MONITORES',
+    columns: [
+      { key: 'recurso', label: 'RECURSO', align: 'left' },
+      { key: 'total', label: 'TOTAL', numeric: true },
+      { key: 'inoperativos', label: 'INOPERATIVOS', numeric: true },
+      { key: 'operativos', label: 'OPERATIVOS', numeric: true },
+      { key: 'disponibles', label: 'DISPONIBLES', numeric: true },
+      { key: 'enUso', label: 'EN USO', numeric: true },
+    ],
+    rows: ventiladoresMonitores,
+    theme: standardTheme,
+  })
+
+  mergeCellsAndStyle(ws, rowCursor, 1, rowCursor, totalCols, {
+    value: 'ZONA DENGUE',
+    fill: argbFill(dengueTheme.titleFill),
+    font: { bold: true, size: 9, color: { argb: dengueTheme.titleFontColor } },
+    border: THIN_BORDER,
+    alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
+  })
+  ws.getRow(rowCursor).height = 13.2
+  rowCursor += 1
+
+  const safeDengueSections = Array.isArray(dengueSections) ? dengueSections : []
+  for (const section of safeDengueSections) {
+    rowCursor = addSusaludBlock(ws, {
+      startRow: rowCursor,
+      totalCols,
+      title: String(section.title ?? '').trim() || 'Subbloque',
+      columns: [
+        { key: 'categoria', label: 'CATEGORIA', align: 'left' },
+        { key: 'casos', label: 'TOTAL', numeric: true },
+      ],
+      rows: section.rows ?? [],
+      theme: dengueTheme,
+    })
+  }
+
+  if (includeAuditSheet && Array.isArray(auditRows) && auditRows.length > 0) {
+    const auditSheet = wb.addWorksheet('AUDIT_SUSALUD', { state: 'hidden' })
+    const headers = [...new Set(auditRows.flatMap((row) => Object.keys(row ?? {})))]
+    auditSheet.columns = headers.map((header) => ({
+      header,
+      key: header,
+      width: Math.min(Math.max(header.length + 4, 12), 42),
+    }))
+
+    const headerRow = auditSheet.getRow(1)
+    headerRow.height = 14
+    headers.forEach((header, index) => {
+      const cell = auditSheet.getCell(1, index + 1)
+      cell.value = header
+      applyHeaderStyle(cell, '96FCF3', { horizontal: 'center', wrapText: true, fontColor: '123B63' })
+    })
+
+    auditRows.forEach((item) => {
+      const row = auditSheet.addRow(headers.map((header) => item[header] ?? ''))
+      row.height = 13
+      headers.forEach((_header, index) => {
+        const cell = row.getCell(index + 1)
+        applyDataStyle(cell, { horizontal: index === 0 ? 'left' : 'center', wrapText: true })
+      })
+    })
+    auditSheet.autoFilter = {
+      from: { row: 1, column: 1 },
+      to: { row: 1, column: headers.length },
+    }
+  }
+
+  return wb.xlsx.writeBuffer()
+}
+
+// ---------------------------------------------------------------------------
+// G. Produccion Medicos workbook
 // ---------------------------------------------------------------------------
 //
 // Layout:

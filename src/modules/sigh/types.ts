@@ -2,6 +2,80 @@ export type SighCellValue = string | number | boolean | null
 
 export type SighTableRow = Record<string, SighCellValue>
 
+export interface EstanciaHospitalariaRow {
+  servicio: string
+  idcuenta: string
+  paciente: string
+  edad: string
+  tedad: string
+  codServicio: string
+  ffto: string
+  diash: string
+  diass: string
+  horas: string
+  dxing1: string
+  dxevo1: string
+  dxevo2: string
+}
+
+export interface GestionEstanciaResumenRow {
+  disponible: number
+  ocupado: number
+  libre: number
+}
+
+export type NumeroCamasRow = GestionEstanciaResumenRow
+
+export interface MovimientoCamaRow {
+  orden: string
+  servicio: string
+  fecha: string
+}
+
+export interface MovimientoDxRow {
+  tipoeval: string
+  ciex: string
+  desciex: string
+  tipodx: string
+  medico: string
+}
+
+export interface MovimientoTransferenciaRow {
+  secuencia: string
+  fechao: string
+  servicio: string
+  cama: string
+  fechad: string
+  dias: string
+  ciex: string
+  desciex: string
+  medico: string
+}
+
+export interface MovimientoCabeceraRow {
+  fecha: string
+  servicio: string
+  sop: string
+}
+
+export interface MovimientoProfesionalRow {
+  tipo: string
+  empleado: string
+  especialidad: string
+  destipo: string
+}
+
+export interface MovimientoProcedimientoRow {
+  codigo: string
+  nombre: string
+}
+
+export interface MovimientoDxCqxRow {
+  ciex: string
+  nombre: string
+  tipo: string
+}
+
 export interface SighOption {
   value: string
   label: string

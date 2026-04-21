@@ -24,6 +24,7 @@ import {
   getGestionEstanciaMovimientoProfesionales,
   getGestionEstanciaMovimientoTransferencias,
   getGestionEstanciaMovimientos,
+  getGestionEstanciaResumen,
   getGestionEstanciaReport,
   getMonitoreoCamasReport,
   getOcupacionHospitalizacionReport,
@@ -280,6 +281,19 @@ reportsRouter.get('/sigh/camas/estancia', async (request, response) => {
     response.json({ rows })
   } catch (error) {
     handleError(response, error, 'No se pudo consultar la gestion de estancia.')
+  }
+})
+
+reportsRouter.get('/sigh/camas/estancia/resumen', async (request, response) => {
+  try {
+    const rows = await getGestionEstanciaResumen({
+      servicio: request.query.servicio,
+      tipo: request.query.tipo,
+      idTipo: request.query.idTipo,
+    })
+    response.json({ row: rows[0] ?? null })
+  } catch (error) {
+    handleError(response, error, 'No se pudo consultar el resumen de camas para la gestion de estancia.')
   }
 })
 

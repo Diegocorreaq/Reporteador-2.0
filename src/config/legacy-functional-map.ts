@@ -516,7 +516,7 @@ export const legacyOperationalModules: LegacyModuleMapping[] = [
   {
     workspace: 'sigh',
     path: 'gestion-camas/porcentaje-de-ocupacion-cama',
-    legacyRoute: '/covid/resumencamas',
+    legacyRoute: '/covid/ocupacioncama',
     moduleType: 'tabla',
     title: 'Porcentaje de Ocupacion Cama',
   },

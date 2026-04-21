@@ -28,6 +28,47 @@ export function normalizeKeyToken(value: string) {
     .replace(/[^a-z0-9]/g, '')
 }
 
+export function isBlankText(value: unknown) {
+  if (value === null || value === undefined) {
+    return true
+  }
+
+  return String(value).trim() === ''
+}
+
+export function normalizeComparableText(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+export function compareNullableTextLast(left: unknown, right: unknown) {
+  const leftBlank = isBlankText(left)
+  const rightBlank = isBlankText(right)
+
+  if (leftBlank && rightBlank) {
+    return 0
+  }
+
+  if (leftBlank) {
+    return 1
+  }
+
+  if (rightBlank) {
+    return -1
+  }
+
+  const normalizedLeft = normalizeComparableText(left)
+  const normalizedRight = normalizeComparableText(right)
+  if (normalizedLeft !== normalizedRight) {
+    return normalizedLeft.localeCompare(normalizedRight, 'es')
+  }
+
+  return String(left).trim().localeCompare(String(right).trim(), 'es')
+}
+
 export function resolveRowValue(
   row: SighTableRow,
   key: string,

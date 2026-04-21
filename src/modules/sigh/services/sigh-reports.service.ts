@@ -1,8 +1,29 @@
 import { httpClient } from '@/services/http/client'
+import {
+  normalizeEstanciaHospitalariaRow,
+  normalizeGestionEstanciaResumenRow,
+  normalizeMovimientoCabeceraRow,
+  normalizeMovimientoCamaRow,
+  normalizeMovimientoDxCqxRow,
+  normalizeMovimientoDxRow,
+  normalizeMovimientoProcedimientoRow,
+  normalizeMovimientoProfesionalRow,
+  normalizeMovimientoTransferenciaRow,
+  sanitizeRowValues,
+} from '@/modules/sigh/gestion-estancia-cama-normalizers'
 import type {
+  EstanciaHospitalariaRow,
   FamiliaPendienteReport,
+  GestionEstanciaResumenRow,
   GestionCitasReport,
   LegacyValidationResponse,
+  MovimientoCabeceraRow,
+  MovimientoCamaRow,
+  MovimientoDxCqxRow,
+  MovimientoDxRow,
+  MovimientoProcedimientoRow,
+  MovimientoProfesionalRow,
+  MovimientoTransferenciaRow,
   MonitoreoTicketsReport,
   MonitoreoVentanillaReport,
   ProduccionMedicoEmpleado,
@@ -179,27 +200,49 @@ export async function getGestionEstanciaReport(filters: {
   servicio: string
   tipo: string
   idTipo: string
-}) {
+}): Promise<EstanciaHospitalariaRow[]> {
   const response = await httpClient.get<{ rows: SighTableRow[] }>('/sigh/camas/estancia', {
     params: filters,
     timeout: 180000,
   })
 
-  return response.data.rows
+  return response.data.rows.map((row) => normalizeEstanciaHospitalariaRow(sanitizeRowValues(row)))
 }
 
 export async function getGestionEstanciaMovimientos(filters: {
   upss: string
   servicio: string
-}) {
+}): Promise<MovimientoCamaRow[]> {
   const response = await httpClient.get<{ rows: SighTableRow[] }>('/sigh/camas/estancia/movimientos', {
     params: filters,
   })
 
-  return response.data.rows
+  return response.data.rows.map((row) => normalizeMovimientoCamaRow(sanitizeRowValues(row)))
 }
 
-export async function getGestionEstanciaMovimientoDetalle(orden: number | string) {
+export async function getGestionEstanciaResumen(filters: {
+  servicio: string
+  tipo: string
+  idTipo: string
+}): Promise<GestionEstanciaResumenRow | null> {
+  const response = await httpClient.get<{ row: SighTableRow | null }>('/sigh/camas/estancia/resumen', {
+    params: filters,
+    timeout: 180000,
+  })
+
+  return normalizeGestionEstanciaResumenRow(
+    response.data.row ? sanitizeRowValues(response.data.row) : null,
+  )
+}
+
+export async function getGestionEstanciaMovimientoDetalle(orden: number | string): Promise<{
+  cabecera: MovimientoCabeceraRow[]
+  diagnosticos: MovimientoDxRow[]
+  transferencias: MovimientoTransferenciaRow[]
+  profesionales: MovimientoProfesionalRow[]
+  procedimientos: MovimientoProcedimientoRow[]
+  dxcqx: MovimientoDxCqxRow[]
+}> {
   const [cabecera, diagnosticos, transferencias, profesionales, procedimientos, dxcqx] = await Promise.all([
     httpClient.get<{ rows: SighTableRow[] }>(`/sigh/camas/estancia/movimientos/${orden}/cabecera`),
     httpClient.get<{ rows: SighTableRow[] }>(`/sigh/camas/estancia/movimientos/${orden}/diagnosticos`),
@@ -210,12 +253,14 @@ export async function getGestionEstanciaMovimientoDetalle(orden: number | string
   ])
 
   return {
-    cabecera: cabecera.data.rows,
-    diagnosticos: diagnosticos.data.rows,
-    transferencias: transferencias.data.rows,
-    profesionales: profesionales.data.rows,
-    procedimientos: procedimientos.data.rows,
-    dxcqx: dxcqx.data.rows,
+    cabecera: cabecera.data.rows.map((row) => normalizeMovimientoCabeceraRow(sanitizeRowValues(row))),
+    diagnosticos: diagnosticos.data.rows.map((row) => normalizeMovimientoDxRow(sanitizeRowValues(row))),
+    transferencias: transferencias.data.rows.map((row) => normalizeMovimientoTransferenciaRow(sanitizeRowValues(row))),
+    profesionales: profesionales.data.rows.map((row) => normalizeMovimientoProfesionalRow(sanitizeRowValues(row))),
+    procedimientos: procedimientos.data.rows.map((row) =>
+      normalizeMovimientoProcedimientoRow(sanitizeRowValues(row)),
+    ),
+    dxcqx: dxcqx.data.rows.map((row) => normalizeMovimientoDxCqxRow(sanitizeRowValues(row))),
   }
 }
 

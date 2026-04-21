@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { SighPageShell } from '@/modules/sigh/components/sigh-page-shell'
+import { CAMAS_DETAIL_MODAL_SPECS } from '@/modules/sigh/camas-detail-modal-specs'
+import { compareNullableTextLast } from '@/modules/sigh/sigh-utils'
 import {
   downloadMonitoreoCamasResumen,
   downloadMonitoreoCamasSusalud,
@@ -19,7 +21,10 @@ interface CamasRow {
   piso: string
   servicio: string
   tipo: string
+  orden: number
   camas: number
+  c_vm: number
+  c_fl: number
   total: number
   tocupa: number
   chabi: number
@@ -27,15 +32,17 @@ interface CamasRow {
   clibr: number
   ctran: number
   cinah: number
+  totcamas: number
+  ordenvm: number
+  totvm: number
+  totfl: number
   pcr: number
   espera: number
   espera_ant: number
   espera_mol: number
-  c_vm: number
   totalvm: number
   vmopera: number
   vminopera: number
-  c_fl: number
   totalaf: number
   afopera: number
   afinopera: number
@@ -45,6 +52,9 @@ interface CamasRow {
 
 interface Sums {
   camas: number
+  totcamas: number
+  tocupa: number
+  demanda: number
   total: number
   chabi: number
   cocup: number
@@ -67,15 +77,11 @@ interface Sums {
 interface DataItem {
   type: 'data'
   row: CamasRow
+  metrics: ServiceMetrics
   showPiso: boolean
+  pisoSpan: number
   showServicio: boolean
-  showVecesGroup: boolean
-  vecesSpan: number
-  showVeces1Group: boolean
-  veces1Span: number
-  diferencia: number
-  porcentaje: number
-  demandaA: number
+  servicioSpan: number
 }
 
 interface SubtotalItem {
@@ -90,6 +96,33 @@ interface TotalItem {
 }
 
 type TableItem = DataItem | SubtotalItem | TotalItem
+
+interface ServiceMetrics {
+  camas: number
+  totcamas: number
+  tocupa: number
+  diferencia: number
+  demanda: number
+  porcentaje: number
+  c_vm: number
+  totalvm: number
+  vmopera: number
+  vminopera: number
+  vmPct: number
+  c_fl: number
+  totalaf: number
+  afopera: number
+  afinopera: number
+  afPct: number
+}
+
+interface ServiceGroup {
+  key: string
+  piso: string
+  servicio: string
+  rows: CamasRow[]
+  metrics: ServiceMetrics
+}
 
 // ─── Data processing ─────────────────────────────────────────────────────────
 
@@ -108,7 +141,10 @@ function parseCamasRow(raw: SighTableRow): CamasRow {
     piso: s('piso'),
     servicio: s('servicio'),
     tipo: s('tipo'),
+    orden: n('orden'),
     camas: n('camas'),
+    c_vm: n('c_vm'),
+    c_fl: n('c_fl'),
     total: n('total'),
     tocupa: n('tocupa'),
     chabi: n('chabi'),
@@ -116,15 +152,17 @@ function parseCamasRow(raw: SighTableRow): CamasRow {
     clibr: n('clibr'),
     ctran: n('ctran'),
     cinah: n('cinah'),
+    totcamas: n('totcamas'),
+    ordenvm: n('ordenvm'),
+    totvm: n('totvm'),
+    totfl: n('totfl'),
     pcr: n('pcr'),
     espera: n('espera'),
     espera_ant: n('espera_ant'),
     espera_mol: n('espera_mol'),
-    c_vm: n('c_vm'),
     totalvm: n('totalvm'),
     vmopera: n('vmopera'),
     vminopera: n('vminopera'),
-    c_fl: n('c_fl'),
     totalaf: n('totalaf'),
     afopera: n('afopera'),
     afinopera: n('afinopera'),
@@ -133,94 +171,199 @@ function parseCamasRow(raw: SighTableRow): CamasRow {
   }
 }
 
+function sortCamasRowsNullsLast(rows: CamasRow[]): CamasRow[] {
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((left, right) => (
+      compareNullableTextLast(left.row.piso, right.row.piso) ||
+      compareNullableTextLast(left.row.servicio, right.row.servicio) ||
+      compareNullableTextLast(left.row.tipo, right.row.tipo) ||
+      left.index - right.index
+    ))
+    .map((item) => item.row)
+}
+
 function emptySums(): Sums {
   return {
-    camas: 0, total: 0, chabi: 0, cocup: 0, clibr: 0,
+    camas: 0, totcamas: 0, tocupa: 0, demanda: 0,
+    total: 0, chabi: 0, cocup: 0, clibr: 0,
     ctran: 0, cinah: 0, pcr: 0, espera_ant: 0, espera_mol: 0,
     c_vm: 0, totalvm: 0, vmopera: 0, vminopera: 0,
     c_fl: 0, totalaf: 0, afopera: 0, afinopera: 0,
   }
 }
 
-function addRowToSums(s: Sums, row: CamasRow, isVecesFirst: boolean, isVeces1First: boolean) {
-  if (isVecesFirst) s.camas += row.camas
-  if (isVeces1First) { s.totalvm += row.totalvm; s.totalaf += row.totalaf }
-  s.total += row.total
-  s.chabi += row.chabi
-  s.cocup += row.cocup
-  s.clibr += row.clibr
-  s.ctran += row.ctran
-  s.cinah += row.cinah
-  s.pcr += row.pcr
-  s.espera_ant += row.espera_ant
-  s.espera_mol += row.espera_mol
-  s.c_vm += row.c_vm
-  s.vmopera += row.vmopera
-  s.vminopera += row.vminopera
-  s.c_fl += row.c_fl
-  s.afopera += row.afopera
-  s.afinopera += row.afinopera
+function safePercentValue(numerator: number, denominator: number): number {
+  const safeNumerator = Number.isFinite(numerator) ? numerator : 0
+  const safeDenominator = Number.isFinite(denominator) ? denominator : 0
+  if (safeDenominator <= 0) {
+    return 0
+  }
+
+  return (safeNumerator / safeDenominator) * 100
+}
+
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+
+  if (value < 0) {
+    return 0
+  }
+
+  if (value > 100) {
+    return 100
+  }
+
+  return value
+}
+
+function computeServiceMetrics(rows: CamasRow[]): ServiceMetrics {
+  const camas = rows.reduce((max, row) => Math.max(max, row.camas), 0)
+  const totalFilas = rows.reduce((sum, row) => sum + row.total, 0)
+  const totcamas = rows.reduce((max, row) => Math.max(max, row.totcamas), totalFilas)
+  const tocupaPorTipos = rows.reduce((sum, row) => sum + row.cocup, 0)
+  const tocupaSp = rows.reduce((max, row) => Math.max(max, row.tocupa), 0)
+  const tocupa = Math.max(tocupaPorTipos, tocupaSp)
+  const ocupacionBase = Math.min(tocupa, camas)
+  const demanda = Math.max(tocupa - camas, 0)
+
+  const c_vm = rows.reduce((max, row) => Math.max(max, row.c_vm), 0)
+  const totalvm = rows.reduce((max, row) => Math.max(max, row.totalvm), 0)
+  const vmopera = rows.reduce((max, row) => Math.max(max, row.vmopera), 0)
+  const vminopera = rows.reduce((max, row) => Math.max(max, row.vminopera), 0)
+
+  const c_fl = rows.reduce((max, row) => Math.max(max, row.c_fl), 0)
+  const totalaf = rows.reduce((max, row) => Math.max(max, row.totalaf), 0)
+  const afopera = rows.reduce((max, row) => Math.max(max, row.afopera), 0)
+  const afinopera = rows.reduce((max, row) => Math.max(max, row.afinopera), 0)
+
+  return {
+    camas,
+    totcamas,
+    tocupa,
+    diferencia: totcamas - camas,
+    demanda,
+    porcentaje: clampPercent(safePercentValue(ocupacionBase, camas)),
+    c_vm,
+    totalvm,
+    vmopera,
+    vminopera,
+    vmPct: clampPercent(safePercentValue(c_vm, vmopera)),
+    c_fl,
+    totalaf,
+    afopera,
+    afinopera,
+    afPct: clampPercent(safePercentValue(c_fl, afopera)),
+  }
+}
+
+function buildServiceGroups(rows: CamasRow[]): ServiceGroup[] {
+  const groups: ServiceGroup[] = []
+
+  for (const row of rows) {
+    const key = `${row.piso}|${row.idservicio}|${row.servicio}`
+    const lastGroup = groups[groups.length - 1]
+
+    if (lastGroup && lastGroup.key === key) {
+      lastGroup.rows.push(row)
+      continue
+    }
+
+    groups.push({
+      key,
+      piso: row.piso,
+      servicio: row.servicio,
+      rows: [row],
+      metrics: computeServiceMetrics([row]),
+    })
+  }
+
+  for (const group of groups) {
+    group.metrics = computeServiceMetrics(group.rows)
+  }
+
+  return groups
+}
+
+function addGroupToSums(sums: Sums, group: ServiceGroup) {
+  sums.camas += group.metrics.camas
+  sums.totcamas += group.metrics.totcamas
+  sums.tocupa += group.metrics.tocupa
+  sums.demanda += group.metrics.demanda
+
+  sums.total += group.rows.reduce((sum, row) => sum + row.total, 0)
+  sums.chabi += group.rows.reduce((sum, row) => sum + row.chabi, 0)
+  sums.cocup += group.rows.reduce((sum, row) => sum + row.cocup, 0)
+  sums.clibr += group.rows.reduce((sum, row) => sum + row.clibr, 0)
+  sums.ctran += group.rows.reduce((sum, row) => sum + row.ctran, 0)
+  sums.cinah += group.rows.reduce((sum, row) => sum + row.cinah, 0)
+  sums.pcr += group.rows.reduce((sum, row) => sum + row.pcr, 0)
+  sums.espera_ant += group.rows.reduce((sum, row) => sum + row.espera_ant, 0)
+  sums.espera_mol += group.rows.reduce((sum, row) => sum + row.espera_mol, 0)
+
+  // VM/AF are service-level capacities and can repeat by subtype.
+  sums.c_vm += group.metrics.c_vm
+  sums.totalvm += group.metrics.totalvm
+  sums.vmopera += group.metrics.vmopera
+  sums.vminopera += group.metrics.vminopera
+  sums.c_fl += group.metrics.c_fl
+  sums.totalaf += group.metrics.totalaf
+  sums.afopera += group.metrics.afopera
+  sums.afinopera += group.metrics.afinopera
 }
 
 function processCamasData(rawRows: SighTableRow[]): TableItem[] {
-  const rows = rawRows.map(parseCamasRow)
+  const rows = sortCamasRowsNullsLast(rawRows.map(parseCamasRow))
+  const groups = buildServiceGroups(rows)
   const items: TableItem[] = []
 
-  let currentPiso = ''
-  let prevServicio = ''
-  let xfilas = 1, xfl = 1
-  let xfilas1 = 1, xfl1 = 1
+  const pisoRowSpanMap = new Map<string, number>()
+  for (const group of groups) {
+    pisoRowSpanMap.set(group.piso, (pisoRowSpanMap.get(group.piso) ?? 0) + group.rows.length)
+  }
+
+  let currentPiso = groups[0]?.piso ?? ''
   let pisoSums = emptySums()
-  let globalSums = emptySums()
+  const globalSums = emptySums()
+  const renderedPisos = new Set<string>()
 
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i]
-
-    const isVecesFirst = xfilas === 1 || xfilas > xfl
-    if (isVecesFirst) { xfilas = 1; xfl = row.veces || 1 }
-
-    const isVeces1First = xfilas1 === 1 || xfilas1 > xfl1
-    if (isVeces1First) { xfilas1 = 1; xfl1 = row.veces1 || 1 }
-
-    const pisoChanged = i > 0 && row.piso !== currentPiso
+  groups.forEach((group, groupIndex) => {
+    const pisoChanged = groupIndex > 0 && group.piso !== currentPiso
 
     if (pisoChanged) {
       items.push({ type: 'subtotal', sums: { ...pisoSums }, bgColor: '#D7D7D7' })
       pisoSums = emptySums()
     }
 
-    addRowToSums(pisoSums, row, isVecesFirst, isVeces1First)
-    addRowToSums(globalSums, row, isVecesFirst, isVeces1First)
+    addGroupToSums(pisoSums, group)
+    addGroupToSums(globalSums, group)
 
-    const diferencia = isVecesFirst ? row.total - row.camas : 0
-    const demandaA   = isVecesFirst ? row.tocupa - row.camas : 0
-    const porcentaje = isVecesFirst
-      ? row.camas > 0 ? (row.tocupa / row.camas) * 100 : NaN
-      : NaN
+    group.rows.forEach((row, rowIndex) => {
+      const isFirstInService = rowIndex === 0
+      const showPiso = isFirstInService && !renderedPisos.has(group.piso)
+      if (showPiso) {
+        renderedPisos.add(group.piso)
+      }
 
-    items.push({
-      type: 'data',
-      row,
-      showPiso: pisoChanged || i === 0,
-      showServicio: row.servicio !== prevServicio,
-      showVecesGroup: isVecesFirst,
-      vecesSpan: xfl,
-      showVeces1Group: isVeces1First,
-      veces1Span: xfl1,
-      diferencia,
-      porcentaje,
-      demandaA,
+      items.push({
+        type: 'data',
+        row,
+        metrics: group.metrics,
+        showPiso,
+        pisoSpan: pisoRowSpanMap.get(group.piso) ?? 1,
+        showServicio: isFirstInService,
+        servicioSpan: group.rows.length,
+      })
     })
 
-    if (i === rows.length - 1) {
+    if (groupIndex === groups.length - 1) {
       items.push({ type: 'subtotal', sums: { ...pisoSums }, bgColor: '#F0F1F1' })
     }
 
-    currentPiso = row.piso
-    prevServicio = row.servicio
-    xfilas++
-    xfilas1++
-  }
+    currentPiso = group.piso
+  })
 
   if (rows.length > 0) {
     items.push({ type: 'total', sums: globalSums })
@@ -232,23 +375,15 @@ function processCamasData(rawRows: SighTableRow[]): TableItem[] {
 // ─── Color helpers ────────────────────────────────────────────────────────────
 
 function pctBg(pct: number): string {
-  if (!Number.isFinite(pct)) return '#D3D3D3'
-  if (pct <= 0)  return '#9DDE58'
-  if (pct <= 60) return '#9DDE58'
-  if (pct <= 80) return '#F6F871'
-  if (pct <= 100) return '#FB6C5D'
-  return '#D37DFA'
+  const pctCapped = clampPercent(pct)
+  if (pctCapped <= 60) return '#9DDE58'
+  if (pctCapped <= 80) return '#F6F871'
+  if (pctCapped <= 90) return '#F2B66D'
+  return '#FB6C5D'
 }
 
 function pctText(pct: number): string {
-  if (!Number.isFinite(pct)) return 'NaN'
-  if (pct > 100) return '100+'
-  return String(Math.round(pct))
-}
-
-function pctTitle(pct: number): string | undefined {
-  if (pct > 100) return `+${Math.round(pct - 100)}%`
-  return undefined
+  return String(Math.round(clampPercent(pct)))
 }
 
 function difBg(dif: number): string {
@@ -257,141 +392,57 @@ function difBg(dif: number): string {
   return ''
 }
 
+function demandBg(value: number): string | undefined {
+  if (value <= 0) return undefined
+  if (value <= 2) return '#F6F3A2'
+  if (value <= 5) return '#F2C27A'
+  return '#F4A6A6'
+}
+
+function waitBg(value: number): string | undefined {
+  if (value <= 0) return undefined
+  if (value <= 2) return '#F6F3A2'
+  if (value <= 5) return '#F2C27A'
+  return '#F4A6A6'
+}
+
+function disabledBg(value: number, total: number): string | undefined {
+  if (value <= 0) return undefined
+  const ratio = total > 0 ? value / total : 1
+  if (ratio <= 0.1) return '#F6F3A2'
+  if (ratio <= 0.25) return '#F2C27A'
+  return '#F4A6A6'
+}
+
+function availableBg(value: number, total: number): string {
+  if (total <= 0) return '#F8FAFC'
+  const ratio = total > 0 ? value / total : 0
+  if (value <= 0) return '#F4A6A6'
+  if (ratio <= 0.15) return '#F2C27A'
+  if (ratio <= 0.3) return '#F6F3A2'
+  return '#BFFCB3'
+}
+
+function isAfInactive(metrics: ServiceMetrics): boolean {
+  return metrics.c_fl === 0 && metrics.totalaf === 0 && metrics.afopera === 0 && metrics.afinopera === 0
+}
+
 // ─── Cell helpers ─────────────────────────────────────────────────────────────
 
-const TH = 'border border-border px-1.5 py-1 text-[10px] font-semibold uppercase text-center'
+const TH = 'border border-border px-1.5 py-1 text-[10px] font-semibold text-center'
+const TH_GROUP = `${TH} bg-[#e2edf7] text-[#123B63]`
+const TH_SUB = `${TH} bg-[#f1f6fb] text-[#123B63]`
 const TD = 'border border-border/60 px-1.5 py-0.5 text-[10px] text-center'
+const TD_PISO = `${TD} bg-[#fafcff] font-medium text-[#1f3650] align-top`
+const TD_SERVICIO = `${TD} bg-[#f6fbff] font-semibold text-[#123B63] text-left align-top`
+const TD_TIPO = `${TD} text-left pl-4 text-[#334155]`
 const TD_SUBTOTAL = 'border border-border/60 px-1.5 py-0.5 text-[10px] text-center font-bold'
 
 function numCell(v: number): string {
-  return v === 0 ? '' : String(v)
+  return String(Number.isFinite(v) ? v : 0)
 }
 
 // ─── Modal config ─────────────────────────────────────────────────────────────
-
-interface ModalSpec {
-  title: string
-  columns: { key: string; label: string }[]
-}
-
-const MODAL_SPECS: Record<string, ModalSpec> = {
-  '1': {
-    title: 'Camas Operativas',
-    columns: [
-      { key: 'piso',        label: 'Tipo' },
-      { key: 'codigocama',  label: 'Cod. Cama' },
-      { key: 'estadocama',  label: 'Estado' },
-      { key: 'paciente',    label: 'Paciente' },
-    ],
-  },
-  '2': {
-    title: 'Camas Ocupadas',
-    columns: [
-      { key: 'piso',        label: 'Tipo' },
-      { key: 'codigocama',  label: 'Cod. Cama' },
-      { key: 'estadocama',  label: 'Estado' },
-      { key: 'paciente',    label: 'Paciente' },
-    ],
-  },
-  '3': {
-    title: 'Camas Disponibles',
-    columns: [
-      { key: 'piso',        label: 'Tipo' },
-      { key: 'codigocama',  label: 'Cod. Cama' },
-      { key: 'estadocama',  label: 'Estado' },
-      { key: 'libre',       label: 'Libre Desde' },
-    ],
-  },
-  '4': {
-    title: 'Camas Transitorias',
-    columns: [
-      { key: 'piso',        label: 'Tipo' },
-      { key: 'codigocama',  label: 'Cod. Cama' },
-      { key: 'estadocama',  label: 'Estado' },
-      { key: 'paciente',    label: 'Paciente' },
-    ],
-  },
-  '5': {
-    title: 'Camas Inhabilitadas',
-    columns: [
-      { key: 'piso',        label: 'Tipo' },
-      { key: 'codigocama',  label: 'Cod. Cama' },
-      { key: 'estadocama',  label: 'Estado' },
-      { key: 'paciente',    label: 'Paciente' },
-    ],
-  },
-  '6': {
-    title: 'Ventilacion Mecanica — En Uso',
-    columns: [
-      { key: 'idcuenta',    label: 'Nro Cuenta' },
-      { key: 'codigocama',  label: 'Cod. Cama' },
-      { key: 'estadocama',  label: 'Estado' },
-      { key: 'paciente',    label: 'Paciente' },
-    ],
-  },
-  '7': {
-    title: 'Oxigeno Alto Flujo — En Uso',
-    columns: [
-      { key: 'idcuenta',    label: 'Nro Cuenta' },
-      { key: 'codigocama',  label: 'Cod. Cama' },
-      { key: 'estadocama',  label: 'Estado' },
-      { key: 'paciente',    label: 'Paciente' },
-    ],
-  },
-  '8': {
-    title: 'Prueba Realizada — Covid (+)',
-    columns: [
-      { key: 'idcuenta',    label: 'Nro Cuenta' },
-      { key: 'paciente',    label: 'Paciente' },
-      { key: 'cama',        label: 'Nro Cama' },
-      { key: 'tipomuestra', label: 'Tipo Muestra' },
-      { key: 'tipoprueba',  label: 'Tipo Prueba' },
-      { key: 'fecha_i',     label: 'Fecha Ingreso' },
-      { key: 'fecha_s',     label: 'Inicio Sintomas' },
-      { key: 'fecha_m',     label: 'Fecha Solicitud' },
-      { key: 'fecha_r',     label: 'Fecha Resultado' },
-      { key: 'dias',        label: 'Dias c/Sintomas' },
-      { key: 'diah',        label: 'Dias Estancia' },
-      { key: 'caso',        label: 'Tipo Caso' },
-    ],
-  },
-  '9': {
-    title: 'Pendiente de Resultado — Antigena',
-    columns: [
-      { key: 'idcuenta',    label: 'Nro Cuenta' },
-      { key: 'paciente',    label: 'Paciente' },
-      { key: 'cama',        label: 'Nro Cama' },
-      { key: 'tipomuestra', label: 'Tipo Muestra' },
-      { key: 'tipoprueba',  label: 'Tipo Prueba' },
-      { key: 'fecha_i',     label: 'Fecha Ingreso' },
-      { key: 'fecha_s',     label: 'Inicio Sintomas' },
-      { key: 'fecha_m',     label: 'Fecha Solicitud' },
-      { key: 'fecha_r',     label: 'Fecha Resultado' },
-      { key: 'dias',        label: 'Dias c/Sintomas' },
-      { key: 'diah',        label: 'Dias Estancia' },
-      { key: 'caso',        label: 'Tipo Caso' },
-    ],
-  },
-  '9a': {
-    title: 'Pendiente de Resultado — Molecular',
-    columns: [
-      { key: 'idcuenta',    label: 'Nro Cuenta' },
-      { key: 'paciente',    label: 'Paciente' },
-      { key: 'cama',        label: 'Nro Cama' },
-      { key: 'tipomuestra', label: 'Tipo Muestra' },
-      { key: 'tipoprueba',  label: 'Tipo Prueba' },
-      { key: 'fecha_i',     label: 'Fecha Ingreso' },
-      { key: 'fecha_s',     label: 'Inicio Sintomas' },
-      { key: 'fecha_m',     label: 'Fecha Solicitud' },
-      { key: 'fecha_r',     label: 'Fecha Resultado' },
-      { key: 'dias',        label: 'Dias c/Sintomas' },
-      { key: 'diah',        label: 'Dias Estancia' },
-      { key: 'caso',        label: 'Tipo Caso' },
-    ],
-  },
-}
-
-// ─── Detail modal table ───────────────────────────────────────────────────────
 
 function resolveDetailCell(row: SighTableRow, key: string): string {
   if (key in row) return String(row[key] ?? '')
@@ -447,73 +498,77 @@ function DetailTable({ rows, columns }: { rows: SighTableRow[]; columns: { key: 
 // ─── Subtotal / Total row renderers ──────────────────────────────────────────
 
 function safePct(num: number, den: number): string {
-  if (!den) return '0'
-  return String(Math.round((num / den) * 100))
+  return String(Math.round(clampPercent(safePercentValue(num, den))))
 }
 
 function SubtotalRow({ sums, bg }: { sums: Sums; bg: string }) {
+  const tdSubtotal = `${TD_SUBTOTAL} border-t-2 border-t-[#c9d7e6]`
+  const subtotalBg = bg === '#D7D7D7' ? '#e8edf3' : '#f2f5f9'
+
   return (
-    <tr style={{ backgroundColor: bg }}>
-      <td colSpan={3} className={`${TD_SUBTOTAL} text-right`}>Sub Total</td>
+    <tr style={{ backgroundColor: subtotalBg }}>
+      <td colSpan={3} className={`${tdSubtotal} text-right tracking-wide text-[#1f3650]`}>Sub Total</td>
       {/* Escenario (1) */}
-      <td className={TD_SUBTOTAL}>{sums.camas}</td>
-      <td className={TD_SUBTOTAL}>{sums.total - sums.camas}</td>
-      <td className={TD_SUBTOTAL}>{safePct(sums.cocup, sums.camas)}</td>
-      <td className={TD_SUBTOTAL}></td>{/* Demanda Adicional — no aplica en subtotal */}
+      <td className={tdSubtotal}>{sums.camas}</td>
+      <td className={tdSubtotal}>{sums.totcamas - sums.camas}</td>
+      <td className={tdSubtotal}>{safePct(Math.min(sums.tocupa, sums.camas), sums.camas)}</td>
+      <td className={tdSubtotal}>{sums.demanda}</td>
       {/* Camas segun condicion */}
-      <td className={TD_SUBTOTAL}>{sums.total}</td>
-      <td className={TD_SUBTOTAL}>{sums.chabi}</td>
-      <td className={TD_SUBTOTAL}>{sums.cocup}</td>
-      <td className={TD_SUBTOTAL}>{sums.clibr}</td>
-      <td className={TD_SUBTOTAL}>{sums.ctran}</td>
-      <td className={TD_SUBTOTAL}>{sums.cinah}</td>
-      <td className={TD_SUBTOTAL}>{sums.pcr}</td>
+      <td className={tdSubtotal}>{sums.total}</td>
+      <td className={tdSubtotal}>{sums.chabi}</td>
+      <td className={tdSubtotal}>{sums.cocup}</td>
+      <td className={tdSubtotal}>{sums.clibr}</td>
+      <td className={tdSubtotal}>{sums.ctran}</td>
+      <td className={tdSubtotal}>{sums.cinah}</td>
+      <td className={tdSubtotal}>{sums.pcr}</td>
       {/* Resultado Espera */}
-      <td className={TD_SUBTOTAL}>{sums.espera_ant}</td>
-      <td className={TD_SUBTOTAL}>{sums.espera_mol}</td>
+      <td className={tdSubtotal}>{sums.espera_ant}</td>
+      <td className={tdSubtotal}>{sums.espera_mol}</td>
       {/* VM */}
-      <td className={TD_SUBTOTAL}>{sums.c_vm}</td>
-      <td className={TD_SUBTOTAL}>{sums.totalvm}</td>
-      <td className={TD_SUBTOTAL}>{sums.vmopera}</td>
-      <td className={TD_SUBTOTAL}>{sums.vminopera}</td>
-      <td className={TD_SUBTOTAL}>{safePct(sums.c_vm, sums.vmopera)}</td>
+      <td className={tdSubtotal}>{sums.c_vm}</td>
+      <td className={tdSubtotal}>{sums.totalvm}</td>
+      <td className={tdSubtotal}>{sums.vmopera}</td>
+      <td className={tdSubtotal}>{sums.vminopera}</td>
+      <td className={tdSubtotal}>{safePct(sums.c_vm, sums.vmopera)}</td>
       {/* AF */}
-      <td className={TD_SUBTOTAL}>{sums.c_fl}</td>
-      <td className={TD_SUBTOTAL}>{sums.totalaf}</td>
-      <td className={TD_SUBTOTAL}>{sums.afopera}</td>
-      <td className={TD_SUBTOTAL}>{sums.afinopera}</td>
-      <td className={TD_SUBTOTAL}>{safePct(sums.c_fl, sums.afopera)}</td>
+      <td className={tdSubtotal}>{sums.c_fl}</td>
+      <td className={tdSubtotal}>{sums.totalaf}</td>
+      <td className={tdSubtotal}>{sums.afopera}</td>
+      <td className={tdSubtotal}>{sums.afinopera}</td>
+      <td className={tdSubtotal}>{safePct(sums.c_fl, sums.afopera)}</td>
     </tr>
   )
 }
 
 function TotalGeneralRow({ sums }: { sums: Sums }) {
+  const tdTotal = `${TD_SUBTOTAL} border-t-2 border-t-[#8fa9c2] bg-[#dce7f2] text-[#0f2942]`
+
   return (
-    <tr style={{ backgroundColor: '#D7D7D7' }}>
-      <td colSpan={3} className={`${TD_SUBTOTAL} text-right`}>Total General</td>
-      <td className={TD_SUBTOTAL}>{sums.camas}</td>
-      <td className={TD_SUBTOTAL}>{sums.total - sums.camas}</td>
-      <td className={TD_SUBTOTAL}>{safePct(sums.cocup, sums.camas)}</td>
-      <td className={TD_SUBTOTAL}></td>{/* Demanda Adicional */}
-      <td className={TD_SUBTOTAL}>{sums.total}</td>
-      <td className={TD_SUBTOTAL}>{sums.chabi}</td>
-      <td className={TD_SUBTOTAL}>{sums.cocup}</td>
-      <td className={TD_SUBTOTAL}>{sums.clibr}</td>
-      <td className={TD_SUBTOTAL}>{sums.ctran}</td>
-      <td className={TD_SUBTOTAL}>{sums.cinah}</td>
-      <td className={TD_SUBTOTAL}>{sums.pcr}</td>
-      <td className={TD_SUBTOTAL}>{sums.espera_ant}</td>
-      <td className={TD_SUBTOTAL}>{sums.espera_mol}</td>
-      <td className={TD_SUBTOTAL}>{sums.c_vm}</td>
-      <td className={TD_SUBTOTAL}>{sums.totalvm}</td>
-      <td className={TD_SUBTOTAL}>{sums.vmopera}</td>
-      <td className={TD_SUBTOTAL}>{sums.vminopera}</td>
-      <td className={TD_SUBTOTAL}>{safePct(sums.c_vm, sums.vmopera)}</td>
-      <td className={TD_SUBTOTAL}>{sums.c_fl}</td>
-      <td className={TD_SUBTOTAL}>{sums.totalaf}</td>
-      <td className={TD_SUBTOTAL}>{sums.afopera}</td>
-      <td className={TD_SUBTOTAL}>{sums.afinopera}</td>
-      <td className={TD_SUBTOTAL}>{safePct(sums.c_fl, sums.afopera)}</td>
+    <tr>
+      <td colSpan={3} className={`${tdTotal} text-right text-[11px] tracking-wide`}>Total General</td>
+      <td className={tdTotal}>{sums.camas}</td>
+      <td className={tdTotal}>{sums.totcamas - sums.camas}</td>
+      <td className={tdTotal}>{safePct(Math.min(sums.tocupa, sums.camas), sums.camas)}</td>
+      <td className={tdTotal}>{sums.demanda}</td>
+      <td className={tdTotal}>{sums.total}</td>
+      <td className={tdTotal}>{sums.chabi}</td>
+      <td className={tdTotal}>{sums.cocup}</td>
+      <td className={tdTotal}>{sums.clibr}</td>
+      <td className={tdTotal}>{sums.ctran}</td>
+      <td className={tdTotal}>{sums.cinah}</td>
+      <td className={tdTotal}>{sums.pcr}</td>
+      <td className={tdTotal}>{sums.espera_ant}</td>
+      <td className={tdTotal}>{sums.espera_mol}</td>
+      <td className={tdTotal}>{sums.c_vm}</td>
+      <td className={tdTotal}>{sums.totalvm}</td>
+      <td className={tdTotal}>{sums.vmopera}</td>
+      <td className={tdTotal}>{sums.vminopera}</td>
+      <td className={tdTotal}>{safePct(sums.c_vm, sums.vmopera)}</td>
+      <td className={tdTotal}>{sums.c_fl}</td>
+      <td className={tdTotal}>{sums.totalaf}</td>
+      <td className={tdTotal}>{sums.afopera}</td>
+      <td className={tdTotal}>{sums.afinopera}</td>
+      <td className={tdTotal}>{safePct(sums.c_fl, sums.afopera)}</td>
     </tr>
   )
 }
@@ -562,7 +617,7 @@ export function MonitoreoCamasPage() {
 
   const tableItems = useMemo(() => processCamasData(rows), [rows])
 
-  const modalSpec = MODAL_SPECS[detailType] ?? { title: 'Detalle', columns: [] }
+  const modalSpec = CAMAS_DETAIL_MODAL_SPECS[detailType] ?? { title: 'Detalle', columns: [] }
 
   return (
     <SighPageShell
@@ -602,44 +657,44 @@ export function MonitoreoCamasPage() {
               <thead className="bg-[#eef5fb] text-[#123B63]">
                 {/* Row 1 — group headers */}
                 <tr>
-                  <th className={TH} rowSpan={2}>Piso</th>
-                  <th className={TH} rowSpan={2}>Servicio</th>
-                  <th className={TH} rowSpan={2}>Tipo</th>
-                  <th className={TH} colSpan={4}>Escenario (1)</th>
-                  <th className={TH} colSpan={7}>Camas segun condicion</th>
-                  <th className={TH} colSpan={2}>Resultado Espera</th>
-                  <th className={TH} colSpan={5}>Ventilacion Mecanica</th>
-                  <th className={TH} colSpan={5}>Oxigeno Alto Flujo</th>
+                  <th className={TH_GROUP} rowSpan={2}>Piso</th>
+                  <th className={TH_GROUP} rowSpan={2}>Servicio</th>
+                  <th className={TH_GROUP} rowSpan={2}>Tipo</th>
+                  <th className={TH_GROUP} colSpan={4}>Escenario (1)</th>
+                  <th className={TH_GROUP} colSpan={7}>Estado de Camas</th>
+                  <th className={TH_GROUP} colSpan={2}>Resultados Pendientes</th>
+                  <th className={TH_GROUP} colSpan={5}>Ventilacion Mecanica (VM)</th>
+                  <th className={TH_GROUP} colSpan={5}>Oxigeno Alto Flujo (AF)</th>
                 </tr>
                 {/* Row 2 — subcolumns */}
                 <tr>
-                  <th className={TH}>Cama Aprobadas (A)</th>
-                  <th className={TH}>Disfer.(B-A)</th>
-                  <th className={TH}>% Ocupa (C/A)</th>
-                  <th className={TH}>Demanda Adicional</th>
+                  <th className={TH_SUB}>Camas Aprobadas (A)</th>
+                  <th className={TH_SUB}>Brecha (B-A)</th>
+                  <th className={TH_SUB}>% Ocupacion (C/A)</th>
+                  <th className={TH_SUB}>Demanda Adicional</th>
 
-                  <th className={TH}>Totales (B)</th>
-                  <th className={TH}>Operativas</th>
-                  <th className={TH}>Ocupadas (C)</th>
-                  <th className={TH}>Disponibles</th>
-                  <th className={TH}>Transitorias</th>
-                  <th className={TH}>Inhabilitadas</th>
-                  <th className={TH}>Covid (+)</th>
+                  <th className={TH_SUB}>Totales (B)</th>
+                  <th className={TH_SUB}>Operativas</th>
+                  <th className={TH_SUB}>Ocupadas (C)</th>
+                  <th className={TH_SUB}>Disponibles</th>
+                  <th className={TH_SUB}>Transitorias</th>
+                  <th className={TH_SUB}>Inhabilitadas</th>
+                  <th className={TH_SUB}>Covid (+)</th>
 
-                  <th className={TH}>Antigena</th>
-                  <th className={TH}>Molecular</th>
+                  <th className={TH_SUB}>Antigena</th>
+                  <th className={TH_SUB}>Molecular</th>
 
-                  <th className={TH}>En_Uso (D)</th>
-                  <th className={TH}>Total</th>
-                  <th className={TH}>Operat. (E)</th>
-                  <th className={TH}>Inoperat.</th>
-                  <th className={TH}>%_Uso (D/E)</th>
+                  <th className={TH_SUB}>VM en uso (D)</th>
+                  <th className={TH_SUB}>Total</th>
+                  <th className={TH_SUB}>Operativas (E)</th>
+                  <th className={TH_SUB}>Inoperativas</th>
+                  <th className={TH_SUB}>% uso VM (D/E)</th>
 
-                  <th className={TH}>En_uso (F)</th>
-                  <th className={TH}>Total</th>
-                  <th className={TH}>Operat. (G)</th>
-                  <th className={TH}>Inoperat.</th>
-                  <th className={TH}>%_Uso (F/G)</th>
+                  <th className={TH_SUB}>AF en uso (F)</th>
+                  <th className={TH_SUB}>Total</th>
+                  <th className={TH_SUB}>Operativas (G)</th>
+                  <th className={TH_SUB}>Inoperativas</th>
+                  <th className={TH_SUB}>% uso AF (F/G)</th>
                 </tr>
               </thead>
               <tbody>
@@ -658,57 +713,59 @@ export function MonitoreoCamasPage() {
                       return <TotalGeneralRow key="total" sums={item.sums} />
                     }
 
-                    const { row, showPiso, showServicio,
-                      showVecesGroup, vecesSpan,
-                      showVeces1Group, veces1Span,
-                      diferencia, porcentaje, demandaA } = item
+                    const { row, metrics, showPiso, pisoSpan, showServicio, servicioSpan } = item
 
-                    const pctBgColor = pctBg(porcentaje)
-                    const pctLabel   = pctText(porcentaje)
-                    const pctHint    = pctTitle(porcentaje)
-
-                    const difBgColor = difBg(diferencia)
-                    const demBgColor = difBg(demandaA)
-
-                    const vmPct = row.totalvm > 0 && row.vmopera > 0
-                      ? (row.c_vm / row.vmopera) * 100 : 0
-                    const afPct = row.totalaf > 0 && row.afopera > 0
-                      ? (row.c_fl / row.afopera) * 100 : 0
+                    const pctBgColor = pctBg(metrics.porcentaje)
+                    const difBgColor = difBg(metrics.diferencia)
+                    const demBgColor = demandBg(metrics.demanda)
+                    const disponiblesBgColor = availableBg(row.clibr, row.total)
+                    const inhabilitadasBgColor = disabledBg(row.cinah, row.total)
+                    const esperaAntBgColor = waitBg(row.espera_ant)
+                    const esperaMolBgColor = waitBg(row.espera_mol)
+                    const afInactive = isAfInactive(metrics)
+                    const afMutedStyle = afInactive ? { backgroundColor: '#F8FAFC', color: '#94A3B8' } : undefined
 
                     return (
-                      <tr key={`r-${idx}`} className="odd:bg-white even:bg-[#f8fbff]">
+                      <tr key={`r-${idx}`} className={`${showServicio ? 'border-t-2 border-t-[#d5e2ef]' : ''} odd:bg-white even:bg-[#f8fbff]`}>
 
                         {/* Piso */}
-                        <td className={TD}>{showPiso ? row.piso : ''}</td>
+                        {showPiso && (
+                          <td className={TD_PISO} rowSpan={pisoSpan}>{row.piso}</td>
+                        )}
                         {/* Servicio */}
-                        <td className={TD}>{showServicio ? row.servicio : ''}</td>
+                        {showServicio && (
+                          <td className={TD_SERVICIO} rowSpan={servicioSpan}>{row.servicio}</td>
+                        )}
                         {/* Tipo */}
-                        <td className={TD}>{row.tipo}</td>
+                        <td className={TD_TIPO}>
+                          <span className="inline-flex items-center gap-1">
+                            <span className="text-slate-400">•</span>
+                            <span>{row.tipo}</span>
+                          </span>
+                        </td>
 
-                        {/* ── Escenario (1) ── */}
-                        {showVecesGroup && (
+                        {/* Escenario (1) */}
+                        {showServicio && (
                           <>
-                            <td className={TD} rowSpan={vecesSpan}>{row.camas}</td>
-                            <td className={TD} rowSpan={vecesSpan}
+                            <td className={TD} rowSpan={servicioSpan}>{metrics.camas}</td>
+                            <td className={TD} rowSpan={servicioSpan}
                               style={{ backgroundColor: difBgColor || undefined }}>
-                              {diferencia}
+                              {metrics.diferencia}
                             </td>
-                            <td className={TD} rowSpan={vecesSpan}
-                              style={{ backgroundColor: pctBgColor }}
-                              title={pctHint}>
-                              {pctLabel}
+                            <td className={TD} rowSpan={servicioSpan} style={{ backgroundColor: pctBgColor }}>
+                              {pctText(metrics.porcentaje)}
                             </td>
-                            <td className={TD} rowSpan={vecesSpan}
+                            <td className={`${TD} ${metrics.demanda > 0 ? 'font-semibold text-[#8a3d00]' : ''}`} rowSpan={servicioSpan}
                               style={{ backgroundColor: demBgColor || undefined }}>
-                              {demandaA}
+                              {metrics.demanda}
                             </td>
                           </>
                         )}
 
-                        {/* ── Camas segun condicion ── */}
+                        {/* Camas segun condicion */}
                         <td className={TD}>{row.total}</td>
 
-                        {/* Operativas — clickable */}
+                        {/* Operativas */}
                         <td className={TD}>
                           {row.chabi > 0 ? (
                             <button type="button"
@@ -716,10 +773,10 @@ export function MonitoreoCamasPage() {
                               onClick={() => void openDetail('1', row)}>
                               {row.chabi}
                             </button>
-                          ) : ''}
+                          ) : row.chabi}
                         </td>
 
-                        {/* Ocupadas — amarillo */}
+                        {/* Ocupadas */}
                         <td className={TD} style={{ backgroundColor: row.cocup > 0 ? '#F3D979' : undefined }}>
                           {row.cocup > 0 ? (
                             <button type="button"
@@ -727,18 +784,18 @@ export function MonitoreoCamasPage() {
                               onClick={() => void openDetail('2', row)}>
                               {row.cocup}
                             </button>
-                          ) : ''}
+                          ) : row.cocup}
                         </td>
 
-                        {/* Disponibles — verde */}
-                        <td className={TD} style={{ backgroundColor: row.clibr > 0 ? '#BFFCB3' : undefined }}>
+                        {/* Disponibles */}
+                        <td className={TD} style={{ backgroundColor: disponiblesBgColor }}>
                           {row.clibr > 0 ? (
                             <button type="button"
                               className="h-5 rounded px-1.5 text-[10px] hover:opacity-80"
                               onClick={() => void openDetail('3', row)}>
                               {row.clibr}
                             </button>
-                          ) : ''}
+                          ) : row.clibr}
                         </td>
 
                         {/* Transitorias */}
@@ -749,21 +806,21 @@ export function MonitoreoCamasPage() {
                               onClick={() => void openDetail('4', row)}>
                               {row.ctran}
                             </button>
-                          ) : ''}
+                          ) : row.ctran}
                         </td>
 
                         {/* Inhabilitadas */}
-                        <td className={TD}>
+                        <td className={TD} style={{ backgroundColor: inhabilitadasBgColor }}>
                           {row.cinah > 0 ? (
                             <button type="button"
                               className="h-5 rounded px-1.5 text-[10px] hover:opacity-80"
                               onClick={() => void openDetail('5', row)}>
                               {row.cinah}
                             </button>
-                          ) : ''}
+                          ) : row.cinah}
                         </td>
 
-                        {/* Covid (+) — badge verde */}
+                        {/* Covid (+) */}
                         <td className={TD}>
                           {row.pcr > 0 ? (
                             <button type="button"
@@ -771,85 +828,77 @@ export function MonitoreoCamasPage() {
                               onClick={() => void openDetail('8', row)}>
                               {row.pcr}
                             </button>
-                          ) : ''}
+                          ) : row.pcr}
                         </td>
 
-                        {/* ── Resultado Espera ── */}
-                        {/* Antigena — badge verde */}
-                        <td className={TD}>
+                        {/* Resultado Espera */}
+                        {/* Antigena */}
+                        <td className={TD} style={{ backgroundColor: esperaAntBgColor }}>
                           {row.espera_ant > 0 ? (
                             <button type="button"
-                              className="inline-block rounded bg-green-500 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-green-600"
+                              className="inline-block rounded bg-[#d98b27] px-1.5 py-0.5 text-[10px] font-semibold text-white hover:opacity-90"
                               onClick={() => void openDetail('9', row)}>
                               {row.espera_ant}
                             </button>
-                          ) : ''}
+                          ) : row.espera_ant}
                         </td>
 
-                        {/* Molecular — badge verde */}
-                        <td className={TD}>
+                        {/* Molecular */}
+                        <td className={TD} style={{ backgroundColor: esperaMolBgColor }}>
                           {row.espera_mol > 0 ? (
                             <button type="button"
-                              className="inline-block rounded bg-green-500 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-green-600"
+                              className="inline-block rounded bg-[#d98b27] px-1.5 py-0.5 text-[10px] font-semibold text-white hover:opacity-90"
                               onClick={() => void openDetail('9a', row)}>
                               {row.espera_mol}
                             </button>
-                          ) : ''}
+                          ) : row.espera_mol}
                         </td>
 
-                        {/* ── Ventilacion Mecanica ── */}
-                        {/* En_Uso (D) — celeste */}
-                        <td className={TD} style={{ backgroundColor: '#B8E6FC' }}>
-                          {row.c_vm > 0 ? (
-                            <button type="button"
-                              className="h-5 rounded px-1.5 text-[10px] hover:opacity-80"
-                              onClick={() => void openDetail('6', row)}>
-                              {row.c_vm}
-                            </button>
-                          ) : ''}
-                        </td>
-
-                        {/* Total VM — rowspan */}
-                        {showVeces1Group && (
-                          <td className={TD} rowSpan={veces1Span}>{numCell(row.totalvm)}</td>
+                        {/* Ventilacion Mecanica */}
+                        {showServicio && (
+                          <>
+                            <td className={TD} rowSpan={servicioSpan} style={{ backgroundColor: '#B8E6FC' }}>
+                              {metrics.c_vm > 0 ? (
+                                <button type="button"
+                                  className="h-5 rounded px-1.5 text-[10px] hover:opacity-80"
+                                  onClick={() => void openDetail('6', row)}>
+                                  {metrics.c_vm}
+                                </button>
+                              ) : metrics.c_vm}
+                            </td>
+                            <td className={TD} rowSpan={servicioSpan}>{numCell(metrics.totalvm)}</td>
+                            <td className={TD} rowSpan={servicioSpan}>{numCell(metrics.vmopera)}</td>
+                            <td className={TD} rowSpan={servicioSpan}>{numCell(metrics.vminopera)}</td>
+                            <td className={TD} rowSpan={servicioSpan}
+                              style={{ backgroundColor: metrics.vmopera > 0 ? pctBg(metrics.vmPct) : undefined }}>
+                              {metrics.vmopera === 0 ? '0' : pctText(metrics.vmPct)}
+                            </td>
+                          </>
                         )}
 
-                        <td className={TD}>{numCell(row.vmopera)}</td>
-                        <td className={TD}>{numCell(row.vminopera)}</td>
-
-                        {/* % Uso VM — coloreado */}
-                        <td className={TD}
-                          style={{ backgroundColor: row.totalvm > 0 && vmPct > 0 ? pctBg(vmPct) : undefined }}
-                          title={vmPct > 100 ? `+${Math.round(vmPct - 100)}%` : undefined}>
-                          {row.totalvm === 0 ? '0' : pctText(vmPct)}
-                        </td>
-
-                        {/* ── Oxigeno Alto Flujo ── */}
-                        {/* En_uso (F) — celeste */}
-                        <td className={TD} style={{ backgroundColor: '#B8E6FC' }}>
-                          {row.c_fl > 0 ? (
-                            <button type="button"
-                              className="h-5 rounded px-1.5 text-[10px] hover:opacity-80"
-                              onClick={() => void openDetail('7', row)}>
-                              {row.c_fl}
-                            </button>
-                          ) : ''}
-                        </td>
-
-                        {/* Total AF — rowspan */}
-                        {showVeces1Group && (
-                          <td className={TD} rowSpan={veces1Span}>{numCell(row.totalaf)}</td>
+                        {/* Oxigeno Alto Flujo */}
+                        {showServicio && (
+                          <>
+                            <td className={TD} rowSpan={servicioSpan} style={afInactive ? afMutedStyle : { backgroundColor: '#B8E6FC' }}>
+                              {metrics.c_fl > 0 ? (
+                                <button type="button"
+                                  className="h-5 rounded px-1.5 text-[10px] hover:opacity-80"
+                                  onClick={() => void openDetail('7', row)}>
+                                  {metrics.c_fl}
+                                </button>
+                              ) : metrics.c_fl}
+                            </td>
+                            <td className={TD} rowSpan={servicioSpan} style={afMutedStyle}>{numCell(metrics.totalaf)}</td>
+                            <td className={TD} rowSpan={servicioSpan} style={afMutedStyle}>{numCell(metrics.afopera)}</td>
+                            <td className={TD} rowSpan={servicioSpan} style={afMutedStyle}>{numCell(metrics.afinopera)}</td>
+                            <td className={TD} rowSpan={servicioSpan}
+                              style={afInactive
+                                ? afMutedStyle
+                                : { backgroundColor: metrics.afopera > 0 ? pctBg(metrics.afPct) : undefined }}>
+                              {metrics.totalaf === 0 ? '—' : pctText(metrics.afPct)}
+                            </td>
+                          </>
                         )}
-
-                        <td className={TD}>{numCell(row.afopera)}</td>
-                        <td className={TD}>{numCell(row.afinopera)}</td>
-
-                        {/* % Uso AF — coloreado */}
-                        <td className={TD}
-                          style={{ backgroundColor: row.totalaf > 0 && afPct > 0 ? pctBg(afPct) : undefined }}
-                          title={afPct > 100 ? `+${Math.round(afPct - 100)}%` : undefined}>
-                          {row.totalaf === 0 ? '0' : pctText(afPct)}
-                        </td>
                       </tr>
                     )
                   })

@@ -9,6 +9,8 @@
     "dev:full": "concurrently \"npm run server\" \"npm run dev\"",
     "build": "tsc -b && vite build",
     "lint": "eslint . --max-warnings=0",
+    "test": "node --test server/tests/susalud-parity.test.js",
+    "test:susalud:legacy-file": "node server/tests/susalud-legacy-file-parity.test.js",
     "preview": "vite preview",
     "typecheck": "tsc -b"
   },
