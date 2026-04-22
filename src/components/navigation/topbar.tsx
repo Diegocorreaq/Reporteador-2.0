@@ -181,6 +181,12 @@ export function Topbar({ workspace, onOpenMobile }: TopbarProps) {
   const overflowQuickLinks = quickLinks.slice(2)
 
   const handleLogout = () => {
+    // Clear the server-side session cookie before wiping local state
+    import('@/services/auth/auth.service').then(({ authService }) => {
+      authService.signOut().catch(() => {
+        // Proceed with local cleanup even if the backend call fails
+      })
+    })
     signOut()
     navigate('/login')
   }

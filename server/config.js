@@ -1,10 +1,12 @@
 import dotenv from 'dotenv'
+import { logger } from './utils/logger.js'
 
 dotenv.config()
 
+const isProduction = process.env.NODE_ENV === 'production'
+
 function toNumber(value, fallback) {
   const parsed = Number(value)
-
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
@@ -12,7 +14,6 @@ function toBoolean(value, fallback) {
   if (value === undefined) {
     return fallback
   }
-
   return ['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase())
 }
 
@@ -26,6 +27,25 @@ function buildDbConfig(prefix = '') {
   const trustKey = prefix ? `${prefix}_TRUST_CERT` : 'SQL_TRUST_CERT'
   const poolKey = prefix ? `${prefix}_POOL_MAX` : 'SQL_POOL_MAX'
 
+  const encrypt = toBoolean(process.env[encKey], isProduction)
+  const trustServerCertificate = toBoolean(process.env[trustKey], !isProduction)
+
+  if (isProduction && !encrypt) {
+    logger.warn({
+      event: 'config:sql-insecure',
+      prefix: prefix || 'general',
+      message: `SQL connection '${prefix || 'general'}' has encrypt=false in production. Set ${encKey}=true.`,
+    })
+  }
+
+  if (isProduction && trustServerCertificate) {
+    logger.warn({
+      event: 'config:sql-insecure',
+      prefix: prefix || 'general',
+      message: `SQL connection '${prefix || 'general'}' has trustServerCertificate=true in production. Set ${trustKey}=false.`,
+    })
+  }
+
   return {
     server: process.env[hostKey] ?? '192.168.32.129',
     port: toNumber(process.env[portKey], 1433),
@@ -33,8 +53,8 @@ function buildDbConfig(prefix = '') {
     user: process.env[userKey] ?? '',
     password: process.env[passKey] ?? '',
     options: {
-      encrypt: toBoolean(process.env[encKey], false),
-      trustServerCertificate: toBoolean(process.env[trustKey], true),
+      encrypt,
+      trustServerCertificate,
       enableArithAbort: true,
       appName: 'Reporteador-2.0',
     },
@@ -46,16 +66,59 @@ function buildDbConfig(prefix = '') {
   }
 }
 
+function validateProductionConfig() {
+  if (!isProduction) return
+
+  const missing = []
+
+  if (!process.env.JWT_SECRET) {
+    missing.push('JWT_SECRET')
+  }
+
+  if (missing.length > 0) {
+    // Fail fast — missing critical secret in production
+    logger.error({
+      event: 'config:startup-validation-failed',
+      missing,
+      message: `Variables de entorno críticas no configuradas en producción: ${missing.join(', ')}`,
+    })
+    process.exit(1)
+  }
+}
+
+if (!process.env.JWT_SECRET) {
+  if (isProduction) {
+    // Already handled above via validateProductionConfig
+  } else {
+    logger.warn({
+      event: 'config:jwt-secret-missing',
+      message:
+        'JWT_SECRET no está configurado. Las sesiones no serán seguras. Configura JWT_SECRET en .env.',
+    })
+  }
+}
+
+// Parse allowed CORS origins from env (comma-separated list)
+function parseCorsOrigins() {
+  const raw = process.env.CORS_ORIGIN
+  if (!raw) return null
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
 export const serverConfig = {
   port: toNumber(process.env.SERVER_PORT, 8787),
+  isProduction,
+  jwtSecret: process.env.JWT_SECRET ?? 'dev-insecure-secret-change-in-production',
+  corsOrigins: parseCorsOrigins(),
   db: {
-    // General connection for main app
     general: buildDbConfig(''),
-
-    // SIGH connection 1 (default for most SIGH modules)
     sigh1: buildDbConfig('SIGH_SQL1'),
-
-    // SIGH connection 2 (for Producción de Médicos)
     sigh2: buildDbConfig('SIGH_SQL2'),
   },
 }
+
+// Validate required production config (must run after serverConfig is defined)
+validateProductionConfig()

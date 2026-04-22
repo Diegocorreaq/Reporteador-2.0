@@ -6,7 +6,11 @@ import {
   listCatalogExports,
   validateLegacyUser,
 } from '../services/legacy-export.service.js'
-import { getFamiliaPendienteReport, listFamiliaPendienteUpss, exportFamiliaPendienteNominal } from '../services/sigh-monitoreo.service.js'
+import {
+  exportFamiliaPendienteNominal,
+  getFamiliaPendienteReport,
+  listFamiliaPendienteUpss,
+} from '../services/sigh-monitoreo.service.js'
 import {
   exportProduccionMedicosExcel,
   exportProduccionMedicosPdf,
@@ -15,6 +19,8 @@ import {
   searchProduccionMedicos,
 } from '../services/sigh-prod-medicos.service.js'
 import {
+  exportMonitoreoCamasResumen,
+  exportMonitoreoCamasSusalud,
   getCamasDetalle,
   getCamasServicioAgrupadoInfo,
   getGestionEstanciaMovimientoCabecera,
@@ -24,16 +30,14 @@ import {
   getGestionEstanciaMovimientoProfesionales,
   getGestionEstanciaMovimientoTransferencias,
   getGestionEstanciaMovimientos,
-  getGestionEstanciaResumen,
   getGestionEstanciaReport,
+  getGestionEstanciaResumen,
   getMonitoreoCamasReport,
   getOcupacionHospitalizacionReport,
   getOcupacionUciReport,
   getResumenCamasReport,
   listCamasServiciosAgrupados,
   listTiposCama,
-  exportMonitoreoCamasResumen,
-  exportMonitoreoCamasSusalud,
 } from '../services/sigh-camas.service.js'
 import {
   getGestionCitasReport,
@@ -51,21 +55,23 @@ import {
   searchLavadoEmpleados,
   updateLavadoRegistro,
 } from '../services/lavado-manos.service.js'
+import { requireAuth } from '../middleware/require-auth.js'
+import { authLimiter, exportLimiter } from '../middleware/rate-limit.js'
+import {
+  SESSION_COOKIE_NAME,
+  getSessionCookieOptions,
+} from '../utils/cookies.js'
+import { createSession } from '../services/auth-session.service.js'
+import { logger } from '../utils/logger.js'
 
-export const reportsRouter = Router()
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getClientIp(request) {
   const forwarded = request.headers['x-forwarded-for']
-
-  if (typeof forwarded === 'string' && forwarded.length) {
+  if (typeof forwarded === 'string' && forwarded.length > 0) {
     return forwarded.split(',')[0].trim()
   }
-
-  if (Array.isArray(forwarded) && forwarded[0]) {
-    return String(forwarded[0])
-  }
-
-  return request.ip || request.socket.remoteAddress || '0.0.0.0'
+  return request.ip || request.socket?.remoteAddress || '0.0.0.0'
 }
 
 function sendDownload(response, file) {
@@ -74,28 +80,114 @@ function sendDownload(response, file) {
   response.send(file.content)
 }
 
+// Safe error handler: logs internally, never exposes error details to client
 function handleError(response, error, fallbackMessage = 'No se pudo procesar la solicitud.') {
-  const message = error instanceof Error ? error.message : fallbackMessage
-  response.status(500).json({ message })
+  logger.error({
+    correlationId: response.req?.correlationId ?? 'unknown',
+    path: response.req?.path,
+    userId: response.req?.user?.id ?? null,
+    message: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  })
+  response.status(500).json({
+    message: fallbackMessage,
+    correlationId: response.req?.correlationId,
+  })
 }
 
+// ─── Route classification ─────────────────────────────────────────────────────
+//
+// PUBLIC_ROUTES  : no auth required (health check, validate/login compat endpoints)
+// PROTECTED      : requireAuth applied (all other routes)
+
+export const reportsRouter = Router()
+
+// ─── Public routes ────────────────────────────────────────────────────────────
+
 reportsRouter.get('/health', (_request, response) => {
-  response.json({
-    ok: true,
-    service: 'legacy-api',
-  })
+  response.json({ ok: true, service: 'legacy-api' })
 })
 
-reportsRouter.get('/reports/centro-obstetrico', async (request, response) => {
+// Compatibility endpoint — also issues a session cookie on success
+// Frontend uses this path via auth.service.ts signIn for the legacy flow
+reportsRouter.post('/exports/validate', authLimiter, async (request, response) => {
+  try {
+    const { username, password, scope } = request.body ?? {}
+    const ip = getClientIp(request)
+
+    const validation = await validateLegacyUser({
+      dni: String(username ?? '').trim(),
+      password: String(password ?? '').trim(),
+      ip,
+      scope: scope === 'lavado' ? 'lavado' : 'general',
+    })
+
+    // Issue session cookie if validation succeeds (backwards-compat path)
+    if (validation.ok && validation.employeeId) {
+      const employeeName = String(validation.employeeName ?? '').trim()
+      if (employeeName && !/^\d+$/.test(employeeName)) {
+        const token = createSession({
+          id: `emp-${validation.employeeId}`,
+          username: String(username ?? '').trim(),
+          employeeId: validation.employeeId,
+          name: employeeName,
+          scope: scope === 'lavado' ? 'lavado' : 'general',
+        })
+        response.cookie(SESSION_COOKIE_NAME, token, getSessionCookieOptions())
+      }
+    }
+
+    response.json(validation)
+  } catch (error) {
+    handleError(response, error, 'No se pudo validar el usuario.')
+  }
+})
+
+// Lavado compatibility endpoint — also issues session cookie on success
+reportsRouter.post('/epidemiologia/lavado/validate', authLimiter, async (request, response) => {
+  try {
+    const { username, password } = request.body ?? {}
+    const ip = getClientIp(request)
+
+    const validation = await validateLegacyUser({
+      dni: String(username ?? '').trim(),
+      password: String(password ?? '').trim(),
+      ip,
+      scope: 'lavado',
+    })
+
+    if (validation.ok && validation.employeeId) {
+      const employeeName = String(validation.employeeName ?? '').trim()
+      if (employeeName && !/^\d+$/.test(employeeName)) {
+        const token = createSession({
+          id: `emp-${validation.employeeId}`,
+          username: String(username ?? '').trim(),
+          employeeId: validation.employeeId,
+          name: employeeName,
+          scope: 'lavado',
+        })
+        response.cookie(SESSION_COOKIE_NAME, token, getSessionCookieOptions())
+      }
+    }
+
+    response.json(validation)
+  } catch (error) {
+    handleError(response, error, 'No se pudo validar el usuario para lavado de manos.')
+  }
+})
+
+// ─── Protected routes (require valid session cookie) ──────────────────────────
+
+reportsRouter.get('/reports/centro-obstetrico', requireAuth, async (request, response) => {
   try {
     const payload = await getCentroObstetricoReport(request.query)
     response.json(payload)
   } catch (error) {
-    handleError(response, error, 'No se pudo consultar Centro Obstetrico.')
+    handleError(response, error, 'No se pudo consultar Centro Obstétrico.')
   }
 })
 
-reportsRouter.get('/reports/ucca', async (request, response) => {
+reportsRouter.get('/reports/ucca', requireAuth, async (request, response) => {
   try {
     const payload = await getUccaReport(request.query)
     response.json(payload)
@@ -104,7 +196,7 @@ reportsRouter.get('/reports/ucca', async (request, response) => {
   }
 })
 
-reportsRouter.get('/reports/uccp', async (request, response) => {
+reportsRouter.get('/reports/uccp', requireAuth, async (request, response) => {
   try {
     const payload = await getUccpReport(request.query)
     response.json(payload)
@@ -113,22 +205,7 @@ reportsRouter.get('/reports/uccp', async (request, response) => {
   }
 })
 
-reportsRouter.post('/exports/validate', async (request, response) => {
-  try {
-    const { username, password, scope } = request.body ?? {}
-    const validation = await validateLegacyUser({
-      dni: String(username ?? '').trim(),
-      password: String(password ?? '').trim(),
-      ip: getClientIp(request),
-      scope: scope === 'lavado' ? 'lavado' : 'general',
-    })
-    response.json(validation)
-  } catch (error) {
-    handleError(response, error, 'No se pudo validar el usuario.')
-  }
-})
-
-reportsRouter.get('/exports/catalog', (request, response) => {
+reportsRouter.get('/exports/catalog', requireAuth, (request, response) => {
   const catalog = String(request.query.catalog ?? '').trim()
   response.json({
     catalog,
@@ -136,7 +213,7 @@ reportsRouter.get('/exports/catalog', (request, response) => {
   })
 })
 
-reportsRouter.get('/exports/download', async (request, response) => {
+reportsRouter.get('/exports/download', requireAuth, exportLimiter, async (request, response) => {
   try {
     const catalog = String(request.query.catalog ?? '').trim()
     const key = String(request.query.key ?? '').trim()
@@ -159,7 +236,7 @@ reportsRouter.get('/exports/download', async (request, response) => {
   }
 })
 
-reportsRouter.get('/sigh/monitoreo/familia-pendiente/upss', async (_request, response) => {
+reportsRouter.get('/sigh/monitoreo/familia-pendiente/upss', requireAuth, async (_request, response) => {
   try {
     const rows = await listFamiliaPendienteUpss()
     response.json({ rows })
@@ -168,7 +245,7 @@ reportsRouter.get('/sigh/monitoreo/familia-pendiente/upss', async (_request, res
   }
 })
 
-reportsRouter.get('/sigh/monitoreo/familia-pendiente', async (request, response) => {
+reportsRouter.get('/sigh/monitoreo/familia-pendiente', requireAuth, async (request, response) => {
   try {
     const upss = String(request.query.upss ?? '').trim()
     const payload = await getFamiliaPendienteReport(upss)
@@ -178,7 +255,7 @@ reportsRouter.get('/sigh/monitoreo/familia-pendiente', async (request, response)
   }
 })
 
-reportsRouter.get('/sigh/monitoreo/familia-pendiente/export', async (request, response) => {
+reportsRouter.get('/sigh/monitoreo/familia-pendiente/export', requireAuth, exportLimiter, async (request, response) => {
   try {
     const upss = String(request.query.upss ?? '').trim()
     const empleadoId = Number(request.query.employeeId ?? 0)
@@ -189,7 +266,7 @@ reportsRouter.get('/sigh/monitoreo/familia-pendiente/export', async (request, re
   }
 })
 
-reportsRouter.get('/sigh/prod-medicos/empleados', async (request, response) => {
+reportsRouter.get('/sigh/prod-medicos/empleados', requireAuth, async (request, response) => {
   try {
     const rows = await searchProduccionMedicos(request.query.term)
     response.json({ rows })
@@ -198,7 +275,7 @@ reportsRouter.get('/sigh/prod-medicos/empleados', async (request, response) => {
   }
 })
 
-reportsRouter.get('/sigh/prod-medicos/resumen', async (request, response) => {
+reportsRouter.get('/sigh/prod-medicos/resumen', requireAuth, async (request, response) => {
   try {
     const payload = await getProduccionMedicosResumen({
       fechaInicio: request.query.fechaInicio,
@@ -207,11 +284,11 @@ reportsRouter.get('/sigh/prod-medicos/resumen', async (request, response) => {
     })
     response.json(payload)
   } catch (error) {
-    handleError(response, error, 'No se pudo consultar la produccion de medicos.')
+    handleError(response, error, 'No se pudo consultar la producción de médicos.')
   }
 })
 
-reportsRouter.get('/sigh/prod-medicos/detalle', async (request, response) => {
+reportsRouter.get('/sigh/prod-medicos/detalle', requireAuth, async (request, response) => {
   try {
     const payload = await getProduccionMedicosDetalle({
       fechaInicio: request.query.fechaInicio,
@@ -221,11 +298,11 @@ reportsRouter.get('/sigh/prod-medicos/detalle', async (request, response) => {
     })
     response.json(payload)
   } catch (error) {
-    handleError(response, error, 'No se pudo consultar el detalle de produccion.')
+    handleError(response, error, 'No se pudo consultar el detalle de producción.')
   }
 })
 
-reportsRouter.get('/sigh/prod-medicos/export/excel', async (request, response) => {
+reportsRouter.get('/sigh/prod-medicos/export/excel', requireAuth, exportLimiter, async (request, response) => {
   try {
     const file = await exportProduccionMedicosExcel({
       fechaInicio: request.query.fechaInicio,
@@ -234,11 +311,11 @@ reportsRouter.get('/sigh/prod-medicos/export/excel', async (request, response) =
     })
     sendDownload(response, file)
   } catch (error) {
-    handleError(response, error, 'No se pudo exportar la produccion en Excel.')
+    handleError(response, error, 'No se pudo exportar la producción en Excel.')
   }
 })
 
-reportsRouter.get('/sigh/prod-medicos/export/pdf', async (request, response) => {
+reportsRouter.get('/sigh/prod-medicos/export/pdf', requireAuth, exportLimiter, async (request, response) => {
   try {
     const file = await exportProduccionMedicosPdf({
       fechaInicio: request.query.fechaInicio,
@@ -248,11 +325,11 @@ reportsRouter.get('/sigh/prod-medicos/export/pdf', async (request, response) => 
     response.setHeader('Content-Type', file.mimeType)
     response.send(file.content)
   } catch (error) {
-    handleError(response, error, 'No se pudo generar la vista imprimible de produccion.')
+    handleError(response, error, 'No se pudo generar la vista imprimible de producción.')
   }
 })
 
-reportsRouter.get('/sigh/camas/servicios', async (_request, response) => {
+reportsRouter.get('/sigh/camas/servicios', requireAuth, async (_request, response) => {
   try {
     const rows = await listCamasServiciosAgrupados()
     response.json({ rows })
@@ -261,7 +338,7 @@ reportsRouter.get('/sigh/camas/servicios', async (_request, response) => {
   }
 })
 
-reportsRouter.get('/sigh/camas/servicio-info', async (request, response) => {
+reportsRouter.get('/sigh/camas/servicio-info', requireAuth, async (request, response) => {
   try {
     const servicio = String(request.query.servicio ?? '').trim()
     const row = await getCamasServicioAgrupadoInfo(servicio)
@@ -271,7 +348,7 @@ reportsRouter.get('/sigh/camas/servicio-info', async (request, response) => {
   }
 })
 
-reportsRouter.get('/sigh/camas/estancia', async (request, response) => {
+reportsRouter.get('/sigh/camas/estancia', requireAuth, async (request, response) => {
   try {
     const rows = await getGestionEstanciaReport({
       servicio: request.query.servicio,
@@ -280,11 +357,11 @@ reportsRouter.get('/sigh/camas/estancia', async (request, response) => {
     })
     response.json({ rows })
   } catch (error) {
-    handleError(response, error, 'No se pudo consultar la gestion de estancia.')
+    handleError(response, error, 'No se pudo consultar la gestión de estancia.')
   }
 })
 
-reportsRouter.get('/sigh/camas/estancia/resumen', async (request, response) => {
+reportsRouter.get('/sigh/camas/estancia/resumen', requireAuth, async (request, response) => {
   try {
     const rows = await getGestionEstanciaResumen({
       servicio: request.query.servicio,
@@ -293,11 +370,11 @@ reportsRouter.get('/sigh/camas/estancia/resumen', async (request, response) => {
     })
     response.json({ row: rows[0] ?? null })
   } catch (error) {
-    handleError(response, error, 'No se pudo consultar el resumen de camas para la gestion de estancia.')
+    handleError(response, error, 'No se pudo consultar el resumen de camas para la gestión de estancia.')
   }
 })
 
-reportsRouter.get('/sigh/camas/estancia/movimientos', async (request, response) => {
+reportsRouter.get('/sigh/camas/estancia/movimientos', requireAuth, async (request, response) => {
   try {
     const rows = await getGestionEstanciaMovimientos({
       upss: request.query.upss,
@@ -309,7 +386,7 @@ reportsRouter.get('/sigh/camas/estancia/movimientos', async (request, response) 
   }
 })
 
-reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/cabecera', async (request, response) => {
+reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/cabecera', requireAuth, async (request, response) => {
   try {
     const rows = await getGestionEstanciaMovimientoCabecera(request.params.orden)
     response.json({ rows })
@@ -318,16 +395,16 @@ reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/cabecera', async (req
   }
 })
 
-reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/diagnosticos', async (request, response) => {
+reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/diagnosticos', requireAuth, async (request, response) => {
   try {
     const rows = await getGestionEstanciaMovimientoDiagnosticos(request.params.orden)
     response.json({ rows })
   } catch (error) {
-    handleError(response, error, 'No se pudo consultar diagnosticos del movimiento.')
+    handleError(response, error, 'No se pudo consultar diagnósticos del movimiento.')
   }
 })
 
-reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/transferencias', async (request, response) => {
+reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/transferencias', requireAuth, async (request, response) => {
   try {
     const rows = await getGestionEstanciaMovimientoTransferencias(request.params.orden)
     response.json({ rows })
@@ -336,7 +413,7 @@ reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/transferencias', asyn
   }
 })
 
-reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/profesionales', async (request, response) => {
+reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/profesionales', requireAuth, async (request, response) => {
   try {
     const rows = await getGestionEstanciaMovimientoProfesionales(request.params.orden)
     response.json({ rows })
@@ -345,7 +422,7 @@ reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/profesionales', async
   }
 })
 
-reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/procedimientos', async (request, response) => {
+reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/procedimientos', requireAuth, async (request, response) => {
   try {
     const rows = await getGestionEstanciaMovimientoProcedimientos(request.params.orden)
     response.json({ rows })
@@ -354,7 +431,7 @@ reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/procedimientos', asyn
   }
 })
 
-reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/dxcqx', async (request, response) => {
+reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/dxcqx', requireAuth, async (request, response) => {
   try {
     const rows = await getGestionEstanciaMovimientoDxCqx(request.params.orden)
     response.json({ rows })
@@ -363,7 +440,7 @@ reportsRouter.get('/sigh/camas/estancia/movimientos/:orden/dxcqx', async (reques
   }
 })
 
-reportsRouter.get('/sigh/camas/monitoreo', async (_request, response) => {
+reportsRouter.get('/sigh/camas/monitoreo', requireAuth, async (_request, response) => {
   try {
     const rows = await getMonitoreoCamasReport()
     response.json({ rows })
@@ -372,16 +449,16 @@ reportsRouter.get('/sigh/camas/monitoreo', async (_request, response) => {
   }
 })
 
-reportsRouter.get('/sigh/camas/tipos', async (_request, response) => {
+reportsRouter.get('/sigh/camas/tipos', requireAuth, async (_request, response) => {
   try {
     const rows = await listTiposCama()
     response.json({ rows })
   } catch (error) {
-    handleError(response, error, 'No se pudo obtener el catalogo de tipos de cama.')
+    handleError(response, error, 'No se pudo obtener el catálogo de tipos de cama.')
   }
 })
 
-reportsRouter.get('/sigh/camas/resumen', async (request, response) => {
+reportsRouter.get('/sigh/camas/resumen', requireAuth, async (request, response) => {
   try {
     const rows = await getResumenCamasReport(request.query.tipoCama)
     response.json({ rows })
@@ -390,25 +467,25 @@ reportsRouter.get('/sigh/camas/resumen', async (request, response) => {
   }
 })
 
-reportsRouter.get('/sigh/camas/ocupacion/hospitalizacion', async (_request, response) => {
+reportsRouter.get('/sigh/camas/ocupacion/hospitalizacion', requireAuth, async (_request, response) => {
   try {
     const rows = await getOcupacionHospitalizacionReport()
     response.json({ rows })
   } catch (error) {
-    handleError(response, error, 'No se pudo consultar la ocupacion de Hospitalizacion.')
+    handleError(response, error, 'No se pudo consultar la ocupación de Hospitalización.')
   }
 })
 
-reportsRouter.get('/sigh/camas/ocupacion/uci', async (_request, response) => {
+reportsRouter.get('/sigh/camas/ocupacion/uci', requireAuth, async (_request, response) => {
   try {
     const rows = await getOcupacionUciReport()
     response.json({ rows })
   } catch (error) {
-    handleError(response, error, 'No se pudo consultar la ocupacion de UCI.')
+    handleError(response, error, 'No se pudo consultar la ocupación de UCI.')
   }
 })
 
-reportsRouter.get('/sigh/camas/detalle', async (request, response) => {
+reportsRouter.get('/sigh/camas/detalle', requireAuth, async (request, response) => {
   try {
     const rows = await getCamasDetalle(request.query.tipoDetalle, {
       idServicio: request.query.idServicio,
@@ -420,7 +497,7 @@ reportsRouter.get('/sigh/camas/detalle', async (request, response) => {
   }
 })
 
-reportsRouter.get('/sigh/camas/export/resumen', async (_request, response) => {
+reportsRouter.get('/sigh/camas/export/resumen', requireAuth, exportLimiter, async (_request, response) => {
   try {
     const file = await exportMonitoreoCamasResumen()
     sendDownload(response, file)
@@ -429,7 +506,7 @@ reportsRouter.get('/sigh/camas/export/resumen', async (_request, response) => {
   }
 })
 
-reportsRouter.get('/sigh/camas/export/susalud', async (_request, response) => {
+reportsRouter.get('/sigh/camas/export/susalud', requireAuth, exportLimiter, async (_request, response) => {
   try {
     const file = await exportMonitoreoCamasSusalud()
     sendDownload(response, file)
@@ -438,7 +515,7 @@ reportsRouter.get('/sigh/camas/export/susalud', async (_request, response) => {
   }
 })
 
-reportsRouter.get('/sigh/gestion-citas', async (request, response) => {
+reportsRouter.get('/sigh/gestion-citas', requireAuth, async (request, response) => {
   try {
     const payload = await getGestionCitasReport({
       fechaInicio: request.query.fechaInicio,
@@ -446,11 +523,11 @@ reportsRouter.get('/sigh/gestion-citas', async (request, response) => {
     })
     response.json(payload)
   } catch (error) {
-    handleError(response, error, 'No se pudo consultar Gestion de Citas.')
+    handleError(response, error, 'No se pudo consultar Gestión de Citas.')
   }
 })
 
-reportsRouter.get('/sigh/rol-consulta-externa', async (request, response) => {
+reportsRouter.get('/sigh/rol-consulta-externa', requireAuth, async (request, response) => {
   try {
     const payload = await getRolConsultaExternaReport({
       fechaInicio: request.query.fechaInicio,
@@ -462,7 +539,7 @@ reportsRouter.get('/sigh/rol-consulta-externa', async (request, response) => {
   }
 })
 
-reportsRouter.get('/sigh/monitoreo-tickets', async (_request, response) => {
+reportsRouter.get('/sigh/monitoreo-tickets', requireAuth, async (_request, response) => {
   try {
     const payload = await getMonitoreoTicketsReport()
     response.json(payload)
@@ -471,7 +548,7 @@ reportsRouter.get('/sigh/monitoreo-tickets', async (_request, response) => {
   }
 })
 
-reportsRouter.get('/sigh/monitoreo-ventanilla', async (_request, response) => {
+reportsRouter.get('/sigh/monitoreo-ventanilla', requireAuth, async (_request, response) => {
   try {
     const payload = await getMonitoreoVentanillaReport()
     response.json(payload)
@@ -480,22 +557,8 @@ reportsRouter.get('/sigh/monitoreo-ventanilla', async (_request, response) => {
   }
 })
 
-reportsRouter.post('/epidemiologia/lavado/validate', async (request, response) => {
-  try {
-    const { username, password } = request.body ?? {}
-    const validation = await validateLegacyUser({
-      dni: String(username ?? '').trim(),
-      password: String(password ?? '').trim(),
-      ip: getClientIp(request),
-      scope: 'lavado',
-    })
-    response.json(validation)
-  } catch (error) {
-    handleError(response, error, 'No se pudo validar el usuario para lavado de manos.')
-  }
-})
-
-reportsRouter.get('/epidemiologia/lavado', async (request, response) => {
+// Lavado de manos — read routes (require auth)
+reportsRouter.get('/epidemiologia/lavado', requireAuth, async (request, response) => {
   try {
     const payload = await listLavadoManos({
       fechaInicio: request.query.fechaInicio,
@@ -508,7 +571,7 @@ reportsRouter.get('/epidemiologia/lavado', async (request, response) => {
   }
 })
 
-reportsRouter.get('/epidemiologia/lavado/empleados', async (request, response) => {
+reportsRouter.get('/epidemiologia/lavado/empleados', requireAuth, async (request, response) => {
   try {
     const rows = await searchLavadoEmpleados(request.query.nombre)
     response.json({ rows })
@@ -517,7 +580,7 @@ reportsRouter.get('/epidemiologia/lavado/empleados', async (request, response) =
   }
 })
 
-reportsRouter.get('/epidemiologia/lavado/actividades', async (request, response) => {
+reportsRouter.get('/epidemiologia/lavado/actividades', requireAuth, async (request, response) => {
   try {
     const rows = await listLavadoActividades(request.query.tipo)
     response.json({ rows })
@@ -526,7 +589,7 @@ reportsRouter.get('/epidemiologia/lavado/actividades', async (request, response)
   }
 })
 
-reportsRouter.get('/epidemiologia/lavado/export', async (request, response) => {
+reportsRouter.get('/epidemiologia/lavado/export', requireAuth, exportLimiter, async (request, response) => {
   try {
     const file = await exportLavadoRegistros({
       fechaInicio: request.query.fechaInicio,
@@ -538,7 +601,7 @@ reportsRouter.get('/epidemiologia/lavado/export', async (request, response) => {
   }
 })
 
-reportsRouter.get('/epidemiologia/lavado/:id', async (request, response) => {
+reportsRouter.get('/epidemiologia/lavado/:id', requireAuth, async (request, response) => {
   try {
     const payload = await getLavadoRegistro(request.params.id)
     response.json(payload)
@@ -547,7 +610,8 @@ reportsRouter.get('/epidemiologia/lavado/:id', async (request, response) => {
   }
 })
 
-reportsRouter.post('/epidemiologia/lavado', async (request, response) => {
+// Lavado de manos — write routes (require auth — sensitive operations)
+reportsRouter.post('/epidemiologia/lavado', requireAuth, async (request, response) => {
   try {
     const payload = await createLavadoRegistro(request.body ?? {})
     response.status(201).json(payload)
@@ -556,7 +620,7 @@ reportsRouter.post('/epidemiologia/lavado', async (request, response) => {
   }
 })
 
-reportsRouter.put('/epidemiologia/lavado/:id', async (request, response) => {
+reportsRouter.put('/epidemiologia/lavado/:id', requireAuth, async (request, response) => {
   try {
     const payload = await updateLavadoRegistro(request.params.id, request.body ?? {})
     response.json(payload)
@@ -565,7 +629,7 @@ reportsRouter.put('/epidemiologia/lavado/:id', async (request, response) => {
   }
 })
 
-reportsRouter.post('/epidemiologia/lavado/:id/anular', async (request, response) => {
+reportsRouter.post('/epidemiologia/lavado/:id/anular', requireAuth, async (request, response) => {
   try {
     const payload = await anularLavadoRegistro(request.params.id)
     response.json(payload)

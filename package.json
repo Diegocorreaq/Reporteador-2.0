@@ -12,7 +12,8 @@
     "test": "node --test server/tests/susalud-parity.test.js",
     "test:susalud:legacy-file": "node server/tests/susalud-legacy-file-parity.test.js",
     "preview": "vite preview",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "security:release-check": "node scripts/security-release-check.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -23,11 +24,16 @@
     "axios": "^1.15.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
     "dotenv": "^17.4.1",
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.6",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.3.2",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.8.0",
     "mssql": "^12.2.1",
     "react": "^19.2.4",
