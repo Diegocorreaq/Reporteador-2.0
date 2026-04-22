@@ -149,7 +149,7 @@ export function RegistrosProduccionPage() {
       error={error}
       description="Exportacion de registros por periodo con validacion SISGALEN y control de rango por reporte."
       actions={
-        <Button size="sm" variant="outline" onClick={() => setIsAuthDialogOpen(true)}>
+        <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={() => setIsAuthDialogOpen(true)}>
           <ShieldCheck className="h-4 w-4" />
           {authorizedUser ? 'Cambiar usuario' : 'Validar usuario'}
         </Button>
@@ -166,7 +166,7 @@ export function RegistrosProduccionPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4 pt-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-brand-strong" htmlFor="prod-fecha-inicio">
                 Desde
@@ -189,16 +189,18 @@ export function RegistrosProduccionPage() {
                 onChange={(event) => setFilters((current) => ({ ...current, fechaFin: event.target.value }))}
               />
             </div>
-            <div className="flex items-end text-xs text-muted">
+            <div className="flex items-end text-xs text-muted sm:col-span-2 lg:col-span-1">
               Rango actual: {countDaysBetween(filters.fechaInicio, filters.fechaFin)} dias
             </div>
           </div>
 
+          <p className="text-[11px] text-muted sm:hidden">Desliza la tabla para ver reportes y acciones.</p>
+
           <div className="overflow-x-auto rounded-md border border-border/70">
-            <table className="min-w-[800px] border-collapse text-[12px]">
+            <table className="min-w-[680px] border-collapse text-[11px] sm:min-w-[800px] sm:text-[12px]">
               <thead>
                 <tr className="bg-[#123B63] text-white">
-                  <th className="w-10 border-b border-white/15 px-2 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wide">Ord</th>
+                  <th className="hidden w-10 border-b border-white/15 px-2 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wide sm:table-cell">Ord</th>
                   <th className="border-b border-white/15 px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide">Tipo de Reporte</th>
                   <th className="w-28 border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide">Archivo</th>
                 </tr>
@@ -206,12 +208,12 @@ export function RegistrosProduccionPage() {
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.key} className="odd:bg-white even:bg-[#f8fbff]">
-                    <td className="border-b border-border/70 px-2 py-1.5 text-right align-middle">{row.order}</td>
-                    <td className="border-b border-border/70 px-2 py-1.5 align-middle font-medium text-[#123B63]">{row.label}</td>
+                    <td className="hidden border-b border-border/70 px-2 py-1.5 text-right align-middle sm:table-cell">{row.order}</td>
+                    <td className="border-b border-border/70 px-2 py-1.5 align-middle font-medium text-[#123B63] whitespace-normal">{row.label}</td>
                     <td className="border-b border-border/70 px-2 py-1.5 align-middle">
                       <Button
                         size="sm"
-                        className="h-7 gap-1.5 px-3 text-[11px] font-semibold"
+                        className="h-7 w-full gap-1.5 px-2 text-[11px] font-semibold sm:w-auto sm:px-3"
                         style={row.enabled && authorizedUser && isRangeValid ? { backgroundColor: '#005F8F', color: '#fff' } : undefined}
                         variant={row.enabled && authorizedUser && isRangeValid ? 'default' : 'outline'}
                         onClick={() => void handleDownload(row)}

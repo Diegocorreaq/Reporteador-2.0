@@ -58,10 +58,10 @@ const COLOR_PORCENTAJE = '#E9E2B8'
 const COLOR_SUBTOTAL = '#D0D0D0'
 const COLOR_TOTAL = '#C6C6C6'
 
-const WRAPPER = 'mx-auto w-fit max-w-full'
+const WRAPPER = 'w-full max-w-full sm:mx-auto sm:w-fit'
 const TABLE_CARD = `${WRAPPER} border-border/70 shadow-sm`
 const TABLE_CONTAINER = 'overflow-x-auto rounded-sm border border-[#cfd7df] bg-white'
-const TABLE_BASE = 'w-auto min-w-[980px] table-fixed border-collapse text-[11px] leading-[1.1]'
+const TABLE_BASE = 'w-auto min-w-[820px] table-fixed border-collapse text-[11px] leading-[1.1]'
 
 const TH_BASE = 'border border-[#d0d7e0] px-2 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.03em] text-white'
 const TH_LEFT = `${TH_BASE} text-left`
@@ -206,6 +206,22 @@ function formatReportDate(value: Date): string {
 
 function OcupacionBlock({ title, rows, loading }: OcupacionBlockProps) {
   const tableItems = useMemo(() => buildOcupacionTableItems(rows), [rows])
+  const blockSummary = useMemo(() => {
+    const sums = rows.reduce(
+      (accumulator, row) => ({
+        totalCamas: accumulator.totalCamas + row.totalCamas,
+        habilitadas: accumulator.habilitadas + row.habilitadas,
+        ocupadas: accumulator.ocupadas + row.ocupadas,
+        disponibles: accumulator.disponibles + row.disponibles,
+      }),
+      { totalCamas: 0, habilitadas: 0, ocupadas: 0, disponibles: 0 },
+    )
+
+    return {
+      ...sums,
+      porcentaje: formatPercent(safePercentValue(sums.ocupadas, sums.habilitadas)),
+    }
+  }, [rows])
   const legacySectionTitle = title === 'UCI' ? 'Reporte Resumen de Camas - UCI' : 'Reporte Resumen de Camas - HOSPITALIZACION'
 
   return (
@@ -214,17 +230,40 @@ function OcupacionBlock({ title, rows, loading }: OcupacionBlockProps) {
         <CardTitle className="text-[12px] font-semibold tracking-[0.02em] text-[#1f3650]">{title}</CardTitle>
       </CardHeader>
       <CardContent className="p-2">
+        {rows.length ? (
+          <div className="mb-2 grid gap-2 sm:grid-cols-2 lg:hidden">
+            <div className="rounded-sm border border-border bg-canvas/60 px-2 py-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Habilitadas</p>
+              <p className="text-base font-semibold text-brand-strong">{blockSummary.habilitadas}</p>
+            </div>
+            <div className="rounded-sm border border-border bg-canvas/60 px-2 py-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Ocupadas</p>
+              <p className="text-base font-semibold text-brand-strong">{blockSummary.ocupadas}</p>
+            </div>
+            <div className="rounded-sm border border-border bg-canvas/60 px-2 py-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Disponibles</p>
+              <p className="text-base font-semibold text-brand-strong">{blockSummary.disponibles}</p>
+            </div>
+            <div className="rounded-sm border border-border bg-canvas/60 px-2 py-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">% Ocupacion</p>
+              <p className="text-base font-semibold text-brand-strong">{blockSummary.porcentaje}</p>
+            </div>
+          </div>
+        ) : null}
+
+        <p className="mb-2 text-[11px] text-muted sm:hidden">Desliza la tabla para ver piso, servicio y subtotales.</p>
+
         <div className={TABLE_CONTAINER}>
           <table className={TABLE_BASE}>
             <colgroup>
-              <col className="w-[115px]" />
-              <col className="w-[330px]" />
-              <col className="w-[110px]" />
-              <col className="w-[85px]" />
-              <col className="w-[85px]" />
-              <col className="w-[85px]" />
-              <col className="w-[85px]" />
-              <col className="w-[85px]" />
+              <col className="w-[96px]" />
+              <col className="w-[250px]" />
+              <col className="w-[96px]" />
+              <col className="w-[74px]" />
+              <col className="w-[74px]" />
+              <col className="w-[74px]" />
+              <col className="w-[74px]" />
+              <col className="w-[74px]" />
             </colgroup>
             <thead>
               <tr style={{ backgroundColor: COLOR_HEADER_MAIN }}>

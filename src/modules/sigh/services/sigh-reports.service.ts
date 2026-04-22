@@ -170,7 +170,7 @@ export async function getProduccionMedicosDetalle(filters: ProduccionMedicosFilt
 }
 
 export async function downloadProduccionMedicosExcel(filters: ProduccionMedicosFilters) {
-  await downloadBlob('/sigh/prod-medicos/export/excel', filters)
+  await downloadBlob('/sigh/prod-medicos/export/excel', filters as unknown as Record<string, string | number | undefined>)
 }
 
 export function getProduccionMedicosPdfUrl(filters: ProduccionMedicosFilters) {

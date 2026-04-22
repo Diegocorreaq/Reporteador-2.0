@@ -48,41 +48,54 @@ export function AgentHero({ query, activeQuery, onQueryChange, onQuerySubmit, on
         />
 
         <div className="relative">
-          {/* Header text */}
-          <div className="mb-6 max-w-2xl">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-white/60">
-              Centro de orientación
-            </p>
-            <h1 className="text-2xl font-bold leading-tight text-white sm:text-3xl">
-              Encuentra reportes, tableros y exportables sin recorrer todo el menú
-            </h1>
-            <p className="mt-3 text-base text-white/70">
-              Busca por nombre, palabra clave o intención: camas, hospitalizados, salud mental,
-              producción médicos, epidemiología...
-            </p>
-          </div>
+          <div className="mb-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,520px)] lg:items-center lg:gap-8">
+            <div className="max-w-2xl">
+              {/* Header text */}
+              <div className="mb-6">
+                <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-white/60">
+                  Centro de orientación
+                </p>
+                <h1 className="text-2xl font-bold leading-tight text-white sm:text-3xl">
+                  Encuentra reportes, tableros y exportables sin recorrer todo el menú
+                </h1>
+                <p className="mt-3 text-base text-white/70">
+                  Busca por nombre, palabra clave o intención: camas, hospitalizados, salud mental,
+                  producción médicos, epidemiología...
+                </p>
+              </div>
 
-          {/* Search box */}
-          <div className="mb-5 max-w-2xl">
-            <AgentSearchInput
-              value={query}
-              onChange={onQueryChange}
-              onSubmit={onQuerySubmit}
-              onClear={onQueryClear}
-            />
-          </div>
+              {/* Search box */}
+              <div className="mb-5">
+                <AgentSearchInput
+                  value={query}
+                  onChange={onQueryChange}
+                  onSubmit={onQuerySubmit}
+                  onClear={onQueryClear}
+                />
+              </div>
 
-          {/* Suggestion chips */}
-          <div className="mb-8 max-w-2xl">
-            <AgentSuggestionChips
-              suggestions={suggestions}
-              onSelect={onQuerySubmit}
-              activeQuery={activeQuery}
-            />
+              {/* Suggestion chips */}
+              <div>
+                <AgentSuggestionChips
+                  suggestions={suggestions}
+                  onSelect={onQuerySubmit}
+                  activeQuery={activeQuery}
+                />
+              </div>
+            </div>
+
+            <div className="relative hidden h-[380px] items-end justify-end lg:flex">
+              <img
+                alt="Oso estadístico del Reporteador"
+                className="h-full w-full max-w-[520px] object-contain object-right"
+                loading="lazy"
+                src="/oso_estadistico.png"
+              />
+            </div>
           </div>
 
           {/* Stats row */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {stats.map((stat) => (
               <div
                 key={stat.label}

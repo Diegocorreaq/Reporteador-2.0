@@ -41,7 +41,7 @@ export function RolConsultaExternaPage() {
       description="Programacion de consulta externa segmentada en consultorios, procedimientos e interconsultas."
     >
       <SighFilterPanel processLabel="Consultar" onProcess={() => void handleProcess()}>
-        <div className="w-[180px] space-y-1">
+        <div className="w-full space-y-1 md:w-[180px]">
           <label className="text-xs font-semibold text-brand-strong" htmlFor="rol-fecha-inicio">
             Desde
           </label>
@@ -53,7 +53,7 @@ export function RolConsultaExternaPage() {
           />
         </div>
 
-        <div className="w-[180px] space-y-1">
+        <div className="w-full space-y-1 md:w-[180px]">
           <label className="text-xs font-semibold text-brand-strong" htmlFor="rol-fecha-fin">
             Hasta
           </label>

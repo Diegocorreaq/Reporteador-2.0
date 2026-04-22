@@ -68,7 +68,7 @@ const TH = 'border-b border-white/20 px-2 py-2 text-[11px] font-bold uppercase t
 const TD = 'border-b border-border/65 px-2 py-1.5 text-[12px] leading-[1.2]'
 const TD_TEXT = `${TD} text-left`
 const TD_NUM = `${TD} text-right tabular-nums`
-const TD_PISO = `${TD} w-[148px] min-w-[148px] max-w-[168px] border-r border-r-[#c8d7e6] bg-[#eef4fa] text-center align-middle font-semibold leading-snug text-[#1f3650] whitespace-normal break-words`
+const TD_PISO = `${TD} w-[128px] min-w-[128px] max-w-[168px] border-r border-r-[#c8d7e6] bg-[#eef4fa] text-center align-middle font-semibold leading-snug text-[#1f3650] whitespace-normal break-words sm:w-[148px] sm:min-w-[148px]`
 const TD_SERVICIO = `${TD_TEXT} align-middle font-medium text-[#123B63]`
 
 function safePercentValue(numerator: number, denominator: number): number {
@@ -497,6 +497,19 @@ export function ResumenCamasPage() {
   }
 
   const tableItems = useMemo(() => buildResumenTableItems(rows), [rows])
+  const mobileSummary = useMemo(() => {
+    const totalItem = [...tableItems].reverse().find((item) => item.type === 'total')
+    if (!totalItem || totalItem.type !== 'total') {
+      return null
+    }
+
+    return {
+      operativas: totalItem.sums.operativas,
+      ocupadas: totalItem.sums.ocupadas,
+      disponibles: totalItem.sums.disponibles,
+      porcentaje: formatPercent(safePercentValue(totalItem.sums.ocupadas, totalItem.sums.operativas)),
+    }
+  }, [tableItems])
 
   const detailSpec = CAMAS_DETAIL_MODAL_SPECS[detailType] ?? { title: 'Detalle', columns: [] }
 
@@ -527,7 +540,7 @@ export function ResumenCamasPage() {
       }
     >
       <SighFilterPanel processLabel="Consultar" onProcess={() => void handleFetch()}>
-        <div className="w-[260px] space-y-1">
+        <div className="w-full space-y-1 md:w-[260px]">
           <label className="text-xs font-semibold text-brand-strong" htmlFor="resumen-cama-select">
             Tipo de cama
           </label>
@@ -547,8 +560,31 @@ export function ResumenCamasPage() {
           <CardTitle className="text-sm">Resumen de camas</CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
+          {mobileSummary ? (
+            <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:hidden">
+              <div className="rounded-md border border-border bg-canvas/60 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Operativas</p>
+                <p className="mt-1 text-lg font-semibold text-brand-strong">{mobileSummary.operativas}</p>
+              </div>
+              <div className="rounded-md border border-border bg-canvas/60 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Ocupadas</p>
+                <p className="mt-1 text-lg font-semibold text-brand-strong">{mobileSummary.ocupadas}</p>
+              </div>
+              <div className="rounded-md border border-border bg-canvas/60 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">% Ocupacion</p>
+                <p className="mt-1 text-lg font-semibold text-brand-strong">{mobileSummary.porcentaje}</p>
+              </div>
+              <div className="rounded-md border border-border bg-canvas/60 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Disponibles</p>
+                <p className="mt-1 text-lg font-semibold text-brand-strong">{mobileSummary.disponibles}</p>
+              </div>
+            </div>
+          ) : null}
+
+          <p className="mb-2 text-[11px] text-muted sm:hidden">Desliza la tabla para ver servicio, tipo y metricas.</p>
+
           <div className="overflow-x-auto rounded-md border border-border/70 bg-white">
-            <table className="min-w-[1040px] border-collapse">
+            <table className="min-w-[920px] border-collapse lg:min-w-[1040px]">
               <thead>
                 <tr className="bg-[#0f3e66] text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.2)]">
                   <th className={`${TH} text-center`}>Piso</th>

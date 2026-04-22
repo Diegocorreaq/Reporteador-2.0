@@ -47,7 +47,7 @@ export function WorkspaceHomeModernPage({ workspace }: WorkspaceHomeModernPagePr
       />
 
       {/* Quick Stats */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {quickStats.map((stat) => (
           <Card key={stat.label}>
             <CardContent className="flex items-center gap-4 p-5">
@@ -72,7 +72,7 @@ export function WorkspaceHomeModernPage({ workspace }: WorkspaceHomeModernPagePr
               Enlaces de uso frecuente disponibles para su perfil.
             </p>
           </CardHeader>
-          <CardContent className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
+          <CardContent className="grid gap-4 p-5 md:grid-cols-2 lg:grid-cols-3">
             {quickLinks.map((link) => (
               <WorkspaceQuickLinkAction key={link.key} link={link} view="home" />
             ))}
@@ -86,7 +86,7 @@ export function WorkspaceHomeModernPage({ workspace }: WorkspaceHomeModernPagePr
           <CardTitle>{content.featuredTitle}</CardTitle>
           <p className="text-sm text-muted">{content.featuredDescription}</p>
         </CardHeader>
-        <CardContent className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
+        <CardContent className="grid gap-4 p-5 md:grid-cols-2 lg:grid-cols-3">
           {featuredItems.map((item) => (
             <Link
               className="group flex items-start gap-4 rounded-xl border border-border bg-white p-4 transition hover:border-brand/40 hover:shadow-sm"
@@ -119,7 +119,7 @@ export function WorkspaceHomeModernPage({ workspace }: WorkspaceHomeModernPagePr
                 : 'Opciones adicionales del sistema.'}
             </p>
           </CardHeader>
-          <CardContent className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
+          <CardContent className="grid gap-4 p-5 md:grid-cols-2 lg:grid-cols-3">
             {section.entries.map((entry) =>
               isNavigationGroup(entry) ? (
                 <div

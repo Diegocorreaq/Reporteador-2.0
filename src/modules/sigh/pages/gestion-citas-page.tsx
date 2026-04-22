@@ -56,7 +56,7 @@ export function GestionCitasPage() {
           </div>
         }
       >
-        <div className="w-[180px] space-y-1">
+        <div className="w-full space-y-1 md:w-[180px]">
           <label className="text-xs font-semibold text-brand-strong" htmlFor="gc-fecha-inicio">
             Desde
           </label>
@@ -68,7 +68,7 @@ export function GestionCitasPage() {
           />
         </div>
 
-        <div className="w-[180px] space-y-1">
+        <div className="w-full space-y-1 md:w-[180px]">
           <label className="text-xs font-semibold text-brand-strong" htmlFor="gc-fecha-fin">
             Hasta
           </label>

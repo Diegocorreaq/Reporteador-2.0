@@ -170,37 +170,34 @@ export function SaludMentalReportesPage() {
         <p className="text-xs text-muted">Reportes de la Estrategia - Salud Mental.</p>
       </header>
 
-      <div className="rounded-md border border-border/60 bg-white px-3 py-1.5">
-<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-            <div className="flex items-center gap-2">
-              <label className="shrink-0 text-[11px] font-semibold text-text" htmlFor="sm-fecha-inicio">
-                Desde:
-              </label>
-              <Input
-                id="sm-fecha-inicio"
-                type="date"
-                value={filters.fechaInicio}
-                onChange={(event) => setFilters((current) => ({ ...current, fechaInicio: event.target.value }))}
-                className="h-7 w-[146px] rounded-md px-2 text-[11px]"
-              />
-            </div>
-            <div className="w-8" />
-            <div className="flex items-center gap-2">
-              <label className="shrink-0 text-[11px] font-semibold text-text" htmlFor="sm-fecha-fin">
-                Hasta:
-              </label>
-              <Input
-                id="sm-fecha-fin"
-                type="date"
-                value={filters.fechaFin}
-                onChange={(event) => setFilters((current) => ({ ...current, fechaFin: event.target.value }))}
-                className="h-7 w-[146px] rounded-md px-2 text-[11px]"
-              />
-            </div>
+      <div className="rounded-md border border-border/60 bg-white px-3 py-2">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,180px)_minmax(0,180px)_minmax(0,1fr)] xl:items-end">
+          <div className="space-y-1">
+            <label className="block text-[11px] font-semibold text-text" htmlFor="sm-fecha-inicio">
+              Desde
+            </label>
+            <Input
+              id="sm-fecha-inicio"
+              type="date"
+              value={filters.fechaInicio}
+              onChange={(event) => setFilters((current) => ({ ...current, fechaInicio: event.target.value }))}
+              className="h-8 w-full rounded-md px-2 text-[11px]"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-[11px] font-semibold text-text" htmlFor="sm-fecha-fin">
+              Hasta
+            </label>
+            <Input
+              id="sm-fecha-fin"
+              type="date"
+              value={filters.fechaFin}
+              onChange={(event) => setFilters((current) => ({ ...current, fechaFin: event.target.value }))}
+              className="h-8 w-full rounded-md px-2 text-[11px]"
+            />
           </div>
 
-          <div className="min-w-0 text-[11px] text-text lg:ml-auto lg:pl-8 lg:text-right">
+          <div className="min-w-0 rounded-md bg-canvas/60 px-2 py-1.5 text-[11px] text-text xl:text-right">
             <span className="font-semibold">Usuario:</span>{' '}
             <span className="font-medium">
               {authorizedUser ? `${authorizedUser.employeeName}` : 'pendiente de validación'}
@@ -216,8 +213,10 @@ export function SaludMentalReportesPage() {
         </Alert>
       ) : null}
 
+      <p className="text-[11px] text-muted sm:hidden">Desliza la tabla para revisar todo el contenido.</p>
+
       <div className="overflow-x-auto rounded-md border border-border/70">
-        <table className="w-full min-w-[980px] border-collapse text-[11px] leading-snug">
+        <table className="w-full min-w-[620px] border-collapse text-[11px] leading-snug sm:min-w-[760px] lg:min-w-[920px]">
           <thead>
             <tr className="bg-[#123B63] text-white">
               <th className="w-10 border-b border-white/15 px-2 py-1.5 text-right text-[10px] font-semibold uppercase tracking-wide">N°</th>
@@ -240,11 +239,11 @@ export function SaludMentalReportesPage() {
                 {group.rows.map((report, index) => (
                   <tr key={`${group.title}-${report.technicalKey}`} className="odd:bg-white even:bg-canvas/30">
                     <td className="border-b border-border/70 px-2 py-1 text-right font-medium align-middle">{index + 1}</td>
-                    <td className="border-b border-border/70 px-2 py-1 align-middle font-medium text-[#123B63]">{report.label}</td>
+                    <td className="border-b border-border/70 px-2 py-1 align-middle font-medium text-[#123B63] whitespace-normal">{report.label}</td>
                     <td className="border-b border-border/70 px-2 py-1 text-center align-middle">
                       <Button
                         size="sm"
-                        className="h-7 gap-1.5 px-3 text-[11px] font-semibold"
+                        className="h-7 w-full gap-1.5 px-2 text-[11px] font-semibold sm:w-auto sm:px-3"
                         style={authorizedUser && isRangeValid ? { backgroundColor: '#005F8F', color: '#fff' } : undefined}
                         variant={authorizedUser && isRangeValid ? 'default' : 'outline'}
                         disabled={!authorizedUser || !isRangeValid || isDownloadingKey === report.technicalKey}
@@ -303,4 +302,5 @@ export function SaludMentalReportesPage() {
     </section>
   )
 }
+
 

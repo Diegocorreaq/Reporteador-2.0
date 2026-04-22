@@ -90,7 +90,7 @@ export function GestionEstanciaCamaPage() {
       error={error}
     >
       <SighFilterPanel processLabel="Consultar" onProcess={() => void handleFetch()}>
-        <div className="w-[340px] space-y-1">
+        <div className="w-full space-y-1 md:w-[340px]">
           <label className="text-xs font-semibold text-brand-strong" htmlFor="estancia-servicio-select">
             Servicio
           </label>
@@ -114,12 +114,13 @@ export function GestionEstanciaCamaPage() {
           <CardTitle className="text-sm">Estancia por Cama</CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
+          <p className="mb-2 text-[11px] text-muted sm:hidden">Desliza la tabla para ver todo el detalle nominal.</p>
           <div className="overflow-x-auto rounded-md border border-border/70 bg-white">
-            <table className="min-w-full border-collapse text-[12px]">
+            <table className="min-w-[980px] border-collapse text-[12px]">
               <thead>
                 <tr className="bg-[#eef5fb] text-[#123B63]">
                   {ESTANCIA_HEADERS.map((label) => (
-                    <th key={label} className="border-b border-border px-2 py-1 text-left font-semibold">
+                    <th key={label} className="border-b border-border px-2 py-1 text-left text-[11px] font-semibold uppercase tracking-wide">
                       {label}
                     </th>
                   ))}

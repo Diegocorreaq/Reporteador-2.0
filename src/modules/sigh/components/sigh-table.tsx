@@ -53,7 +53,7 @@ export function SighTable({
   rowClassName,
   onRowClick,
 }: SighTableProps) {
-  const resolvedColumns =
+  const resolvedColumns: SighTableColumn[] =
     columns && columns.length
       ? columns
       : Object.keys(rows[0] ?? {}).map((key) => ({
@@ -63,14 +63,14 @@ export function SighTable({
 
   return (
     <div className={cn('overflow-x-auto rounded-md border border-border/70 bg-white', className)}>
-      <table className={cn('min-w-full border-collapse text-[12px]', tableClassName)}>
+      <table className={cn('min-w-full border-collapse text-[11px] sm:text-[12px]', tableClassName)}>
         <thead>
           <tr className="bg-[#eef5fb] text-[#123B63]">
             {resolvedColumns.map((column) => (
               <th
                 key={column.key}
                 className={cn(
-                  'border-b border-border px-2 py-1 font-semibold uppercase',
+                  'border-b border-border px-2 py-1 text-[10px] font-semibold uppercase leading-tight whitespace-normal sm:text-[11px]',
                   alignClass(column.align),
                   column.className,
                 )}
@@ -102,7 +102,7 @@ export function SighTable({
                     <td
                       key={`${rowIndex}-${column.key}`}
                       className={cn(
-                        'border-b border-border/70 px-2 py-1 text-[12px] text-text',
+                        'border-b border-border/70 px-2 py-1 text-[11px] leading-snug text-text whitespace-normal break-words align-top sm:text-[12px]',
                         alignClass(column.align),
                         column.className,
                       )}

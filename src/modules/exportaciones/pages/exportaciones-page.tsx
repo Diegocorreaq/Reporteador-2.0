@@ -155,34 +155,34 @@ export function ExportacionesPage() {
       </header>
 
       <div className="rounded-md border border-border/70 bg-canvas/10 px-3 py-2">
-        <div className="flex flex-row items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <label className="shrink-0 text-[12px] font-semibold text-text" htmlFor="range-fecha-inicio">
-              Desde:
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,180px)_minmax(0,180px)_minmax(0,1fr)] xl:items-end">
+          <div className="space-y-1">
+            <label className="block text-[12px] font-semibold text-text" htmlFor="range-fecha-inicio">
+              Desde
             </label>
             <Input
               id="range-fecha-inicio"
               type="date"
-              className="h-8 w-[128px] text-[12px]"
+              className="h-8 w-full text-[12px]"
               value={filters.fechaInicio}
               onChange={(event) => setFilters((current) => ({ ...current, fechaInicio: event.target.value }))}
             />
           </div>
-          <div className="flex items-center gap-2">
-            <label className="shrink-0 text-[12px] font-semibold text-text" htmlFor="range-fecha-fin">
-              Hasta:
+          <div className="space-y-1">
+            <label className="block text-[12px] font-semibold text-text" htmlFor="range-fecha-fin">
+              Hasta
             </label>
             <Input
               id="range-fecha-fin"
               type="date"
-              className="h-8 w-[128px] text-[12px]"
+              className="h-8 w-full text-[12px]"
               value={filters.fechaFin}
               onChange={(event) => setFilters((current) => ({ ...current, fechaFin: event.target.value }))}
             />
           </div>
-          <div className="min-w-0 text-[12px] text-text md:text-right">
+          <div className="min-w-0 rounded-md bg-white/70 px-2 py-1.5 text-[12px] text-text xl:text-right">
             <span className="font-semibold">Usuario:</span>{' '}
-            <span className="font-medium">{authorizedUser ? authorizedUser.employeeName : ''}</span>
+            <span className="font-medium">{authorizedUser ? authorizedUser.employeeName : 'Pendiente de validacion'}</span>
           </div>
         </div>
       </div>
@@ -194,12 +194,14 @@ export function ExportacionesPage() {
         </Alert>
       ) : null}
 
+      <p className="text-[11px] text-muted sm:hidden">Desliza la tabla para ver todas las columnas.</p>
+
       <div className="overflow-x-auto rounded-md border border-border/80">
-        <table className="w-full min-w-[760px] border-collapse text-[12px]">
+        <table className="w-full min-w-[640px] border-collapse text-[11px] sm:min-w-[760px] sm:text-[12px]">
           <thead>
             <tr className="bg-[#123B63] text-white">
-              <th className="w-14 border-b border-white/15 px-2 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wide">ORD</th>
-              <th className="border-b border-white/15 px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide">TIPO DE REPORTE</th>
+              <th className="hidden w-14 border-b border-white/15 px-2 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wide sm:table-cell">ORD</th>
+              <th className="border-b border-white/15 px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide whitespace-normal">TIPO DE REPORTE</th>
               <th className="w-28 border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide">ARCHIVO</th>
             </tr>
           </thead>
@@ -207,12 +209,12 @@ export function ExportacionesPage() {
           <tbody>
             {VISIBLE_REPORT_ROWS.map((report) => (
               <tr key={report.key} className="bg-white hover:bg-[#f6fbff]">
-                <td className="border-b border-border/70 px-2 py-1.5 text-[11px] text-right font-medium align-middle">{report.ord}</td>
-                <td className="border-b border-border/70 px-2 py-1.5 text-[11px] align-middle font-medium text-[#123B63]">{report.label}</td>
+                <td className="hidden border-b border-border/70 px-2 py-1.5 text-[11px] text-right font-medium align-middle sm:table-cell">{report.ord}</td>
+                <td className="border-b border-border/70 px-2 py-1.5 text-[11px] align-middle font-medium text-[#123B63] whitespace-normal">{report.label}</td>
                 <td className="border-b border-border/70 px-2 py-1.5 text-[11px] text-center align-middle">
                   <Button
                     size="sm"
-                    className="h-7 gap-1.5 px-3 text-[11px] font-semibold"
+                    className="h-7 w-full gap-1.5 px-2 text-[11px] font-semibold sm:w-auto sm:px-3"
                     style={authorizedUser && isRangeValid ? { backgroundColor: '#005F8F', color: '#fff' } : undefined}
                     variant={authorizedUser && isRangeValid ? 'default' : 'outline'}
                     disabled={!authorizedUser || !isRangeValid || isDownloadingKey === report.key}
@@ -269,4 +271,3 @@ export function ExportacionesPage() {
     </section>
   )
 }
-

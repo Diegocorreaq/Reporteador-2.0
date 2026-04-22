@@ -12,7 +12,7 @@ import {
   listFamiliaPendienteUpss,
   validateSisgalenUser,
 } from '@/modules/sigh/services/sigh-reports.service'
-import type { FamiliaPendienteRow, SighOption } from '@/modules/sigh/types'
+import type { FamiliaPendienteRow, SighOption, SighTableRow } from '@/modules/sigh/types'
 
 const FAMILY_COLUMNS: SighTableColumn[] = [
   { key: 'servicioActual', label: 'Servicio actual' },
@@ -29,7 +29,7 @@ const FAMILY_COLUMNS: SighTableColumn[] = [
 export function InformeFamiliaPendientesPage() {
   const [upssOptions, setUpssOptions] = useState<SighOption[]>([])
   const [selectedUpss, setSelectedUpss] = useState('')
-  const [rows, setRows] = useState<FamiliaPendienteRow[]>([])
+  const [rows, setRows] = useState<SighTableRow[]>([])
   const [counters, setCounters] = useState({ over12: 0, over24: 0 })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +62,7 @@ export function InformeFamiliaPendientesPage() {
     setLoading(true)
     try {
       const payload = await getFamiliaPendienteReport(selectedUpss)
-      setRows(payload.rows)
+      setRows(payload.rows as unknown as SighTableRow[])
       setCounters(payload.counters)
     } catch (fetchError) {
       const message = fetchError instanceof Error ? fetchError.message : 'No se pudo consultar el reporte.'
@@ -157,7 +157,7 @@ export function InformeFamiliaPendientesPage() {
           </div>
         }
       >
-        <div className="w-[260px] space-y-1">
+        <div className="w-full space-y-1 md:w-[260px]">
           <label className="text-xs font-semibold text-brand-strong" htmlFor="familia-upss-select">
             UPSS
           </label>
@@ -170,7 +170,7 @@ export function InformeFamiliaPendientesPage() {
             ))}
           </Select>
         </div>
-        <Button size="sm" variant="outline" onClick={() => void handleFetch()} className="mb-0.5">
+        <Button size="sm" variant="outline" onClick={() => void handleFetch()} className="w-full sm:mb-0.5 sm:w-auto">
           <RefreshCcw className="h-4 w-4" />
           Consultar
         </Button>
@@ -181,7 +181,7 @@ export function InformeFamiliaPendientesPage() {
         columns={FAMILY_COLUMNS}
         emptyMessage={loading ? 'Consultando reporte...' : 'No se encuentran registros.'}
         rowClassName={(row) => {
-          const typedRow = row as FamiliaPendienteRow
+          const typedRow = row as unknown as FamiliaPendienteRow
           if (typedRow.alertState === 'over24') {
             return '[&>td:nth-child(2)]:bg-[#ffdede] [&>td:nth-child(3)]:bg-[#ffdede]'
           }

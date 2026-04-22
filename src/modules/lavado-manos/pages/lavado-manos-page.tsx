@@ -666,13 +666,13 @@ export function LavadoManosPage() {
       </header>
 
       <div className="rounded-md border border-[#d1dbe7] bg-white px-3 py-2">
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="flex items-center gap-1.5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+          <div className="w-full space-y-1 sm:w-[180px]">
             <label
-              className="text-[11px] font-semibold text-[#123B63]"
+              className="block text-[11px] font-semibold text-[#123B63]"
               htmlFor="lavado-fecha-inicio"
             >
-              Desde:
+              Desde
             </label>
             <Input
               id="lavado-fecha-inicio"
@@ -684,16 +684,16 @@ export function LavadoManosPage() {
                   fechaInicio: event.target.value,
                 }))
               }
-              className="h-8 w-[142px] rounded-md px-2 text-xs"
+              className="h-8 w-full rounded-md px-2 text-xs"
             />
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="w-full space-y-1 sm:w-[180px]">
             <label
-              className="text-[11px] font-semibold text-[#123B63]"
+              className="block text-[11px] font-semibold text-[#123B63]"
               htmlFor="lavado-fecha-fin"
             >
-              Hasta:
+              Hasta
             </label>
             <Input
               id="lavado-fecha-fin"
@@ -705,13 +705,13 @@ export function LavadoManosPage() {
                   fechaFin: event.target.value,
                 }))
               }
-              className="h-8 w-[142px] rounded-md px-2 text-xs"
+              className="h-8 w-full rounded-md px-2 text-xs"
             />
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <label className="text-[11px] font-semibold text-[#123B63]" htmlFor="lavado-tipo">
-              Formato:
+          <div className="w-full space-y-1 sm:w-[260px]">
+            <label className="block text-[11px] font-semibold text-[#123B63]" htmlFor="lavado-tipo">
+              Formato
             </label>
             <select
               id="lavado-tipo"
@@ -722,7 +722,7 @@ export function LavadoManosPage() {
                   tipo: Number(event.target.value),
                 }))
               }
-              className="h-8 w-[230px] rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-xs outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
             >
               {FORMATO_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -732,27 +732,27 @@ export function LavadoManosPage() {
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <Button
               size="sm"
               variant="outline"
               className={
                 sidebarCollapsed
-                  ? 'h-8 w-8 min-w-8 px-0 text-xs font-medium'
-                  : 'h-8 min-w-[94px] px-2.5 text-xs font-medium'
+                  ? 'h-8 w-full px-2 text-xs font-medium sm:w-8 sm:min-w-8 sm:px-0'
+                  : 'h-8 w-full px-2.5 text-xs font-medium sm:w-auto sm:min-w-[94px]'
               }
               disabled={!authorizedUser || !isRangeValid || isLoading}
               onClick={() => void loadRows()}
               title="Mostrar"
             >
               <Search className="h-3.5 w-3.5 shrink-0" />
-              {!sidebarCollapsed ? <span>Mostrar</span> : <span className="sr-only">Mostrar</span>}
+              {!sidebarCollapsed ? <span>Mostrar</span> : <span className="sm:sr-only">Mostrar</span>}
             </Button>
 
             <Button
               size="sm"
               variant="outline"
-              className="h-8 min-w-[94px] px-2.5 text-xs font-medium text-[#005F8F] hover:text-[#123B63]"
+              className="h-8 w-full px-2.5 text-xs font-medium text-[#005F8F] hover:text-[#123B63] sm:w-auto sm:min-w-[94px]"
               disabled={!authorizedUser || !isRangeValid || isExporting}
               onClick={() => void handleExport()}
             >
@@ -761,11 +761,11 @@ export function LavadoManosPage() {
             </Button>
           </div>
 
-          <div className="ml-auto flex max-w-full flex-wrap justify-end gap-2">
+          <div className="flex w-full flex-wrap gap-2 lg:ml-auto lg:w-auto lg:justify-end">
             <Button
               size="sm"
               variant="secondary"
-              className="h-9 min-w-[118px] gap-1.5 px-2 text-[11px] font-medium"
+              className="h-9 w-full justify-start gap-1.5 px-2 text-[11px] font-medium sm:w-auto sm:min-w-[118px]"
               disabled={!authorizedUser}
               onClick={() => openCreateDialog(1)}
             >
@@ -779,7 +779,7 @@ export function LavadoManosPage() {
             <Button
               size="sm"
               variant="secondary"
-              className="h-9 min-w-[118px] gap-1.5 px-2 text-[11px] font-medium"
+              className="h-9 w-full justify-start gap-1.5 px-2 text-[11px] font-medium sm:w-auto sm:min-w-[118px]"
               disabled={!authorizedUser}
               onClick={() => openCreateDialog(2)}
             >
@@ -793,7 +793,7 @@ export function LavadoManosPage() {
             <Button
               size="sm"
               variant="secondary"
-              className="h-9 min-w-[118px] gap-1.5 px-2 text-[11px] font-medium"
+              className="h-9 w-full justify-start gap-1.5 px-2 text-[11px] font-medium sm:w-auto sm:min-w-[118px]"
               disabled={!authorizedUser}
               onClick={() => openCreateDialog(3)}
             >
@@ -809,23 +809,25 @@ export function LavadoManosPage() {
 
       {error ? <Alert variant="danger">{error}</Alert> : null}
 
+      <p className="text-[11px] text-muted sm:hidden">Desliza la tabla para revisar registros y acciones.</p>
+
       <div className="overflow-x-auto rounded-md border border-[#d1dbe7] bg-white">
-  <table className="w-full min-w-[1020px] border-collapse text-[11px] leading-[1.1]">
+  <table className="w-full min-w-[900px] border-collapse text-[11px] leading-[1.1] sm:min-w-[1020px]">
           <thead>
   <tr className="bg-[#005F8F] text-white">
-    <th className="w-[64px] border-b border-[#0e5078] px-1.5 py-1 text-center text-[10px] font-semibold uppercase tracking-wide">
+    <th className="w-[58px] border-b border-[#0e5078] px-1.5 py-1 text-center text-[10px] font-semibold uppercase tracking-wide">
       Id
     </th>
-    <th className="w-[170px] border-b border-[#0e5078] px-1.5 py-1 text-left text-[10px] font-semibold uppercase tracking-wide">
+    <th className="w-[150px] border-b border-[#0e5078] px-1.5 py-1 text-left text-[10px] font-semibold uppercase tracking-wide">
       Empleado
     </th>
-    <th className="w-[150px] border-b border-[#0e5078] px-1.5 py-1 text-left text-[10px] font-semibold uppercase tracking-wide">
+    <th className="w-[140px] border-b border-[#0e5078] px-1.5 py-1 text-left text-[10px] font-semibold uppercase tracking-wide">
       Profesional
     </th>
-    <th className="w-[110px] border-b border-[#0e5078] px-1.5 py-1 text-left text-[10px] font-semibold uppercase tracking-wide">
+    <th className="w-[96px] border-b border-[#0e5078] px-1.5 py-1 text-left text-[10px] font-semibold uppercase tracking-wide">
       Upss
     </th>
-    <th className="w-[170px] border-b border-[#0e5078] px-1.5 py-1 text-left text-[10px] font-semibold uppercase tracking-wide">
+    <th className="w-[150px] border-b border-[#0e5078] px-1.5 py-1 text-left text-[10px] font-semibold uppercase tracking-wide">
       Servicio
     </th>
     <th className="w-[92px] border-b border-[#0e5078] px-1.5 py-1 text-center text-[10px] font-semibold uppercase tracking-wide">
@@ -1028,8 +1030,10 @@ export function LavadoManosPage() {
 
           <div className="space-y-3">
             {form.tipo === 3 ? (
-              <div className="overflow-x-auto rounded-md border border-[#d5dee8]">
-                <table className="w-full min-w-[860px] border-collapse text-[12px]">
+              <>
+                <p className="text-[11px] text-muted sm:hidden">Desliza la matriz para completar cada momento.</p>
+                <div className="overflow-x-auto rounded-md border border-[#d5dee8]">
+                <table className="w-full min-w-[700px] border-collapse text-[12px] sm:min-w-[860px]">
                   <thead>
                     <tr className="bg-[#eef5fb] text-[#123B63]">
                       <th className="border-b border-border px-2 py-1 text-center text-[10px] font-semibold uppercase">
@@ -1197,14 +1201,17 @@ export function LavadoManosPage() {
                     ) : null}
                   </tbody>
                 </table>
-              </div>
+                </div>
+              </>
             ) : null}
 
             {registroFields}
 
             {form.tipo !== 3 ? (
-              <div className="overflow-x-auto rounded-md border border-[#d5dee8]">
-                <table className="w-full min-w-[620px] border-collapse text-[12px]">
+              <>
+                <p className="text-[11px] text-muted sm:hidden">Desliza la tabla para ver todas las actividades.</p>
+                <div className="overflow-x-auto rounded-md border border-[#d5dee8]">
+                <table className="w-full min-w-[560px] border-collapse text-[12px] sm:min-w-[620px]">
                   <thead>
                     <tr className="bg-[#eef5fb] text-[#123B63]">
                       <th className="border-b border-border px-2 py-1 text-center text-[10px] font-semibold uppercase">
@@ -1261,7 +1268,8 @@ export function LavadoManosPage() {
                     ) : null}
                   </tbody>
                 </table>
-              </div>
+                </div>
+              </>
             ) : null}
           </div>
 

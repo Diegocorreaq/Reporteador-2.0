@@ -616,6 +616,20 @@ export function MonitoreoCamasPage() {
   useEffect(() => { void handleFetch() }, [])
 
   const tableItems = useMemo(() => processCamasData(rows), [rows])
+  const mobileTotals = useMemo(() => {
+    const totalItem = [...tableItems].reverse().find((item) => item.type === 'total')
+    if (!totalItem || totalItem.type !== 'total') {
+      return null
+    }
+
+    return {
+      operativas: totalItem.sums.chabi,
+      ocupadas: totalItem.sums.cocup,
+      disponibles: totalItem.sums.clibr,
+      demanda: totalItem.sums.demanda,
+      covid: totalItem.sums.pcr,
+    }
+  }, [tableItems])
 
   const modalSpec = CAMAS_DETAIL_MODAL_SPECS[detailType] ?? { title: 'Detalle', columns: [] }
 
@@ -625,12 +639,12 @@ export function MonitoreoCamasPage() {
       description="Resumen operativo de camas por piso/servicio/tipo con accesos de detalle y exportacion."
       actions={
         <>
-          <Button size="sm" variant="outline" onClick={() => void handleFetch()}>
+          <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={() => void handleFetch()}>
             <RefreshCcw className="h-4 w-4" /> Actualizar
           </Button>
           <Button
             size="sm"
-            className="gap-1.5 font-semibold"
+            className="w-full gap-1.5 font-semibold sm:w-auto"
             style={{ backgroundColor: '#005F8F', color: '#fff' }}
             onClick={() => void downloadMonitoreoCamasResumen()}
           >
@@ -638,7 +652,7 @@ export function MonitoreoCamasPage() {
           </Button>
           <Button
             size="sm"
-            className="gap-1.5 font-semibold"
+            className="w-full gap-1.5 font-semibold sm:w-auto"
             style={{ backgroundColor: '#2C6E99', color: '#fff' }}
             onClick={() => void downloadMonitoreoCamasSusalud()}
           >
@@ -652,8 +666,35 @@ export function MonitoreoCamasPage() {
           <CardTitle className="text-sm">Resumen de camas</CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
+          {mobileTotals ? (
+            <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:hidden">
+              <div className="rounded-md border border-border bg-canvas/60 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Operativas</p>
+                <p className="mt-1 text-lg font-semibold text-brand-strong">{mobileTotals.operativas}</p>
+              </div>
+              <div className="rounded-md border border-border bg-canvas/60 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Ocupadas</p>
+                <p className="mt-1 text-lg font-semibold text-brand-strong">{mobileTotals.ocupadas}</p>
+              </div>
+              <div className="rounded-md border border-border bg-canvas/60 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Disponibles</p>
+                <p className="mt-1 text-lg font-semibold text-brand-strong">{mobileTotals.disponibles}</p>
+              </div>
+              <div className="rounded-md border border-border bg-canvas/60 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Demanda adicional</p>
+                <p className="mt-1 text-lg font-semibold text-brand-strong">{mobileTotals.demanda}</p>
+              </div>
+              <div className="rounded-md border border-border bg-canvas/60 px-3 py-2 sm:col-span-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Covid (+)</p>
+                <p className="mt-1 text-lg font-semibold text-brand-strong">{mobileTotals.covid}</p>
+              </div>
+            </div>
+          ) : null}
+
+          <p className="mb-2 text-[11px] text-muted sm:hidden">Desliza horizontalmente para ver toda la matriz operativa.</p>
+
           <div className="overflow-x-auto rounded-md border border-border/70 bg-white">
-            <table className="border-collapse text-[10px]" style={{ minWidth: 1700 }}>
+            <table className="border-collapse text-[10px]" style={{ minWidth: 1560 }}>
               <thead className="bg-[#eef5fb] text-[#123B63]">
                 {/* Row 1 — group headers */}
                 <tr>

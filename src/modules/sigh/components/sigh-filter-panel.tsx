@@ -25,12 +25,12 @@ export function SighFilterPanel({
         <CardTitle className="text-sm">Filtros</CardTitle>
       </CardHeader>
       <CardContent className="pt-4">
-        <div className="flex flex-wrap items-end gap-3">{children}</div>
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">{children}</div>
         {onProcess || rightSlot ? (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-3">
-            <div>{rightSlot}</div>
+          <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">{rightSlot}</div>
             {onProcess ? (
-              <Button size="sm" variant="brand" onClick={onProcess}>
+              <Button className="w-full sm:w-auto" size="sm" variant="brand" onClick={onProcess}>
                 <Search className="h-4 w-4" />
                 {processLabel}
               </Button>

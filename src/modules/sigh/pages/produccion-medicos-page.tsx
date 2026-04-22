@@ -220,7 +220,7 @@ export function ProduccionMedicosPage() {
       description="Produccion de actividades realizadas y registradas por medico con detalle y exportacion."
     >
       <SighFilterPanel onProcess={() => void handleProcess()}>
-        <div className="min-w-[280px] flex-1 space-y-1" ref={autocompleteRef}>
+        <div className="w-full min-w-0 space-y-1 md:min-w-[280px] md:flex-1" ref={autocompleteRef}>
           <label className="text-xs font-semibold text-brand-strong" htmlFor="prod-medico-input">
             Profesional
           </label>
@@ -260,14 +260,14 @@ export function ProduccionMedicosPage() {
           </div>
         </div>
 
-        <div className="w-[220px] space-y-1">
+        <div className="w-full space-y-1 md:w-[220px]">
           <label className="text-xs font-semibold text-brand-strong" htmlFor="prod-especialidad-input">
             Especialidad
           </label>
           <Input id="prod-especialidad-input" value={selectedEmployee?.especialidad ?? ''} readOnly />
         </div>
 
-        <div className="w-[160px] space-y-1">
+        <div className="w-full space-y-1 md:w-[160px]">
           <label className="text-xs font-semibold text-brand-strong" htmlFor="prod-fecha-inicio">
             Desde
           </label>
@@ -279,7 +279,7 @@ export function ProduccionMedicosPage() {
           />
         </div>
 
-        <div className="w-[160px] space-y-1">
+        <div className="w-full space-y-1 md:w-[160px]">
           <label className="text-xs font-semibold text-brand-strong" htmlFor="prod-fecha-fin">
             Hasta
           </label>
@@ -291,7 +291,7 @@ export function ProduccionMedicosPage() {
           />
         </div>
 
-        <div className="flex items-end gap-2 pb-2">
+        <div className="flex w-full flex-wrap items-end gap-2 md:w-auto md:pb-2">
           <Button
             size="sm"
             className="h-9 gap-1.5 px-3 font-semibold"
@@ -317,7 +317,7 @@ export function ProduccionMedicosPage() {
             Excel
           </Button>
         </div>
-        <div className="pb-2 text-xs text-muted">Rango: {rangeDays} dias</div>
+        <div className="w-full text-xs text-muted md:w-auto md:pb-2">Rango: {rangeDays} dias</div>
       </SighFilterPanel>
 
       <Card className="border-border/70">
@@ -325,7 +325,7 @@ export function ProduccionMedicosPage() {
           <div className="flex flex-wrap items-start justify-between gap-2">
             <CardTitle className="text-sm">Produccion por actividad</CardTitle>
             {selectedEmployee ? (
-              <div className="text-[11px] text-right text-muted leading-snug">
+              <div className="text-[11px] text-left text-muted leading-snug sm:text-right">
                 <span className="font-semibold text-[#123B63]">{selectedEmployee.empleado}</span>
                 {' · '}
                 <span>{selectedEmployee.especialidad}</span>
@@ -336,8 +336,9 @@ export function ProduccionMedicosPage() {
           </div>
         </CardHeader>
         <CardContent className="pt-4">
+          <p className="mb-2 text-[11px] text-muted sm:hidden">Desliza la tabla para revisar dias y totales.</p>
           <div className="overflow-x-auto rounded-md border border-border/70">
-            <table className="min-w-full border-collapse text-[12px]">
+            <table className="min-w-[760px] border-collapse text-[11px] sm:text-[12px]">
               <thead>
                 <tr className="bg-[#123B63] text-white">
                   <th className="border-b border-white/15 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide">Codigo</th>
@@ -429,3 +430,4 @@ export function ProduccionMedicosPage() {
     </SighPageShell>
   )
 }
+
