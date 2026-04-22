@@ -28,7 +28,7 @@ export function LoginCleanPage() {
         <div className="relative z-10">
           <div className="mb-6 flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm">
-              <img alt="Logo HEVES" className="h-9 w-9" src="/logo-mark.svg" />
+              <img alt="Logo HEVES" className="h-9 w-9" src="/oso_estad.png" />
             </div>
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/60">
@@ -87,7 +87,7 @@ export function LoginCleanPage() {
         {/* Mobile header */}
         <div className="mb-10 flex items-center gap-3 lg:hidden">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-brand/20 bg-brand/10">
-            <img alt="Logo HEVES" className="h-7 w-7" src="/logo-mark.svg" />
+            <img alt="Logo HEVES" className="h-7 w-7" src="/oso_estad.png" />
           </div>
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-muted">

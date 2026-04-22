@@ -1,5 +1,5 @@
-import { WorkspaceHomeModernPage } from '@/modules/inicio/pages/workspace-home-modern-page'
+import { AgentHomePage } from '@/modules/inicio/pages/agent-home-page'
 
 export function MainHomePage() {
-  return <WorkspaceHomeModernPage workspace="main" />
+  return <AgentHomePage />
 }
