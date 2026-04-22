@@ -1,4 +1,5 @@
 import express from 'express'
+import compression from 'compression'
 import helmet from 'helmet'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
@@ -17,6 +18,9 @@ const app = express()
 if (serverConfig.isProduction) {
   app.set('trust proxy', 1)
 }
+
+// Gzip/Brotli compression — applied before all routes
+app.use(compression())
 
 // Security headers via helmet
 app.use(

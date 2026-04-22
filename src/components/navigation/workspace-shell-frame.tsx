@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Topbar } from '@/components/navigation/topbar'
 import { WorkspaceSidebar } from '@/components/navigation/workspace-sidebar'
 import { findLegacyModuleMapping } from '@/config/legacy-functional-map'
@@ -20,8 +20,8 @@ export function WorkspaceShellFrame({ workspace }: WorkspaceShellFrameProps) {
   const sidebarCollapsed = useShellUiStore((state) => state.sidebarCollapsed)
   const toggleSidebarCollapsed = useShellUiStore((state) => state.toggleSidebarCollapsed)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const sections = menuService.getSections(workspace, user)
-  const activeLegacyModule = findLegacyModuleMapping(location.pathname)
+  const sections = useMemo(() => menuService.getSections(workspace, user), [workspace, user])
+  const activeLegacyModule = useMemo(() => findLegacyModuleMapping(location.pathname), [location.pathname])
   const isPowerBiEmbed = Boolean(activeLegacyModule?.powerBiUrl)
 
   useEffect(() => {

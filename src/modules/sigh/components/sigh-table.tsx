@@ -84,7 +84,7 @@ export function SighTable({
           {rows.length ? (
             rows.map((row, rowIndex) => (
               <tr
-                key={`${rowIndex}-${Object.values(row).join('-')}`}
+                key={rowIndex}
                 className={cn(
                   'odd:bg-white even:bg-[#f8fbff]',
                   onRowClick ? 'cursor-pointer hover:bg-brand-soft/40' : '',

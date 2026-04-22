@@ -209,13 +209,13 @@ export function WorkspaceSidebar({
         {effectiveCollapsed ? (
           <div className="border-b border-white/10 px-3 py-3">
             <div className="flex items-center justify-center">
-              <img alt="Reporteador" className="h-11 w-11 object-contain" src="/oso_estad.png" />
+              <img alt="Reporteador" className="h-11 w-11 object-contain" src="/oso_estad.webp" />
             </div>
           </div>
         ) : (
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
             <div className="flex items-center gap-3">
-              <img alt="Reporteador" className="h-11 w-11 shrink-0 object-contain" src="/oso_estad.png" />
+              <img alt="Reporteador" className="h-11 w-11 shrink-0 object-contain" src="/oso_estad.webp" />
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
                   Reporteador HEVES

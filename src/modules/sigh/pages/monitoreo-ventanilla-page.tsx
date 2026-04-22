@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { RefreshCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SighPageShell } from '@/modules/sigh/components/sigh-page-shell'
@@ -13,6 +13,7 @@ export function MonitoreoVentanillaPage() {
   const [report, setReport] = useState<MonitoreoVentanillaReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   const columns = useMemo<SighTableColumn[]>(
     () => [
@@ -83,12 +84,17 @@ export function MonitoreoVentanillaPage() {
   )
 
   const handleFetch = async () => {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     setLoading(true)
     setError(null)
     try {
-      const payload = await getMonitoreoVentanillaReport()
+      const payload = await getMonitoreoVentanillaReport(controller.signal)
       setReport(payload)
     } catch (fetchError) {
+      if (fetchError instanceof Error && fetchError.name === 'CanceledError') return
       const message = fetchError instanceof Error ? fetchError.message : 'No se pudo consultar el monitoreo de ventanilla.'
       setError(message)
     } finally {
@@ -102,7 +108,10 @@ export function MonitoreoVentanillaPage() {
       void handleFetch()
     }, REFRESH_INTERVAL_MS)
 
-    return () => window.clearInterval(interval)
+    return () => {
+      window.clearInterval(interval)
+      abortRef.current?.abort()
+    }
   }, [])
 
   return (

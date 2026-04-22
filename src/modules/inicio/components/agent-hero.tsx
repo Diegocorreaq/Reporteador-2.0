@@ -89,7 +89,7 @@ export function AgentHero({ query, activeQuery, onQueryChange, onQuerySubmit, on
                 alt="Oso estadístico del Reporteador"
                 className="h-full w-full max-w-[520px] object-contain object-right"
                 loading="lazy"
-                src="/oso_estadistico.png"
+                src="/oso_estadistico.webp"
               />
             </div>
           </div>

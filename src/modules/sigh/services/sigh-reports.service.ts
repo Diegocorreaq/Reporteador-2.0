@@ -329,16 +329,18 @@ export async function getRolConsultaExternaReport(filters: DateRangeFilters) {
   return response.data
 }
 
-export async function getMonitoreoTicketsReport() {
+export async function getMonitoreoTicketsReport(signal?: AbortSignal) {
   const response = await httpClient.get<MonitoreoTicketsReport>('/sigh/monitoreo-tickets', {
     timeout: 180000,
+    signal,
   })
   return response.data
 }
 
-export async function getMonitoreoVentanillaReport() {
+export async function getMonitoreoVentanillaReport(signal?: AbortSignal) {
   const response = await httpClient.get<MonitoreoVentanillaReport>('/sigh/monitoreo-ventanilla', {
     timeout: 180000,
+    signal,
   })
   return response.data
 }
