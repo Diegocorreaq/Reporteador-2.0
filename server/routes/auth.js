@@ -56,6 +56,7 @@ authRouter.post('/auth/login', authLimiter, async (request, response) => {
         reason: 'invalid-credentials',
       })
       return response.status(401).json({
+        code: 'INVALID_CREDENTIALS',
         message: validation.message || 'Credenciales inválidas.',
         correlationId,
       })
@@ -65,6 +66,7 @@ authRouter.post('/auth/login', authLimiter, async (request, response) => {
     if (!employeeName || /^\d+$/.test(employeeName)) {
       logger.warn({ correlationId, event: 'auth:login:failed', ip, reason: 'invalid-employee-name' })
       return response.status(401).json({
+        code: 'IDENTITY_NOT_VERIFIED',
         message: 'No se pudo verificar la identidad del usuario.',
         correlationId,
       })
@@ -95,7 +97,7 @@ authRouter.post('/auth/login', authLimiter, async (request, response) => {
       event: 'auth:login:error',
       message: error instanceof Error ? error.message : String(error),
     })
-    response.status(500).json({ message: 'No se pudo iniciar sesión.', correlationId })
+    response.status(500).json({ code: 'AUTH_LOGIN_ERROR', message: 'No se pudo iniciar sesión.', correlationId })
   }
 })
 
