@@ -1,5 +1,4 @@
 import {
-  Archive,
   BedDouble,
   BookOpenText,
   CalendarRange,
@@ -240,22 +239,6 @@ export const sighSections: NavigationSection[] = [
             access: { permissions: ['menu.sigh.atencion-al-usuario.monitoreo-ventanilla'] },
           }),
         ],
-      }),
-    ],
-  }),
-  section({
-    key: 'others',
-    title: 'Otros',
-    entries: [
-      item({
-        key: 'sigh-reportes-historicos',
-        legacyKey: 'historicos',
-        legacyRoute: '/sigh/reportes-historicos',
-        label: 'Reportes historicos',
-        to: '/sigh/reportes-historicos',
-        description: 'Consulta tableros institucionales anteriores o de referencia.',
-        icon: Archive,
-        access: { permissions: ['menu.sigh.inicio'] },
       }),
     ],
   }),

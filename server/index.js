@@ -5,6 +5,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import { reportsRouter } from './routes/reports.js'
 import { authRouter } from './routes/auth.js'
+import { pprRouter } from './routes/ppr.js'
 import { serverConfig } from './config.js'
 import { closeSqlPool } from './db/sql-server.js'
 import { requestContext } from './middleware/request-context.js'
@@ -78,6 +79,7 @@ app.use('/legacy-api', authRouter)
 
 // Application routes
 app.use('/legacy-api', reportsRouter)
+app.use('/legacy-api', pprRouter)
 
 // Centralized error handler — must be last
 app.use(errorHandler)

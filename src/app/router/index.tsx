@@ -37,18 +37,11 @@ const ExportacionesPage = lazy(() =>
 const LavadoManosPage = lazy(() =>
   import('@/modules/lavado-manos/pages/lavado-manos-page').then((module) => ({ default: module.LavadoManosPage })),
 )
+const PprPage = lazy(() =>
+  import('@/modules/ppr/pages/ppr-page').then((module) => ({ default: module.PprPage })),
+)
 const SighHomePage = lazy(() =>
   import('@/modules/inicio/pages/sigh-home-page').then((module) => ({ default: module.SighHomePage })),
-)
-const MainReportesHistoricosPage = lazy(() =>
-  import('@/modules/reportes-historicos/pages/main-reportes-historicos-page').then((module) => ({
-    default: module.MainReportesHistoricosPage,
-  })),
-)
-const SighReportesHistoricosPage = lazy(() =>
-  import('@/modules/reportes-historicos/pages/sigh-reportes-historicos-page').then((module) => ({
-    default: module.SighReportesHistoricosPage,
-  })),
 )
 const LegacyEmbedPage = lazy(() =>
   import('@/modules/shared/pages/legacy-embed-page').then((module) => ({ default: module.LegacyEmbedPage })),
@@ -156,7 +149,7 @@ const explicitMainRoutePaths = new Set(
       'monitoreo-salud-mental/reportes-monitoreo',
       'zona-descarga/registros-procesados',
       'epidemiologia/lavado-de-manos',
-      'reportes-historicos',
+      'ppr',
     ]),
 )
 
@@ -176,7 +169,6 @@ const explicitSighRoutePaths = new Set(
       'atencion-al-usuario/rol-consulta-externa',
       'atencion-al-usuario/monitoreo-de-tickets',
       'atencion-al-usuario/monitoreo-ventanilla',
-      'reportes-historicos',
     ]),
 )
 
@@ -221,8 +213,8 @@ const mainImplementedRoutes = [
     element: lazyElement(<LavadoManosPage />),
   },
   {
-    path: 'reportes-historicos',
-    element: lazyElement(<MainReportesHistoricosPage />),
+    path: 'ppr',
+    element: lazyElement(<PprPage />),
   },
 ]
 
@@ -275,10 +267,6 @@ const sighImplementedRoutes = [
   {
     path: 'atencion-al-usuario/monitoreo-ventanilla',
     element: lazyElement(<MonitoreoVentanillaPage />),
-  },
-  {
-    path: 'reportes-historicos',
-    element: lazyElement(<SighReportesHistoricosPage />),
   },
 ]
 

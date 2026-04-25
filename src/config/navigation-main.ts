@@ -5,6 +5,7 @@ import {
   BarChart3,
   BookOpenText,
   Brain,
+  ClipboardCheck,
   ClipboardList,
   FileDown,
   FileText,
@@ -596,26 +597,17 @@ export const mainSections: NavigationSection[] = [
       }),
     ],
   }),
-  section({
-    key: 'others',
-    title: 'Otros',
-    entries: [
-      item({
-        key: 'main-reportes-historicos',
-        legacyKey: 'historicos',
-        legacyRoute: '/reportes-historicos',
-        label: 'Reportes historicos',
-        to: '/app/reportes-historicos',
-        description: 'Consulta tableros institucionales anteriores o de referencia.',
-        icon: Archive,
-        access: { permissions: ['menu.main.inicio'] },
-      }),
-    ],
-  }),
 ]
 
 export const mainQuickLinks: WorkspaceQuickLink[] = [
-  
+  {
+    key: 'ppr-portal',
+    label: 'Portal PPR',
+    to: '/app/ppr',
+    description: 'Portal de Programación Presupuestal por Resultados.',
+    icon: ClipboardCheck,
+    access: { pprRoles: ['ppr_admin', 'ppr_coordinador', 'ppr_supervisor'] },
+  },
   {
     key: 'manuales',
     label: 'Ver manuales y tutoriales',

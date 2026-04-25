@@ -1,5 +1,7 @@
 export type WorkspaceKey = 'main' | 'sigh'
 
+export type PprRole = 'ppr_admin' | 'ppr_coordinador' | 'ppr_supervisor'
+
 export interface AuthUser {
   id: string
   username: string
@@ -9,6 +11,7 @@ export interface AuthUser {
   service: string
   email: string
   permissions: string[]
+  pprRole: PprRole | null
 }
 
 export interface AuthCredentials {

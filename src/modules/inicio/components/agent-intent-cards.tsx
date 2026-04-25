@@ -7,7 +7,6 @@ import {
   Download,
   LineChart,
   Monitor,
-  ScrollText,
 } from 'lucide-react'
 
 interface IntentCard {
@@ -36,14 +35,6 @@ const intentCards: IntentCard[] = [
     icon: Monitor,
     action: 'search',
     searchTerm: 'monitoreo',
-  },
-  {
-    id: 'historicos',
-    label: 'Quiero ver reportes históricos',
-    description: 'Tableros institucionales anteriores y de referencia.',
-    icon: ScrollText,
-    action: 'navigate',
-    route: '/app/reportes-historicos',
   },
   {
     id: 'indicadores',

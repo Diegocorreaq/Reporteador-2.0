@@ -31,6 +31,7 @@ function buildUserResponse(sessionPayload) {
     service: 'Unidad de Inteligencia Sanitaria',
     email: `${sessionPayload.username}@hospital.local`,
     permissions: ['*'],
+    pprRole: null,
   }
 }
 

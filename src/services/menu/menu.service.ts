@@ -43,8 +43,11 @@ function hasAccess(user: AuthUser | null | undefined, access?: NavigationAccessR
   const permissionMatch =
     !access.permissions?.length ||
     access.permissions.some((permission) => matchesPermission(grantedPermissions, permission))
+  const pprRoleMatch =
+    !access.pprRoles?.length ||
+    (user.pprRole !== null && user.pprRole !== undefined && access.pprRoles.includes(user.pprRole))
 
-  return roleMatch && permissionMatch
+  return roleMatch && permissionMatch && pprRoleMatch
 }
 
 function filterEntry(entry: NavigationEntry, user: AuthUser | null | undefined) {

@@ -6,7 +6,7 @@ export const httpClient = axios.create({
   headers: {
     'X-Requested-With': 'XMLHttpRequest',
   },
-  timeout: 20000,
+  timeout: 30000,
   // Required for the HttpOnly session cookie to be sent with every request
   withCredentials: true,
 })

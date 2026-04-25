@@ -969,12 +969,9 @@ export function LavadoManosPage() {
 
       <Dialog
         open={isAuthDialogOpen}
-        onOpenChange={(open) => {
-          if (!open && !authorizedUser) return
-          setIsAuthDialogOpen(open)
-        }}
+        onOpenChange={setIsAuthDialogOpen}
       >
-        <DialogContent className="[&>button]:hidden">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Permisos para acceder a Reportes Nominales</DialogTitle>
             <DialogDescription>Ingrese NUMERO DE DNI y CONTRASEÑA SISGALEN.</DialogDescription>

@@ -26,6 +26,8 @@ function buildDbConfig(prefix = '') {
   const encKey = prefix ? `${prefix}_ENCRYPT` : 'SQL_ENCRYPT'
   const trustKey = prefix ? `${prefix}_TRUST_CERT` : 'SQL_TRUST_CERT'
   const poolKey = prefix ? `${prefix}_POOL_MAX` : 'SQL_POOL_MAX'
+  const requestTimeoutKey = prefix ? `${prefix}_REQUEST_TIMEOUT` : 'SQL_REQUEST_TIMEOUT'
+  const connectionTimeoutKey = prefix ? `${prefix}_CONNECTION_TIMEOUT` : 'SQL_CONNECTION_TIMEOUT'
 
   const encrypt = toBoolean(process.env[encKey], isProduction)
   const trustServerCertificate = toBoolean(process.env[trustKey], !isProduction)
@@ -52,6 +54,8 @@ function buildDbConfig(prefix = '') {
     database: process.env[dbKey] ?? 'SIGH_DEPURA',
     user: process.env[userKey] ?? '',
     password: process.env[passKey] ?? '',
+    requestTimeout: Math.max(toNumber(process.env[requestTimeoutKey], 30000), 30000),
+    connectionTimeout: Math.max(toNumber(process.env[connectionTimeoutKey], 30000), 30000),
     options: {
       encrypt,
       trustServerCertificate,

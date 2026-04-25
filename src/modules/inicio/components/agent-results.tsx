@@ -68,11 +68,10 @@ export function AgentResults({ query, results, onRelatedSearch }: AgentResultsPr
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {results.slice(0, 9).map((result) => (
+          {results.map((result) => (
             <AgentResultCard
               key={result.resource.id}
               resource={result.resource}
-              onRelated={onRelatedSearch}
             />
           ))}
         </div>

@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import type { WorkspaceKey } from '@/types/auth'
+import type { PprRole, WorkspaceKey } from '@/types/auth'
 
 export type ModulePriority = 'alta' | 'media' | 'posterior'
 
@@ -12,6 +12,7 @@ export type ScreenPattern =
 export interface NavigationAccessRule {
   permissions?: string[]
   roles?: string[]
+  pprRoles?: PprRole[]
 }
 
 export interface ModuleDefinition {

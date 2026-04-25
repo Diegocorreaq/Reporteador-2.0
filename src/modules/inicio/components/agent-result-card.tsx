@@ -4,7 +4,6 @@ import { resourceTypeLabels, type CatalogResource } from '@/config/navigation-ca
 
 interface AgentResultCardProps {
   resource: CatalogResource
-  onRelated: (query: string) => void
 }
 
 const workspaceBadgeClass: Record<CatalogResource['workspace'], string> = {
@@ -20,7 +19,7 @@ const typeBadgeClass: Record<CatalogResource['type'], string> = {
   reporte: 'bg-orange-50 text-orange-700 border-orange-200',
 }
 
-export function AgentResultCard({ resource, onRelated }: AgentResultCardProps) {
+export function AgentResultCard({ resource }: AgentResultCardProps) {
   const isExternal = false
 
   return (
@@ -60,13 +59,6 @@ export function AgentResultCard({ resource, onRelated }: AgentResultCardProps) {
           {isExternal ? <ExternalLink className="h-3.5 w-3.5" /> : <ArrowRight className="h-3.5 w-3.5" />}
           Abrir
         </Link>
-        <button
-          type="button"
-          onClick={() => onRelated(resource.category)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3.5 py-1.5 text-sm text-muted transition hover:border-brand/30 hover:text-brand-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
-        >
-          Ver relacionados
-        </button>
       </div>
     </div>
   )

@@ -649,22 +649,6 @@ export const navigationCatalog: CatalogResource[] = [
     permissionKey: 'menu.main.epidemiologia.accidente-de-transito',
   },
 
-  // Reportes Históricos
-  {
-    id: 'main-reportes-historicos',
-    title: 'Reportes Históricos',
-    description: 'Tableros y reportes institucionales históricos o de referencia.',
-    workspace: 'principal',
-    workspaceLabel: 'Reporteador',
-    type: 'tablero',
-    category: 'Reportes Históricos',
-    route: '/app/reportes-historicos',
-    breadcrumb: 'Reporteador',
-    aliases: ['historico', 'antiguos', 'anteriores', 'archivo reportes'],
-    keywords: ['historico', 'reporte', 'anterior', 'archivo', 'referencia'],
-    permissionKey: 'menu.main.inicio',
-  },
-
   // ── DATOS EN LÍNEA / SIGH ───────────────────────────────────────────────
 
   // Laboratorio Cultivos
@@ -925,21 +909,6 @@ export const navigationCatalog: CatalogResource[] = [
     permissionKey: 'menu.sigh.atencion-al-usuario.monitoreo-ventanilla',
   },
 
-  // Reportes Históricos SIGH
-  {
-    id: 'sigh-reportes-historicos',
-    title: 'Reportes Históricos — Datos en Línea',
-    description: 'Tableros y reportes históricos del entorno Datos en Línea.',
-    workspace: 'datos-en-linea',
-    workspaceLabel: 'Datos en Línea',
-    type: 'tablero',
-    category: 'Reportes Históricos',
-    route: '/sigh/reportes-historicos',
-    breadcrumb: 'Datos en Línea',
-    aliases: ['historico sigh', 'reportes antiguos sigh', 'anteriores datos en linea'],
-    keywords: ['historico', 'reporte', 'anterior', 'archivo', 'datos', 'linea'],
-    permissionKey: 'menu.sigh.inicio',
-  },
 ]
 
 export const resourceTypeLabels: Record<CatalogResourceType, string> = {
