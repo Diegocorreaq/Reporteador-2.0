@@ -26,3 +26,41 @@ export interface PprActividad {
   notes: string
   signed: boolean
 }
+
+export interface PprPeriodoItem extends PprPeriodo {
+  isSigned: boolean
+  signedAt: string | null
+  completadas: number
+  totalActividades: number
+}
+
+export interface PprResumenMes {
+  periodoId: number | null
+  month: number
+  label: string
+  completadas: number
+  totalActividades: number
+  isSigned: boolean
+}
+
+export interface PprResumenPrograma {
+  programaId: number
+  code: string
+  name: string
+  meses: PprResumenMes[]
+}
+
+export interface PprCoordinador {
+  employeeId: number
+  employeeName: string
+  dni: string
+  activo: boolean
+  fechaAlta: string | null
+  programas: Array<{ id: number; code: string; name: string }>
+}
+
+export interface PprProgramaAdmin {
+  id: number
+  code: string
+  name: string
+}

@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AuthShell } from '@/app/layouts/auth-shell/auth-shell'
 import { MainShell } from '@/app/layouts/main-shell/main-shell'
 import { SighShell } from '@/app/layouts/sigh-shell/sigh-shell'
+import { PprShell } from '@/app/layouts/ppr-shell/ppr-shell'
 import { RequireAuth } from '@/app/router/guards'
 import { LoadingState } from '@/components/feedback/loading-state'
 import { getModulesByWorkspace } from '@/config/module-registry'
@@ -37,8 +38,25 @@ const ExportacionesPage = lazy(() =>
 const LavadoManosPage = lazy(() =>
   import('@/modules/lavado-manos/pages/lavado-manos-page').then((module) => ({ default: module.LavadoManosPage })),
 )
-const PprPage = lazy(() =>
-  import('@/modules/ppr/pages/ppr-page').then((module) => ({ default: module.PprPage })),
+const PprInicioPage = lazy(() =>
+  import('@/modules/ppr/pages/ppr-inicio-page').then((module) => ({ default: module.PprInicioPage })),
+)
+const PprActividadesPage = lazy(() =>
+  import('@/modules/ppr/pages/ppr-actividades-page').then((module) => ({ default: module.PprActividadesPage })),
+)
+const PprPeriodosPage = lazy(() =>
+  import('@/modules/ppr/pages/ppr-periodos-page').then((module) => ({ default: module.PprPeriodosPage })),
+)
+const PprProgramasPage = lazy(() =>
+  import('@/modules/ppr/pages/ppr-programas-page').then((module) => ({ default: module.PprProgramasPage })),
+)
+const PprReportesPage = lazy(() =>
+  import('@/modules/ppr/pages/ppr-reportes-page').then((module) => ({ default: module.PprReportesPage })),
+)
+const PprAdminCoordinadoresPage = lazy(() =>
+  import('@/modules/ppr/pages/ppr-admin-coordinadores-page').then((module) => ({
+    default: module.PprAdminCoordinadoresPage,
+  })),
 )
 const SighHomePage = lazy(() =>
   import('@/modules/inicio/pages/sigh-home-page').then((module) => ({ default: module.SighHomePage })),
@@ -149,7 +167,6 @@ const explicitMainRoutePaths = new Set(
       'monitoreo-salud-mental/reportes-monitoreo',
       'zona-descarga/registros-procesados',
       'epidemiologia/lavado-de-manos',
-      'ppr',
     ]),
 )
 
@@ -211,10 +228,6 @@ const mainImplementedRoutes = [
   {
     path: 'epidemiologia/lavado-de-manos',
     element: lazyElement(<LavadoManosPage />),
-  },
-  {
-    path: 'ppr',
-    element: lazyElement(<PprPage />),
   },
 ]
 
@@ -313,6 +326,40 @@ export const router = createBrowserRouter([
           },
           ...sighImplementedRoutes,
           ...sighScaffoldRoutes,
+          {
+            path: '*',
+            element: lazyElement(<NotFoundPage />),
+          },
+        ],
+      },
+      {
+        path: '/ppr',
+        element: <PprShell />,
+        children: [
+          {
+            index: true,
+            element: lazyElement(<PprInicioPage />),
+          },
+          {
+            path: 'actividades',
+            element: lazyElement(<PprActividadesPage />),
+          },
+          {
+            path: 'periodos',
+            element: lazyElement(<PprPeriodosPage />),
+          },
+          {
+            path: 'programas',
+            element: lazyElement(<PprProgramasPage />),
+          },
+          {
+            path: 'reportes',
+            element: lazyElement(<PprReportesPage />),
+          },
+          {
+            path: 'admin/coordinadores',
+            element: lazyElement(<PprAdminCoordinadoresPage />),
+          },
           {
             path: '*',
             element: lazyElement(<NotFoundPage />),

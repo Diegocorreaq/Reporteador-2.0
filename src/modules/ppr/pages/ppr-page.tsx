@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { CheckCircle2, ClipboardCheck, Loader2, PenLine, ShieldAlert } from 'lucide-react'
+import { CheckCircle2, ClipboardCheck, Eye, EyeOff, Loader2, PenLine, ShieldCheck } from 'lucide-react'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
 import {
   fetchActividades,
@@ -7,6 +7,7 @@ import {
   fetchProgramas,
   firmarPeriodo,
   saveValor,
+  validatePprUser,
 } from '@/modules/ppr/services/ppr.service'
 import type { PprActividad, PprPeriodo, PprPrograma } from '@/modules/ppr/types'
 
@@ -21,24 +22,126 @@ function pctColor(pct: number) {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-components
+// Validation dialog (same pattern as Lavado de Manos)
 // ---------------------------------------------------------------------------
 
-function PprAccessDenied() {
+interface ValidationDialogProps {
+  onAuthorized: (employeeId: number, employeeName: string) => void
+}
+
+function ValidationDialog({ onAuthorized }: ValidationDialogProps) {
+  const sessionUser = useAuthStore((state) => state.user)
+  const [username, setUsername] = useState(sessionUser?.username ?? '')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const passwordRef = useRef<HTMLInputElement>(null)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!username.trim() || !password.trim()) return
+    setError(null)
+    setLoading(true)
+    try {
+      const result = await validatePprUser(username.trim(), password.trim())
+      if (!result.ok || !result.employeeId) {
+        setError(result.message || 'No tiene autorización para el Portal PPR.')
+        return
+      }
+      onAuthorized(result.employeeId, result.employeeName)
+    } catch {
+      setError('No se pudo verificar el acceso. Intente nuevamente.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <section className="flex flex-col items-center justify-center gap-4 py-20 text-center">
-      <ShieldAlert className="h-12 w-12 text-muted" />
-      <h1 className="text-lg font-semibold text-[#123B63]">Acceso restringido</h1>
-      <p className="max-w-sm text-sm text-muted">
-        No tiene acceso al Portal PPR. Contacte al administrador si cree que esto es un error.
-      </p>
-    </section>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-2xl border border-[#e8f0f8] bg-white p-7 shadow-2xl">
+        {/* Header */}
+        <div className="mb-6 flex flex-col items-center gap-2 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-soft">
+            <ShieldCheck className="h-7 w-7 text-brand-strong" />
+          </div>
+          <h2 className="text-base font-bold text-[#123B63]">Portal PPR</h2>
+          <p className="text-xs text-muted">
+            Ingrese sus credenciales para verificar su acceso al portal.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Username */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-[#123B63]">Usuario (DNI)</label>
+            <input
+              type="text"
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full rounded-lg border border-[#ccd9e8] px-3 py-2 text-sm focus:border-[#123B63] focus:outline-none"
+              placeholder="Ingrese su DNI"
+              required
+            />
+          </div>
+
+          {/* Password */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-[#123B63]">Contraseña</label>
+            <div className="relative">
+              <input
+                ref={passwordRef}
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-[#ccd9e8] px-3 py-2 pr-10 text-sm focus:border-[#123B63] focus:outline-none"
+                placeholder="Ingrese su contraseña"
+                required
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-[#123B63]"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              {error}
+            </div>
+          )}
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading || !username.trim() || !password.trim()}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#123B63] py-2.5 text-sm font-semibold text-white transition hover:bg-[#1a4f85] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+            Verificar acceso
+          </button>
+        </form>
+      </div>
+    </div>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Activity row
+// ---------------------------------------------------------------------------
 
 interface ActividadRowProps {
   actividad: PprActividad
   disabled: boolean
+  employeeId: number
+  periodId: number
   onChange: (id: number, value: string, notes: string) => void
 }
 
@@ -56,14 +159,14 @@ function ActividadRow({ actividad, disabled, onChange }: ActividadRowProps) {
     setVal(nextVal)
     setNotes(nextNotes)
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      onChange(actividad.id, nextVal, nextNotes)
-    }, 600)
+    debounceRef.current = setTimeout(() => onChange(actividad.id, nextVal, nextNotes), 600)
   }
 
   const numVal = parseFloat(val)
-  const annualGoal = actividad.annualGoal
-  const pct = annualGoal && !isNaN(numVal) ? Math.round((numVal / annualGoal) * 100) : null
+  const pct =
+    actividad.annualGoal && !isNaN(numVal)
+      ? Math.round((numVal / actividad.annualGoal) * 100)
+      : null
 
   return (
     <tr className="border-b border-[#e8f0f8] last:border-0 hover:bg-[#f5f9ff]">
@@ -77,7 +180,7 @@ function ActividadRow({ actividad, disabled, onChange }: ActividadRowProps) {
       </td>
       <td className="px-2 py-2.5 text-center text-xs text-muted">{actividad.unit || '—'}</td>
       <td className="px-2 py-2.5 text-center text-xs text-muted">
-        {annualGoal != null ? annualGoal.toLocaleString('es-PE') : '—'}
+        {actividad.annualGoal != null ? actividad.annualGoal.toLocaleString('es-PE') : '—'}
       </td>
       <td className="px-2 py-2.5">
         <input
@@ -102,11 +205,7 @@ function ActividadRow({ actividad, disabled, onChange }: ActividadRowProps) {
         />
       </td>
       <td className="px-2 py-2.5 text-center text-xs">
-        {pct != null ? (
-          <span className={pctColor(pct)}>{pct}%</span>
-        ) : (
-          <span className="text-muted">—</span>
-        )}
+        {pct != null ? <span className={pctColor(pct)}>{pct}%</span> : <span className="text-muted">—</span>}
       </td>
     </tr>
   )
@@ -116,16 +215,20 @@ function ActividadRow({ actividad, disabled, onChange }: ActividadRowProps) {
 // Main page
 // ---------------------------------------------------------------------------
 
+interface AuthorizedUser {
+  employeeId: number
+  employeeName: string
+}
+
 export function PprPage() {
-  const user = useAuthStore((state) => state.user)
-  const pprRole = user?.pprRole ?? null
+  const [authorizedUser, setAuthorizedUser] = useState<AuthorizedUser | null>(null)
 
   const [periodo, setPeriodo] = useState<PprPeriodo | null>(null)
   const [programas, setProgramas] = useState<PprPrograma[]>([])
   const [programaId, setProgramaId] = useState<number | null>(null)
   const [actividades, setActividades] = useState<PprActividad[]>([])
 
-  const [loadingInit, setLoadingInit] = useState(true)
+  const [loadingInit, setLoadingInit] = useState(false)
   const [loadingActs, setLoadingActs] = useState(false)
   const [saving, setSaving] = useState(false)
   const [signing, setSigning] = useState(false)
@@ -133,10 +236,11 @@ export function PprPage() {
   const [signedAt, setSignedAt] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // Load period + programs once validated
   useEffect(() => {
-    if (!pprRole) return
+    if (!authorizedUser) return
     setLoadingInit(true)
-    Promise.all([fetchPeriodoActivo(), fetchProgramas()])
+    Promise.all([fetchPeriodoActivo(), fetchProgramas(authorizedUser.employeeId)])
       .then(([per, progs]) => {
         setPeriodo(per)
         setProgramas(progs)
@@ -144,32 +248,31 @@ export function PprPage() {
       })
       .catch(() => setError('No se pudo cargar la información del período.'))
       .finally(() => setLoadingInit(false))
-  }, [pprRole])
+  }, [authorizedUser])
 
+  // Load activities when program or period changes
   useEffect(() => {
-    if (!programaId || !periodo) return
+    if (!programaId || !periodo || !authorizedUser) return
     setLoadingActs(true)
     setSigned(false)
     setSignedAt(null)
-    fetchActividades(programaId, periodo.id)
+    fetchActividades(programaId, periodo.id, authorizedUser.employeeId)
       .then((acts) => {
         setActividades(acts)
         if (acts.length > 0 && acts[0].signed) setSigned(true)
       })
       .catch(() => setError('No se pudo cargar las actividades.'))
       .finally(() => setLoadingActs(false))
-  }, [programaId, periodo])
+  }, [programaId, periodo, authorizedUser])
 
   async function handleValorChange(activityId: number, rawValue: string, notes: string) {
-    if (!periodo) return
+    if (!periodo || !authorizedUser) return
     const numVal = parseFloat(rawValue)
     if (isNaN(numVal)) return
     setSaving(true)
     try {
-      await saveValor({ activityId, periodId: periodo.id, value: numVal, notes })
-      setActividades((prev) =>
-        prev.map((a) => (a.id === activityId ? { ...a, value: numVal, notes } : a)),
-      )
+      await saveValor({ activityId, periodId: periodo.id, employeeId: authorizedUser.employeeId, value: numVal, notes })
+      setActividades((prev) => prev.map((a) => (a.id === activityId ? { ...a, value: numVal, notes } : a)))
     } catch {
       setError('Error al guardar el valor.')
     } finally {
@@ -178,10 +281,10 @@ export function PprPage() {
   }
 
   async function handleFirmar() {
-    if (!periodo) return
+    if (!periodo || !authorizedUser) return
     setSigning(true)
     try {
-      const result = await firmarPeriodo(periodo.id)
+      const result = await firmarPeriodo(periodo.id, authorizedUser.employeeId)
       setSigned(true)
       setSignedAt(result.signedAt)
       setActividades((prev) => prev.map((a) => ({ ...a, signed: true })))
@@ -192,7 +295,10 @@ export function PprPage() {
     }
   }
 
-  if (!pprRole) return <PprAccessDenied />
+  // Show validation dialog until authorized
+  if (!authorizedUser) {
+    return <ValidationDialog onAuthorized={(id, name) => setAuthorizedUser({ employeeId: id, employeeName: name })} />
+  }
 
   const completadas = actividades.filter((a) => a.value != null).length
   const total = actividades.length
@@ -215,7 +321,10 @@ export function PprPage() {
               </span>
             )}
           </div>
-          <p className="text-xs text-muted">Programación Presupuestal por Resultados — Coordinador</p>
+          <p className="text-xs text-muted">
+            Programación Presupuestal por Resultados —{' '}
+            <span className="font-medium text-[#123B63]">{authorizedUser.employeeName}</span>
+          </p>
         </div>
 
         {signed ? (
@@ -241,7 +350,7 @@ export function PprPage() {
         )}
       </header>
 
-      {/* Error banner */}
+      {/* Error */}
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
           {error}{' '}
@@ -257,7 +366,7 @@ export function PprPage() {
         </div>
       ) : (
         <>
-          {/* Program selector tabs */}
+          {/* Program selector */}
           {programas.length > 1 && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-medium text-muted">Programa:</span>
@@ -280,7 +389,6 @@ export function PprPage() {
             </div>
           )}
 
-          {/* Empty — no programs assigned */}
           {programas.length === 0 && (
             <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[#b8cfe8] bg-white py-16 text-center">
               <ClipboardCheck className="h-8 w-8 text-muted" />
@@ -336,24 +444,12 @@ export function PprPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-[#e8f0f8] bg-[#f5f9ff]">
-                        <th className="py-2.5 pl-4 pr-2 text-left text-xs font-semibold text-[#123B63]">
-                          Actividad
-                        </th>
-                        <th className="px-2 py-2.5 text-center text-xs font-semibold text-[#123B63]">
-                          Unidad
-                        </th>
-                        <th className="px-2 py-2.5 text-center text-xs font-semibold text-[#123B63]">
-                          Meta anual
-                        </th>
-                        <th className="px-2 py-2.5 text-center text-xs font-semibold text-[#123B63]">
-                          Valor mes
-                        </th>
-                        <th className="px-2 py-2.5 text-left text-xs font-semibold text-[#123B63]">
-                          Observaciones
-                        </th>
-                        <th className="px-2 py-2.5 text-center text-xs font-semibold text-[#123B63]">
-                          % Avance
-                        </th>
+                        <th className="py-2.5 pl-4 pr-2 text-left text-xs font-semibold text-[#123B63]">Actividad</th>
+                        <th className="px-2 py-2.5 text-center text-xs font-semibold text-[#123B63]">Unidad</th>
+                        <th className="px-2 py-2.5 text-center text-xs font-semibold text-[#123B63]">Meta anual</th>
+                        <th className="px-2 py-2.5 text-center text-xs font-semibold text-[#123B63]">Valor mes</th>
+                        <th className="px-2 py-2.5 text-left text-xs font-semibold text-[#123B63]">Observaciones</th>
+                        <th className="px-2 py-2.5 text-center text-xs font-semibold text-[#123B63]">% Avance</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -362,6 +458,8 @@ export function PprPage() {
                           key={act.id}
                           actividad={act}
                           disabled={signed || !(periodo?.isOpen ?? false)}
+                          employeeId={authorizedUser.employeeId}
+                          periodId={periodo?.id ?? 0}
                           onChange={handleValorChange}
                         />
                       ))}

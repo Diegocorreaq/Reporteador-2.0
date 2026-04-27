@@ -601,14 +601,6 @@ export const mainSections: NavigationSection[] = [
 
 export const mainQuickLinks: WorkspaceQuickLink[] = [
   {
-    key: 'ppr-portal',
-    label: 'Portal PPR',
-    to: '/app/ppr',
-    description: 'Portal de Programación Presupuestal por Resultados.',
-    icon: ClipboardCheck,
-    access: { pprRoles: ['ppr_admin', 'ppr_coordinador', 'ppr_supervisor'] },
-  },
-  {
     key: 'manuales',
     label: 'Ver manuales y tutoriales',
     href: 'https://recursos.heves.gob.pe/',
