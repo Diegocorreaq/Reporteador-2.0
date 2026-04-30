@@ -1,5 +1,6 @@
-import { executeProcedure_Sigh2 as executeProcedure, executeQuery_Sigh2 as executeQuery, sql } from './sigh-sql-helpers.js'
+import { executeProcedure_Sigh1 as executeProcedure, executeQuery_Sigh1 as executeQuery, sql } from './sigh-sql-helpers.js'
 import { buildProduccionMedicosWorkbook, MIME_XLSX } from './excel-export.service.js'
+import { buildProduccionMedicosPdf, MIME_PDF } from './pdf-export.service.js'
 
 const REPORT_TIMEOUT_MS = 180000
 const MAX_RANGE_DAYS = 31
@@ -27,124 +28,42 @@ function validateDateRange(fechaInicio, fechaFin) {
   return days
 }
 
-function escapeHtml(value) {
+function sanitizeFileNamePart(value) {
   return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 120)
 }
 
-function buildSpreadsheetHtml(title, rows) {
-  const safeRows =
-    rows.length > 0
-      ? rows
-      : [
-          {
-            mensaje: 'No se encontraron registros para los filtros solicitados.',
-          },
-        ]
-
-  const headers = Object.keys(safeRows[0] ?? {})
-
-  const thead = headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')
-  const tbody = safeRows
-    .map(
-      (row) =>
-        `<tr>${headers.map((header) => `<td>${escapeHtml(row[header])}</td>`).join('')}</tr>`,
-    )
-    .join('')
-
-  return `<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>${escapeHtml(title)}</title>
-  </head>
-  <body>
-    <table border="1">
-      <thead>
-        <tr>${thead}</tr>
-      </thead>
-      <tbody>${tbody}</tbody>
-    </table>
-  </body>
-</html>`
+function buildExportFileName({ employeeName, fechaInicio, fechaFin, extension }) {
+  const doctor = sanitizeFileNamePart(employeeName) || 'produccion-medicos'
+  const range = fechaInicio === fechaFin ? fechaInicio : `${fechaInicio}_a_${fechaFin}`
+  return `${doctor}_${range}.${extension}`
 }
 
-function buildPrintableHtml(title, subtitle, rows) {
-  const safeRows =
-    rows.length > 0
-      ? rows
-      : [
-          {
-            mensaje: 'No se encontraron registros para los filtros solicitados.',
-          },
-        ]
+async function getProduccionMedicoEmpleado(empleadoId) {
+  const rows = await executeQuery(
+    `SELECT TOP 1
+       IDEMPLEADO AS idEmpleado,
+       DNI AS dni,
+       UPPER(ApellidoPaterno + ' ' + ApellidoMaterno + ' ' + Nombres) AS empleado,
+       UPPER(TE.Descripcion) AS tipoEmpleado
+     FROM SIGH..Empleados E
+     INNER JOIN SIGH..TiposEmpleado TE ON TE.IdTipoEmpleado = E.IdTipoEmpleado
+     WHERE E.IDEMPLEADO = @empleadoId`,
+    [{ name: 'empleadoId', type: sql.Int, value: Number(empleadoId ?? 0) }],
+    { timeoutMs: REPORT_TIMEOUT_MS },
+  )
 
-  const headers = Object.keys(safeRows[0] ?? {})
-  const tableHeaders = headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')
-  const tableRows = safeRows
-    .map(
-      (row) =>
-        `<tr>${headers.map((header) => `<td>${escapeHtml(row[header])}</td>`).join('')}</tr>`,
-    )
-    .join('')
-
-  return `<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <title>${escapeHtml(title)}</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 24px;
-        color: #1f2937;
-      }
-      h1 {
-        font-size: 18px;
-        margin: 0 0 8px 0;
-      }
-      p {
-        margin: 0 0 16px 0;
-        font-size: 13px;
-      }
-      table {
-        border-collapse: collapse;
-        width: 100%;
-        font-size: 12px;
-      }
-      th,
-      td {
-        border: 1px solid #d1d5db;
-        padding: 6px 8px;
-        vertical-align: top;
-      }
-      th {
-        background: #eff6ff;
-        text-transform: uppercase;
-        font-size: 11px;
-      }
-      @media print {
-        body {
-          margin: 8px;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <h1>${escapeHtml(title)}</h1>
-    <p>${escapeHtml(subtitle)}</p>
-    <table>
-      <thead>
-        <tr>${tableHeaders}</tr>
-      </thead>
-      <tbody>${tableRows}</tbody>
-    </table>
-  </body>
-</html>`
+  const row = rows[0] ?? {}
+  return {
+    idEmpleado: Number(row.idEmpleado ?? empleadoId ?? 0),
+    dni: String(row.dni ?? '').trim(),
+    empleado: String(row.empleado ?? '').trim(),
+    especialidad: String(row.tipoEmpleado ?? '').trim(),
+  }
 }
 
 export async function searchProduccionMedicos(term) {
@@ -265,38 +184,65 @@ export async function exportProduccionMedicosExcel(filters) {
 
   validateDateRange(fechaInicio, fechaFin)
 
-  const rows = await executeProcedure(
-    'SP_REPORTE_PRODUCCION_P2',
-    [
-      { name: 'feci', type: sql.NVarChar, value: fechaInicio },
-      { name: 'fecf', type: sql.NVarChar, value: fechaFin },
-      { name: 'idemp', type: sql.Int, value: empleadoId },
-    ],
-    { timeoutMs: REPORT_TIMEOUT_MS },
-  )
+  const [rows, employee] = await Promise.all([
+    executeProcedure(
+      'SP_REPORTE_PRODUCCION_P2',
+      [
+        { name: 'feci', type: sql.NVarChar, value: fechaInicio },
+        { name: 'fecf', type: sql.NVarChar, value: fechaFin },
+        { name: 'idemp', type: sql.Int, value: empleadoId },
+      ],
+      { timeoutMs: REPORT_TIMEOUT_MS },
+    ),
+    getProduccionMedicoEmpleado(empleadoId),
+  ])
 
   const content = await buildProduccionMedicosWorkbook({
     rows,
     startDate: fechaInicio,
     endDate: fechaFin,
-    title: 'produccion-medicos.xlsx',
+    title: buildExportFileName({
+      employeeName: employee.empleado,
+      fechaInicio,
+      fechaFin,
+      extension: 'xlsx',
+    }),
   })
 
   return {
-    fileName: 'produccion-medicos.xlsx',
+    fileName: buildExportFileName({
+      employeeName: employee.empleado,
+      fechaInicio,
+      fechaFin,
+      extension: 'xlsx',
+    }),
     mimeType: MIME_XLSX,
     content,
   }
 }
 
 export async function exportProduccionMedicosPdf(filters) {
-  const report = await getProduccionMedicosResumen(filters)
-  const subtitle = `Periodo: ${report.filters.fechaInicio} al ${report.filters.fechaFin}`
-  const content = buildPrintableHtml('Produccion de Actividades Realizadas y Registradas', subtitle, report.rows)
+  const [report, employee] = await Promise.all([
+    getProduccionMedicosResumen(filters),
+    getProduccionMedicoEmpleado(filters.empleadoId),
+  ])
+
+  const content = buildProduccionMedicosPdf({
+    employee,
+    rows: report.rows,
+    dayRange: report.dayRange,
+    startDate: report.filters.fechaInicio,
+    endDate: report.filters.fechaFin,
+  })
 
   return {
-    fileName: 'produccion-medicos.html',
-    mimeType: 'text/html; charset=utf-8',
+    fileName: buildExportFileName({
+      employeeName: employee.empleado,
+      fechaInicio: report.filters.fechaInicio,
+      fechaFin: report.filters.fechaFin,
+      extension: 'pdf',
+    }),
+    mimeType: MIME_PDF,
     content,
   }
 }

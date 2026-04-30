@@ -10,8 +10,8 @@ import { SighTable, type SighTableColumn } from '@/modules/sigh/components/sigh-
 import { countDaysBetween, getTodayDate, resolveRowNumber, resolveRowText } from '@/modules/sigh/sigh-utils'
 import {
   downloadProduccionMedicosExcel,
+  downloadProduccionMedicosPdf,
   getProduccionMedicosDetalle,
-  getProduccionMedicosPdfUrl,
   getProduccionMedicosResumen,
   searchProduccionMedicos,
 } from '@/modules/sigh/services/sigh-reports.service'
@@ -170,18 +170,22 @@ export function ProduccionMedicosPage() {
     }
   }
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     if (!selectedEmployee) {
       setError('Debe seleccionar un profesional.')
       return
     }
 
-    const url = getProduccionMedicosPdfUrl({
-      fechaInicio: filters.fechaInicio,
-      fechaFin: filters.fechaFin,
-      empleadoId: selectedEmployee.idEmpleado,
-    })
-    window.open(url, '_blank', 'noopener,noreferrer')
+    try {
+      await downloadProduccionMedicosPdf({
+        fechaInicio: filters.fechaInicio,
+        fechaFin: filters.fechaFin,
+        empleadoId: selectedEmployee.idEmpleado,
+      })
+    } catch (exportError) {
+      const message = exportError instanceof Error ? exportError.message : 'No se pudo exportar en PDF.'
+      setError(message)
+    }
   }
 
   const handleOpenDetail = async (row: SighTableRow) => {

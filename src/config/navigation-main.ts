@@ -5,7 +5,6 @@ import {
   BarChart3,
   BookOpenText,
   Brain,
-  ClipboardCheck,
   ClipboardList,
   FileDown,
   FileText,
@@ -31,7 +30,6 @@ const homeItem = item({
   to: '/app',
   description: 'Entrada principal del Reporteador.',
   icon: Home,
-  access: { permissions: ['menu.main.inicio'] },
 })
 
 export const mainSections: NavigationSection[] = [
