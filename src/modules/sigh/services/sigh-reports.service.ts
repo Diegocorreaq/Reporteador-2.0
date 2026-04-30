@@ -173,15 +173,8 @@ export async function downloadProduccionMedicosExcel(filters: ProduccionMedicosF
   await downloadBlob('/sigh/prod-medicos/export/excel', filters as unknown as Record<string, string | number | undefined>)
 }
 
-export function getProduccionMedicosPdfUrl(filters: ProduccionMedicosFilters) {
-  const base = `${httpClient.defaults.baseURL ?? ''}/sigh/prod-medicos/export/pdf`
-  const query = new URLSearchParams({
-    fechaInicio: filters.fechaInicio,
-    fechaFin: filters.fechaFin,
-    empleadoId: String(filters.empleadoId),
-  })
-
-  return `${base}?${query.toString()}`
+export async function downloadProduccionMedicosPdf(filters: ProduccionMedicosFilters) {
+  await downloadBlob('/sigh/prod-medicos/export/pdf', filters as unknown as Record<string, string | number | undefined>)
 }
 
 export async function listCamasServicios() {

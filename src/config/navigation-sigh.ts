@@ -20,7 +20,6 @@ const homeItem = item({
   to: '/sigh',
   description: 'Entrada principal de Datos en Linea.',
   icon: Home,
-  access: { permissions: ['menu.sigh.inicio'] },
 })
 
 export const sighSections: NavigationSection[] = [

@@ -1,17 +1,13 @@
 /**
- * Maps service/module names to their SQL connections
- * Replicates the legacy SIGH behavior where:
- * - Most SIGH modules use connection 1
- * - Producción de Médicos uses connection 2
- * - Non-SIGH modules use general connection
+ * Maps service/module names to their SQL connections.
+ * SIGH modules use connection 1 unless explicitly configured otherwise.
+ * Non-SIGH modules use the general connection.
  */
 
 const SERVICE_TO_CONNECTION_MAP = {
-  // SIGH modules that use connection 2
-  'sigh.prod-medicos': 'sigh2',
-  'prod-medicos': 'sigh2',
-
-  // SIGH modules that use connection 1 (explicit for clarity)
+  // SIGH modules that use connection 1
+  'sigh.prod-medicos': 'sigh1',
+  'prod-medicos': 'sigh1',
   'sigh.monitoreo': 'sigh1',
   'sigh.familia-pendiente': 'sigh1',
   'sigh.gestion-cita': 'sigh1',
@@ -49,7 +45,7 @@ export function resolveConnection({ service, path } = {}) {
   // Heuristic: check request path for SIGH indicators
   if (path) {
     if (path.includes('/sigh/prod-medicos')) {
-      return 'sigh2'
+      return 'sigh1'
     }
 
     if (path.includes('/sigh/')) {
@@ -59,13 +55,10 @@ export function resolveConnection({ service, path } = {}) {
 
   // Check service prefix for SIGH
   if (service && service.startsWith('sigh.')) {
-    // If we reach here, it's a SIGH service without explicit mapping
-    // Check for prod-medicos reference
     if (service.includes('prod-medicos') || service.includes('produccion')) {
-      return 'sigh2'
+      return 'sigh1'
     }
 
-    // Default SIGH services to sigh1
     return 'sigh1'
   }
 
@@ -74,7 +67,7 @@ export function resolveConnection({ service, path } = {}) {
 }
 
 /**
- * Middleware to attach connection resolver to request
+ * Middleware to attach connection resolver to request.
  * Usage: app.use(connectionResolverMiddleware())
  */
 export function connectionResolverMiddleware() {

@@ -11,6 +11,27 @@ interface ResourceScore {
   categoryIntent: boolean
 }
 
+const pluralStemExceptions = new Set([
+  'lunes',
+  'martes',
+  'miercoles',
+  'jueves',
+  'viernes',
+  'crisis',
+  'analisis',
+  'sintesis',
+  'tesis',
+  'dosis',
+  'virus',
+  'pais',
+  'mes',
+  'ingles',
+  'frances',
+  'diabetes',
+  'sepsis',
+  'herpes',
+])
+
 function normalize(text: string): string {
   return text
     .toLowerCase()
@@ -19,6 +40,17 @@ function normalize(text: string): string {
     .trim()
 }
 
+const validShortAliases = new Set(
+  navigationCatalog.flatMap((resource) =>
+    resource.aliases
+      .flatMap((alias) => normalize(alias).split(/\s+/))
+      .filter((token) => token.length > 0 && token.length < 3),
+  ),
+)
+
+const categoryNames = new Set(navigationCatalog.map((resource) => normalize(resource.category)))
+const workspaceLabels = new Set(navigationCatalog.map((resource) => normalize(resource.workspaceLabel)))
+
 function scoreField(normalized: string, query: string): number {
   if (normalized === query) return 100
   if (normalized.startsWith(query)) return 85
@@ -26,11 +58,51 @@ function scoreField(normalized: string, query: string): number {
   return 0
 }
 
-function tokenize(text: string): string[] {
+function stemPlural(token: string): string {
+  if (pluralStemExceptions.has(token)) return token
+
+  if (token.length > 5 && /[bcdfghjklmnñpqrstvwxyz]es$/.test(token)) {
+    return token.slice(0, -2)
+  }
+
+  if (/[aeiou]s$/.test(token)) {
+    return token.slice(0, -1)
+  }
+
+  return token
+}
+
+export function tokenize(text: string): string[] {
   return normalize(text)
     .split(/\s+/)
-    .map((token) => token.replace(/s$/, ''))
-    .filter((token) => token.length >= 3)
+    .filter(Boolean)
+    .map(stemPlural)
+    .filter((token) => token.length >= 3 || validShortAliases.has(token))
+}
+
+function tokenMatches(fieldToken: string, queryToken: string): boolean {
+  return (
+    fieldToken === queryToken ||
+    fieldToken.startsWith(queryToken) ||
+    queryToken.startsWith(fieldToken)
+  )
+}
+
+function scoreTokenCoverage(field: string, query: string, fullMatchScore: number, partialMatchScore: number): number {
+  const queryTokens = tokenize(query)
+  if (queryTokens.length === 0) return 0
+
+  const fieldTokens = tokenize(field)
+  if (fieldTokens.length === 0) return 0
+
+  const matches = queryTokens.filter((queryToken) =>
+    fieldTokens.some((fieldToken) => tokenMatches(fieldToken, queryToken)),
+  ).length
+
+  if (matches === queryTokens.length) return fullMatchScore
+  if (matches > 0) return partialMatchScore * (matches / queryTokens.length)
+
+  return 0
 }
 
 function isCategoryIntent(category: string, query: string): boolean {
@@ -38,19 +110,16 @@ function isCategoryIntent(category: string, query: string): boolean {
   const queryNorm = normalize(query)
 
   if (categoryNorm === queryNorm) return true
-  if (categoryNorm.startsWith(queryNorm) && queryNorm.length >= 4) return true
+  if (categoryNames.has(queryNorm) && categoryNorm === queryNorm) return true
 
   const queryTokens = tokenize(query)
   if (queryTokens.length < 2) return false
 
+  if (categoryNorm.startsWith(queryNorm) && queryNorm.length >= 4) return true
+
   const categoryTokens = tokenize(category)
   return queryTokens.every((queryToken) =>
-    categoryTokens.some(
-      (categoryToken) =>
-        categoryToken === queryToken ||
-        categoryToken.startsWith(queryToken) ||
-        queryToken.startsWith(categoryToken),
-    ),
+    categoryTokens.some((categoryToken) => tokenMatches(categoryToken, queryToken)),
   )
 }
 
@@ -66,15 +135,17 @@ function scoreResource(resource: CatalogResource, query: string): ResourceScore 
   // Title: highest weight
   const titleNorm = normalize(resource.title)
   const titleScore = scoreField(titleNorm, q)
-  score = Math.max(score, titleScore * 1.0)
-  directScore = Math.max(directScore, titleScore * 1.0)
+  const titleTokenScore = scoreTokenCoverage(resource.title, q, 92, 45)
+  score = Math.max(score, titleScore * 1.0, titleTokenScore)
+  directScore = Math.max(directScore, titleScore * 1.0, titleTokenScore)
 
   // Aliases: very high weight (user-facing intent terms)
   for (const alias of resource.aliases) {
     const aliasNorm = normalize(alias)
     const aliasScore = scoreField(aliasNorm, q)
-    score = Math.max(score, aliasScore * 0.95)
-    directScore = Math.max(directScore, aliasScore * 0.95)
+    const aliasTokenScore = scoreTokenCoverage(alias, q, 88, 40)
+    score = Math.max(score, aliasScore * 0.95, aliasTokenScore)
+    directScore = Math.max(directScore, aliasScore * 0.95, aliasTokenScore)
   }
 
   // Keywords: medium weight (also handles plural/stem variations)
@@ -91,6 +162,10 @@ function scoreResource(resource: CatalogResource, query: string): ResourceScore 
     score = Math.max(score, keywordScore)
     directScore = Math.max(directScore, keywordScore)
   }
+
+  const keywordTokenScore = scoreTokenCoverage(resource.keywords.join(' '), q, 72, 34)
+  score = Math.max(score, keywordTokenScore)
+  directScore = Math.max(directScore, keywordTokenScore)
 
   // Category: lower weight
   const catNorm = normalize(resource.category)
@@ -117,7 +192,10 @@ function scoreResource(resource: CatalogResource, query: string): ResourceScore 
 
   // Workspace label matches
   const workspaceLabelNorm = normalize(resource.workspaceLabel)
-  if (workspaceLabelNorm.includes(q)) score = Math.max(score, 15)
+  if (workspaceLabelNorm === q) {
+    score = Math.max(score, 25)
+    directScore = Math.max(directScore, 25)
+  }
 
   return { score, directScore, categoryIntent }
 }
@@ -130,7 +208,7 @@ export function searchCatalog(query: string): SearchResult[] {
 
   for (const resource of navigationCatalog) {
     const { score, directScore, categoryIntent } = scoreResource(resource, q)
-    if (score >= 15) {
+    if (score >= 25) {
       results.push({ resource, score, directScore, categoryIntent })
     }
   }
@@ -147,9 +225,15 @@ export function searchCatalog(query: string): SearchResult[] {
     ? results.filter((result) => result.directScore >= 30)
     : results
 
-  return filteredResults
+  const sortedResults = filteredResults
     .sort((a, b) => b.score - a.score)
     .map(({ resource, score }) => ({ resource, score }))
+
+  if (workspaceLabels.has(normalize(q))) {
+    return sortedResults.slice(0, 15)
+  }
+
+  return sortedResults
 }
 
 export function getQuickSuggestions(): string[] {

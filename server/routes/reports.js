@@ -322,8 +322,7 @@ reportsRouter.get('/sigh/prod-medicos/export/pdf', requireAuth, exportLimiter, a
       fechaFin: request.query.fechaFin,
       empleadoId: request.query.empleadoId,
     })
-    response.setHeader('Content-Type', file.mimeType)
-    response.send(file.content)
+    sendDownload(response, file)
   } catch (error) {
     handleError(response, error, 'No se pudo generar la vista imprimible de producción.')
   }

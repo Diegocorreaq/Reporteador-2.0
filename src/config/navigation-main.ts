@@ -5,7 +5,6 @@ import {
   BarChart3,
   BookOpenText,
   Brain,
-  ClipboardCheck,
   ClipboardList,
   FileDown,
   FileText,
@@ -31,7 +30,6 @@ const homeItem = item({
   to: '/app',
   description: 'Entrada principal del Reporteador.',
   icon: Home,
-  access: { permissions: ['menu.main.inicio'] },
 })
 
 export const mainSections: NavigationSection[] = [
@@ -600,14 +598,6 @@ export const mainSections: NavigationSection[] = [
 ]
 
 export const mainQuickLinks: WorkspaceQuickLink[] = [
-  {
-    key: 'ppr-portal',
-    label: 'Portal PPR',
-    to: '/app/ppr',
-    description: 'Portal de Programación Presupuestal por Resultados.',
-    icon: ClipboardCheck,
-    access: { pprRoles: ['ppr_admin', 'ppr_coordinador', 'ppr_supervisor'] },
-  },
   {
     key: 'manuales',
     label: 'Ver manuales y tutoriales',

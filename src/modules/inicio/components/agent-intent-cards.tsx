@@ -42,7 +42,7 @@ const intentCards: IntentCard[] = [
     description: 'Indicadores de eficiencia, eficacia y calidad hospitalaria.',
     icon: LineChart,
     action: 'search',
-    searchTerm: 'indicadores',
+    searchTerm: 'indicadores hospitalarios',
   },
   {
     id: 'salud-mental',

@@ -1,14 +1,14 @@
 import { executeProcedure_General as executeProcedure, sql } from './sigh-sql-helpers.js'
 
 /**
- * Llama SP_USUARIO_VALIDA_ppr para verificar si el usuario tiene acceso PPR.
- * El SP valida credenciales + IDROL=210 (igual que SP_USUARIO_VALIDA_LM para Lavado de Manos).
- * Retorna 'ppr_coordinador' si el SP devuelve fila, null si no tiene acceso o hay error.
- *
- * Se llama una sola vez en el login y el resultado viaja en el JWT.
+ * Valida si un usuario tiene acceso al Portal PPR llamando SP_USUARIO_VALIDA_ppr.
+ * Mismo patrón que SP_USUARIO_VALIDA_LM para Lavado de Manos.
+ * Se llama desde POST /ppr/validate cuando el usuario intenta ingresar al portal.
  */
-export async function getPprUserRole({ username, password, ip }) {
-  if (!username || !password) return null
+export async function validatePprUser({ username, password, ip }) {
+  if (!username || !password) {
+    return { ok: false, employeeId: null, employeeName: '', message: 'Credenciales requeridas.' }
+  }
 
   try {
     const rows = await executeProcedure('SP_USUARIO_VALIDA_ppr', [
@@ -17,10 +17,19 @@ export async function getPprUserRole({ username, password, ip }) {
       { name: 'ipequipo', type: sql.VarChar(20), value: String(ip || '0.0.0.0').substring(0, 20) },
     ])
 
-    if (!rows?.[0]?.IDEMPLEADO && !rows?.[0]?.idempleado) return null
-    return 'ppr_coordinador'
+    const row = rows?.[0]
+    const employeeId = row?.IDEMPLEADO ?? row?.idempleado ?? null
+    const employeeName = String(row?.EMPLEADO ?? row?.empleado ?? '').trim()
+
+    if (!employeeId) {
+      return { ok: false, employeeId: null, employeeName: '', role: null, message: 'El usuario no tiene autorización para el Portal PPR.' }
+    }
+
+    const rawRole = String(row?.ROL ?? row?.rol ?? 'coordinador').toLowerCase().trim()
+    const role = rawRole === 'admin' ? 'admin' : 'coordinador'
+
+    return { ok: true, employeeId: Number(employeeId), employeeName, role, message: 'Acceso autorizado.' }
   } catch {
-    // SP no existe todavía o BD no disponible — login sigue funcionando sin acceso PPR
-    return null
+    return { ok: false, employeeId: null, employeeName: '', role: null, message: 'No se pudo verificar el acceso. Intente nuevamente.' }
   }
 }
