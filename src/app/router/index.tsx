@@ -58,6 +58,21 @@ const PprAdminCoordinadoresPage = lazy(() =>
     default: module.PprAdminCoordinadoresPage,
   })),
 )
+const PprAdminActividadesPage = lazy(() =>
+  import('@/modules/ppr/pages/ppr-admin-actividades-page').then((module) => ({
+    default: module.PprAdminActividadesPage,
+  })),
+)
+const PprAdminCargaPage = lazy(() =>
+  import('@/modules/ppr/pages/ppr-admin-carga-page').then((module) => ({
+    default: module.PprAdminCargaPage,
+  })),
+)
+const PprProgramaDashboardPage = lazy(() =>
+  import('@/modules/ppr/pages/ppr-programa-dashboard-page').then((module) => ({
+    default: module.PprProgramaDashboardPage,
+  })),
+)
 const SighHomePage = lazy(() =>
   import('@/modules/inicio/pages/sigh-home-page').then((module) => ({ default: module.SighHomePage })),
 )
@@ -353,12 +368,24 @@ export const router = createBrowserRouter([
             element: lazyElement(<PprProgramasPage />),
           },
           {
+            path: 'programas/:id',
+            element: lazyElement(<PprProgramaDashboardPage />),
+          },
+          {
             path: 'reportes',
             element: lazyElement(<PprReportesPage />),
           },
           {
             path: 'admin/coordinadores',
             element: lazyElement(<PprAdminCoordinadoresPage />),
+          },
+          {
+            path: 'admin/actividades',
+            element: lazyElement(<PprAdminActividadesPage />),
+          },
+          {
+            path: 'admin/carga',
+            element: lazyElement(<PprAdminCargaPage />),
           },
           {
             path: '*',

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   CheckCircle2,
   ChevronDown,
@@ -8,6 +8,7 @@ import {
   PlusCircle,
   Search,
   ShieldAlert,
+  User,
   UserMinus,
   UserPlus,
   X,
@@ -18,9 +19,10 @@ import {
   fetchCoordinadores,
   fetchProgramasAdmin,
   guardarAsignacion,
+  searchEmpleados,
   toggleCoordinador,
 } from '@/modules/ppr/services/ppr.service'
-import type { PprCoordinador, PprProgramaAdmin } from '@/modules/ppr/types'
+import type { PprCoordinador, PprEmpleadoResult, PprProgramaAdmin } from '@/modules/ppr/types'
 
 // ─── Add coordinator modal ────────────────────────────────────────────────────
 
@@ -32,10 +34,51 @@ interface AddModalProps {
 }
 
 function AddModal({ programas, adminId, onClose, onAdded }: AddModalProps) {
-  const [employeeId, setEmployeeId] = useState('')
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<PprEmpleadoResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [selected, setSelected] = useState<PprEmpleadoResult | null>(null)
   const [selectedPrograms, setSelectedPrograms] = useState<Set<number>>(new Set())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Debounced search
+  useEffect(() => {
+    if (selected) return
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (query.length < 2) {
+      setResults([])
+      return
+    }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const data = await searchEmpleados(query, adminId)
+        setResults(data)
+      } catch {
+        setResults([])
+      } finally {
+        setSearching(false)
+      }
+    }, 300)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [query, selected, adminId])
+
+  function selectEmployee(emp: PprEmpleadoResult) {
+    setSelected(emp)
+    setQuery(emp.name)
+    setResults([])
+    setError(null)
+  }
+
+  function clearSelection() {
+    setSelected(null)
+    setQuery('')
+    setResults([])
+  }
 
   function toggleProgram(id: number) {
     setSelectedPrograms((prev) => {
@@ -47,30 +90,30 @@ function AddModal({ programas, adminId, onClose, onAdded }: AddModalProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const id = Number(employeeId.trim())
-    if (!id) {
-      setError('Ingrese un ID de empleado válido.')
+    if (!selected) {
+      setError('Selecciona un empleado de la lista.')
       return
     }
     setSaving(true)
     setError(null)
     try {
-      await agregarCoordinador(id, adminId)
-      // Assign selected programs
+      await agregarCoordinador(selected.employeeId, adminId)
       await Promise.all(
-        Array.from(selectedPrograms).map((pid) => guardarAsignacion(id, pid, true, adminId)),
+        Array.from(selectedPrograms).map((pid) =>
+          guardarAsignacion(selected.employeeId, pid, true, adminId),
+        ),
       )
       onAdded()
       onClose()
     } catch {
-      setError('No se pudo agregar el coordinador. Verifique el ID.')
+      setError('No se pudo agregar el coordinador.')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#e2e8f0] px-6 py-4">
@@ -89,31 +132,93 @@ function AddModal({ programas, adminId, onClose, onAdded }: AddModalProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 p-6">
-          {/* Employee ID */}
+          {/* Employee search */}
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-[#0c2340]">
-              ID de Empleado (IDEMPLEADO)
+              Buscar empleado
             </label>
-            <input
-              type="number"
-              min={1}
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-              className="w-full rounded-xl border border-[#ccd9e8] px-3 py-2.5 text-sm focus:border-green-500 focus:outline-none"
-              placeholder="Ej: 12345"
-              required
-              autoFocus
-            />
-            <p className="text-[10px] text-slate-400">
-              El SP buscará nombre y DNI automáticamente desde SIGH.
-            </p>
+
+            {/* Selected employee card */}
+            {selected ? (
+              <div className="flex items-center gap-3 rounded-xl border border-green-300 bg-green-50 px-3 py-2.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#0c2340] text-[10px] font-bold text-white">
+                  {selected.name.split(' ').slice(0, 2).map((w) => w[0] ?? '').join('').toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-[#0c2340]">{selected.name}</p>
+                  <p className="font-mono text-[10px] text-slate-400">
+                    DNI: {selected.dni || '—'}
+                    {selected.cargo ? ` · ${selected.cargo}` : ''}
+                    {` · ID: ${selected.employeeId}`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-white hover:text-slate-600"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                {searching && (
+                  <Loader2 className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-slate-400" />
+                )}
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="w-full rounded-xl border border-[#ccd9e8] py-2.5 pl-8 pr-8 text-sm focus:border-green-500 focus:outline-none"
+                  placeholder="Nombre o DNI del empleado…"
+                  autoFocus
+                />
+
+                {/* Dropdown results */}
+                {results.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-lg">
+                    {results.map((emp) => (
+                      <button
+                        key={emp.employeeId}
+                        type="button"
+                        onClick={() => selectEmployee(emp)}
+                        className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-[#f0f7ff]"
+                      >
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[9px] font-bold text-slate-500">
+                          <User className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold text-[#0c2340]">{emp.name}</p>
+                          <p className="font-mono text-[10px] text-slate-400">
+                            DNI: {emp.dni || '—'}
+                            {emp.cargo ? ` · ${emp.cargo}` : ''}
+                          </p>
+                        </div>
+                        <span className="shrink-0 font-mono text-[10px] text-slate-300">
+                          #{emp.employeeId}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* No results */}
+                {query.length >= 2 && !searching && results.length === 0 && (
+                  <div className="absolute z-20 mt-1 w-full rounded-xl border border-[#e2e8f0] bg-white px-4 py-3 text-center shadow-lg">
+                    <p className="text-xs text-slate-400">Sin resultados para "{query}"</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Program assignment */}
           {programas.length > 0 && (
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-[#0c2340]">
-                Programas a asignar <span className="font-normal text-slate-400">(opcional)</span>
+                Programas a asignar{' '}
+                <span className="font-normal text-slate-400">(opcional)</span>
               </label>
               <div className="max-h-40 space-y-1 overflow-y-auto rounded-xl border border-[#e2e8f0] p-2">
                 {programas.map((p) => (
@@ -155,10 +260,14 @@ function AddModal({ programas, adminId, onClose, onAdded }: AddModalProps) {
             </button>
             <button
               type="submit"
-              disabled={saving || !employeeId.trim()}
+              disabled={saving || !selected}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-green-600 py-2.5 text-xs font-semibold text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
+              {saving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <UserPlus className="h-3.5 w-3.5" />
+              )}
               Agregar
             </button>
           </div>

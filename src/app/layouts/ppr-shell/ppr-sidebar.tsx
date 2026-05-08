@@ -2,17 +2,20 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   BarChart2,
   Calendar,
-  ChevronRight,
   ClipboardList,
   ExternalLink,
   Home,
   Layers,
   LogOut,
+  Settings2,
+  ShieldCheck,
+  UploadCloud,
   Users,
   X,
 } from 'lucide-react'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
 import { usePprContext } from '@/modules/ppr/context/ppr-context'
+import { PprAvatar } from '@/modules/ppr/components/ui-primitives'
 import { cn } from '@/lib/utils'
 
 interface NavItem {
@@ -24,11 +27,17 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { key: 'inicio', label: 'Inicio', icon: Home, to: '/ppr', end: true },
+  { key: 'inicio',      label: 'Inicio',          icon: Home,          to: '/ppr', end: true },
   { key: 'actividades', label: 'Mis Actividades', icon: ClipboardList, to: '/ppr/actividades' },
-  { key: 'programas', label: 'Programas', icon: Layers, to: '/ppr/programas' },
-  { key: 'periodos', label: 'Períodos', icon: Calendar, to: '/ppr/periodos' },
-  { key: 'reportes', label: 'Reportes', icon: BarChart2, to: '/ppr/reportes' },
+  { key: 'programas',   label: 'Programas',       icon: Layers,        to: '/ppr/programas' },
+  { key: 'periodos',    label: 'Períodos',        icon: Calendar,      to: '/ppr/periodos' },
+  { key: 'reportes',    label: 'Reportes',        icon: BarChart2,     to: '/ppr/reportes' },
+]
+
+const ADMIN_ITEMS: NavItem[] = [
+  { key: 'admin-coords', label: 'Coordinadores', icon: Users,     to: '/ppr/admin/coordinadores' },
+  { key: 'admin-acts',   label: 'Actividades',   icon: Settings2, to: '/ppr/admin/actividades' },
+  { key: 'admin-carga',  label: 'Carga mensual', icon: UploadCloud, to: '/ppr/admin/carga' },
 ]
 
 interface PprSidebarProps {
@@ -40,6 +49,7 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
   const navigate = useNavigate()
   const signOut = useAuthStore((state) => state.signOut)
   const { pprUser } = usePprContext()
+  const isAdmin = pprUser.role === 'admin'
 
   function handleLogout() {
     import('@/services/auth/auth.service').then(({ authService }) => {
@@ -50,36 +60,56 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
   }
 
   const sidebarContent = (
-    <div className="flex h-full flex-col bg-[#0c2340]">
-      {/* Brand */}
+    <div className="sidebar-scroll flex h-full flex-col overflow-y-auto bg-gradient-to-b from-slate-900 via-slate-900 to-[#0b1224]">
+      {/* ── Brand ── */}
       <div className="flex items-center justify-between px-5 py-5">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2">
-            <span className="rounded-md bg-green-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-              PPR
-            </span>
-            <span className="text-sm font-bold text-white">Portal PPR</span>
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-lg shadow-indigo-500/30">
+            <span className="text-[10px] font-black uppercase tracking-tighter text-white">PPR</span>
           </div>
-          <p className="text-[10px] text-slate-400">Programación Presupuestal</p>
+          <div className="space-y-0">
+            <p className="text-sm font-bold leading-tight text-white">Portal PPR</p>
+            <p className="text-[10px] leading-tight text-slate-400">Programación Presupuestal</p>
+          </div>
         </div>
         {/* Mobile close */}
         <button
-          className="rounded-lg p-1 text-slate-400 hover:bg-white/10 hover:text-white lg:hidden"
+          className="rounded-lg p-1 text-slate-400 transition hover:bg-white/10 hover:text-white lg:hidden"
           onClick={onCloseMobile}
+          aria-label="Cerrar menú"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
-      {/* User info */}
-      <div className="mx-3 mb-4 rounded-xl bg-white/5 px-3 py-2.5">
-        <p className="truncate text-xs font-semibold text-white">{pprUser.employeeName}</p>
-        <p className="text-[10px] text-slate-400">Coordinador PPR</p>
+      {/* ── User card ── */}
+      <div className="mx-3 mb-5 rounded-2xl border border-white/10 bg-white/[0.04] p-3 backdrop-blur-sm">
+        <div className="flex items-center gap-2.5">
+          <PprAvatar
+            name={pprUser.employeeName}
+            size="md"
+            tone={isAdmin ? 'amber' : 'indigo'}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-white">
+              {pprUser.employeeName}
+            </p>
+            <div className="mt-0.5 flex items-center gap-1">
+              {isAdmin && <ShieldCheck className="h-2.5 w-2.5 text-amber-400" />}
+              <p className={cn(
+                'text-[10px] font-medium',
+                isAdmin ? 'text-amber-300' : 'text-indigo-300',
+              )}>
+                {isAdmin ? 'Administrador' : 'Coordinador'}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-0.5 px-2 pb-4">
-        <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+      {/* ── Navigation ── */}
+      <nav className="flex-1 space-y-1 px-2 pb-4">
+        <p className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
           Menú
         </p>
 
@@ -91,71 +121,98 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
             onClick={onCloseMobile}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-colors',
+                'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all',
                 isActive
-                  ? 'bg-green-500/15 text-green-400'
-                  : 'text-slate-300 hover:bg-white/8 hover:text-white',
+                  ? 'bg-gradient-to-r from-indigo-500/20 to-indigo-500/5 text-indigo-200 shadow-sm shadow-indigo-500/10'
+                  : 'text-slate-300 hover:bg-white/[0.06] hover:text-white',
               )
             }
           >
             {({ isActive }) => (
               <>
-                <item.icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-green-400' : 'text-slate-400')} />
+                {/* Active indicator bar */}
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-indigo-400" />
+                )}
+                <item.icon
+                  className={cn(
+                    'h-4 w-4 shrink-0 transition-transform group-hover:scale-110',
+                    isActive ? 'text-indigo-300' : 'text-slate-400',
+                  )}
+                />
                 <span className="flex-1">{item.label}</span>
-                {isActive && <ChevronRight className="h-3 w-3 text-green-500" />}
               </>
             )}
           </NavLink>
         ))}
 
-        {/* Admin section — visible only for admin role */}
-        {pprUser.role === 'admin' && (
+        {/* ── Admin section ── */}
+        {isAdmin && (
           <>
-            <p className="mb-1.5 mt-5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-              Administración
-            </p>
-            <NavLink
-              to="/ppr/admin/coordinadores"
-              onClick={onCloseMobile}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-colors',
-                  isActive
-                    ? 'bg-amber-500/15 text-amber-400'
-                    : 'text-slate-300 hover:bg-white/8 hover:text-white',
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <Users className={cn('h-4 w-4 shrink-0', isActive ? 'text-amber-400' : 'text-slate-400')} />
-                  <span className="flex-1">Coordinadores</span>
-                  {isActive && <ChevronRight className="h-3 w-3 text-amber-500" />}
-                </>
-              )}
-            </NavLink>
+            <div className="mt-6 mb-2 flex items-center gap-2 px-3">
+              <ShieldCheck className="h-3 w-3 text-amber-400" />
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-amber-300/80">
+                Administración
+              </p>
+              <div className="h-px flex-1 bg-gradient-to-r from-amber-500/30 to-transparent" />
+            </div>
+            {ADMIN_ITEMS.map((item) => (
+              <NavLink
+                key={item.key}
+                to={item.to}
+                onClick={onCloseMobile}
+                className={({ isActive }) =>
+                  cn(
+                    'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all',
+                    isActive
+                      ? 'bg-gradient-to-r from-amber-500/20 to-amber-500/5 text-amber-300 shadow-sm shadow-amber-500/10'
+                      : 'text-slate-300 hover:bg-white/[0.06] hover:text-white',
+                  )
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-amber-400" />
+                    )}
+                    <item.icon
+                      className={cn(
+                        'h-4 w-4 shrink-0 transition-transform group-hover:scale-110',
+                        isActive ? 'text-amber-400' : 'text-slate-400',
+                      )}
+                    />
+                    <span className="flex-1">{item.label}</span>
+                  </>
+                )}
+              </NavLink>
+            ))}
           </>
         )}
-
       </nav>
 
-      {/* Bottom actions */}
-      <div className="border-t border-white/10 px-2 py-3 space-y-0.5">
+      {/* ── Footer actions ── */}
+      <div className="border-t border-white/5 p-2 space-y-0.5">
         <a
           href="/app"
           target="_self"
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-400 transition hover:bg-white/8 hover:text-white"
+          className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
         >
-          <ExternalLink className="h-4 w-4 shrink-0" />
+          <ExternalLink className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           <span>Volver al Reporteador</span>
         </a>
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-400 transition hover:bg-red-500/10 hover:text-red-400"
+          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-400 transition hover:bg-rose-500/10 hover:text-rose-300"
         >
-          <LogOut className="h-4 w-4 shrink-0" />
+          <LogOut className="h-4 w-4 shrink-0 transition-transform group-hover:-translate-x-0.5" />
           <span>Cerrar sesión</span>
         </button>
+        {/* Brand line */}
+        <div className="px-3 pt-2 pb-1">
+          <p className="text-[9px] text-slate-600">
+            Reporteador 2.0 · Portal PPR
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -163,16 +220,16 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden w-56 shrink-0 overflow-y-auto lg:block">{sidebarContent}</aside>
+      <aside className="hidden w-60 shrink-0 lg:block">{sidebarContent}</aside>
 
       {/* Mobile overlay */}
       {mobileOpen && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
             onClick={onCloseMobile}
           />
-          <aside className="fixed inset-y-0 left-0 z-50 w-56 overflow-y-auto lg:hidden">
+          <aside className="fixed inset-y-0 left-0 z-50 w-60 lg:hidden animate-ppr-slide">
             {sidebarContent}
           </aside>
         </>

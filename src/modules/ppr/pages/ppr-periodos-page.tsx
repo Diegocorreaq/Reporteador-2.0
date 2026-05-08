@@ -6,29 +6,26 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Loader2,
   Lock,
 } from 'lucide-react'
 import { usePprContext } from '@/modules/ppr/context/ppr-context'
 import { fetchPeriodos } from '@/modules/ppr/services/ppr.service'
 import type { PprPeriodoItem } from '@/modules/ppr/types'
+import {
+  PprAlert,
+  PprEmptyState,
+  PprPill,
+  PprProgressBar,
+  PprSectionHeader,
+  PprSkeleton,
+  pctTextColor,
+} from '@/modules/ppr/components/ui-primitives'
+import { cn } from '@/lib/utils'
 
 const MONTHS_ES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
-
-function statusInfo(p: PprPeriodoItem | undefined, month: number, currentMonth: number, currentYear: number, year: number) {
-  if (!p) {
-    if (year > currentYear || (year === currentYear && month > currentMonth)) {
-      return { label: 'Próximo', color: 'text-slate-400 bg-slate-100', dot: 'bg-slate-300' }
-    }
-    return { label: 'Sin datos', color: 'text-slate-400 bg-slate-100', dot: 'bg-slate-300' }
-  }
-  if (p.isSigned) return { label: 'Firmado', color: 'text-emerald-700 bg-emerald-100', dot: 'bg-emerald-500' }
-  if (p.isOpen) return { label: 'Abierto', color: 'text-blue-700 bg-blue-100', dot: 'bg-blue-500' }
-  return { label: 'Cerrado', color: 'text-slate-600 bg-slate-100', dot: 'bg-slate-400' }
-}
 
 interface MonthCardProps {
   month: number
@@ -42,80 +39,115 @@ interface MonthCardProps {
 function MonthCard({ month, year, periodo, currentMonth, currentYear, onSelect }: MonthCardProps) {
   const isFuture = year > currentYear || (year === currentYear && month > currentMonth)
   const isCurrent = year === currentYear && month === currentMonth
-  const status = statusInfo(periodo, month, currentMonth, currentYear, year)
   const pct = periodo && periodo.totalActividades > 0
     ? Math.round((periodo.completadas / periodo.totalActividades) * 100)
     : null
 
+  // Determinar estado visual
+  const status: { label: string; tone: 'emerald' | 'sky' | 'amber' | 'slate'; icon: React.ElementType } =
+    !periodo
+      ? isFuture
+        ? { label: 'Próximo',  tone: 'slate',  icon: Calendar }
+        : { label: 'Sin datos', tone: 'slate',  icon: Calendar }
+    : periodo.isSigned
+      ? { label: 'Firmado',    tone: 'emerald', icon: Lock }
+    : periodo.isOpen
+      ? { label: 'Abierto',    tone: 'sky',     icon: Clock }
+      : { label: 'Cerrado',    tone: 'slate',   icon: Calendar }
+
+  const StatusIcon = status.icon
+
   return (
     <div
-      className={`rounded-2xl border bg-white p-4 transition ${
+      className={cn(
+        'group relative overflow-hidden rounded-2xl border bg-white p-4 transition-all',
         isFuture
-          ? 'border-dashed border-[#e2e8f0] opacity-50'
+          ? 'border-dashed border-slate-200 opacity-50'
           : isCurrent
-            ? 'border-blue-300 shadow-sm shadow-blue-100'
-            : 'border-[#e2e8f0] hover:border-green-300 hover:shadow-sm'
-      }`}
+            ? 'border-sky-300 shadow-md shadow-sky-100/60 hover:-translate-y-0.5'
+            : periodo?.isSigned
+              ? 'border-emerald-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-emerald-100/60'
+              : 'border-slate-200 hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md',
+      )}
     >
+      {/* Top accent bar */}
+      {isCurrent && (
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-300 via-sky-500 to-sky-300" />
+      )}
+      {periodo?.isSigned && !isCurrent && (
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-300 via-emerald-500 to-emerald-300" />
+      )}
+
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          {isCurrent ? (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
-              <Clock className="h-4 w-4 text-blue-500" />
-            </div>
-          ) : periodo?.isSigned ? (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
+          <div className={cn(
+            'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-110',
+            isCurrent
+              ? 'bg-gradient-to-br from-sky-100 to-sky-200'
+              : periodo?.isSigned
+                ? 'bg-gradient-to-br from-emerald-100 to-emerald-200'
+                : 'bg-slate-100',
+          )}>
+            {isCurrent ? (
+              <Clock className="h-4 w-4 text-sky-600" />
+            ) : periodo?.isSigned ? (
               <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-            </div>
-          ) : (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+            ) : (
               <Calendar className="h-4 w-4 text-slate-400" />
-            </div>
-          )}
+            )}
+          </div>
           <div>
-            <p className="text-sm font-semibold text-[#0c2340]">{MONTHS_ES[month - 1]}</p>
-            {isCurrent && <p className="text-[10px] font-medium text-blue-500">Mes actual</p>}
+            <p className="text-sm font-bold text-slate-900">{MONTHS_ES[month - 1]}</p>
+            {isCurrent && (
+              <p className="flex items-center gap-1 text-[10px] font-semibold text-sky-600">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-sky-500" />
+                </span>
+                Mes actual
+              </p>
+            )}
           </div>
         </div>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.color}`}>
+        <PprPill tone={status.tone} icon={StatusIcon}>
           {status.label}
-        </span>
+        </PprPill>
       </div>
 
       {periodo && periodo.totalActividades > 0 && (
-        <div className="mt-3">
-          <div className="mb-1 flex items-center justify-between text-[10px] text-slate-400">
-            <span>
+        <div className="mt-3 space-y-1.5">
+          <div className="flex items-center justify-between text-[10px]">
+            <span className="text-slate-500">
               {periodo.completadas}/{periodo.totalActividades} actividades
             </span>
-            <span className={`font-semibold ${
-              (pct ?? 0) >= 100 ? 'text-emerald-600' : (pct ?? 0) >= 60 ? 'text-amber-600' : 'text-red-500'
-            }`}>
-              {pct}%
-            </span>
+            {pct != null && (
+              <span className={cn('font-bold tabular-nums', pctTextColor(pct))}>{pct}%</span>
+            )}
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className={`h-full rounded-full ${
-                (pct ?? 0) >= 100 ? 'bg-emerald-500' : (pct ?? 0) >= 60 ? 'bg-amber-400' : 'bg-red-400'
-              }`}
-              style={{ width: `${pct ?? 0}%` }}
-            />
-          </div>
+          <PprProgressBar value={pct ?? 0} size="sm" />
         </div>
       )}
 
       {!isFuture && periodo && (
         <button
           onClick={() => onSelect(periodo)}
-          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#e2e8f0] py-1.5 text-[11px] font-medium text-[#0c2340] transition hover:border-green-400 hover:text-green-700"
+          className={cn(
+            'mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border py-2 text-[11px] font-semibold transition',
+            periodo.isSigned
+              ? 'border-emerald-200 bg-emerald-50/40 text-emerald-700 hover:bg-emerald-100/50'
+              : 'border-slate-200 text-slate-900 hover:border-sky-300 hover:bg-sky-50/40 hover:text-sky-700',
+          )}
         >
           {periodo.isSigned ? (
             <>
-              <Lock className="h-3 w-3" /> Ver actividades
+              <Lock className="h-3 w-3" />
+              Ver actividades
             </>
           ) : (
-            'Ver actividades'
+            <>
+              Ver actividades
+              <ChevronRight className="h-3 w-3" />
+            </>
           )}
         </button>
       )}
@@ -145,6 +177,11 @@ export function PprPeriodosPage() {
 
   const totalSigned = periodos.filter((p) => p.year === year && p.isSigned).length
   const totalWithData = periodos.filter((p) => p.year === year).length
+  const totalCompletadas = periodos.filter((p) => p.year === year)
+    .reduce((s, p) => s + p.completadas, 0)
+  const totalActividades = periodos.filter((p) => p.year === year)
+    .reduce((s, p) => s + p.totalActividades, 0)
+  const pctYear = totalActividades > 0 ? Math.round((totalCompletadas / totalActividades) * 100) : null
 
   function handleSelect(p: PprPeriodoItem) {
     navigate('/ppr/actividades', { state: { periodo: p } })
@@ -153,61 +190,102 @@ export function PprPeriodosPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-bold text-[#0c2340]">Períodos</h1>
-          <p className="text-xs text-slate-400">Historial mensual de actividades</p>
-        </div>
-
-        {/* Year selector */}
-        <div className="flex items-center gap-1 rounded-xl border border-[#e2e8f0] bg-white px-1 py-1">
-          <button
-            onClick={() => setYear((y) => y - 1)}
-            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-[#0c2340]"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <span className="min-w-[3.5rem] text-center text-sm font-bold text-[#0c2340]">{year}</span>
-          <button
-            onClick={() => setYear((y) => y + 1)}
-            disabled={year >= now.getFullYear()}
-            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-[#0c2340] disabled:cursor-not-allowed disabled:opacity-30"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+      <PprSectionHeader
+        eyebrow="Línea de tiempo"
+        title="Períodos"
+        description="Historial mensual de actividades y firmas"
+        right={
+          <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-1 py-1 shadow-sm">
+            <button
+              onClick={() => setYear((y) => y - 1)}
+              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-900"
+              aria-label="Año anterior"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="min-w-[3.5rem] text-center text-sm font-bold tabular-nums text-slate-900">
+              {year}
+            </span>
+            <button
+              onClick={() => setYear((y) => y + 1)}
+              disabled={year >= now.getFullYear()}
+              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="Año siguiente"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        }
+      />
 
       {/* Error */}
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
-          {error}{' '}
-          <button className="font-semibold underline" onClick={() => setError(null)}>Cerrar</button>
-        </div>
+        <PprAlert tone="error" onClose={() => setError(null)}>
+          {error}
+        </PprAlert>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-green-600" />
-        </div>
+        <>
+          <div className="flex gap-3">
+            <PprSkeleton className="h-20 w-32 rounded-2xl" />
+            <PprSkeleton className="h-20 w-32 rounded-2xl" />
+            <PprSkeleton className="h-20 w-32 rounded-2xl" />
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <PprSkeleton key={i} className="h-32 w-full rounded-2xl" />
+            ))}
+          </div>
+        </>
       ) : (
         <>
           {/* Year summary */}
           {totalWithData > 0 && (
-            <div className="flex gap-3">
-              <div className="rounded-2xl border border-[#e2e8f0] bg-white px-5 py-3">
-                <p className="text-xs text-slate-400">Meses con datos</p>
-                <p className="text-2xl font-bold text-[#0c2340]">{totalWithData}</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                  Meses con datos
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">
+                  {totalWithData}
+                </p>
+                <p className="text-[10px] text-slate-400">de 12 posibles</p>
               </div>
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3">
-                <p className="text-xs text-emerald-600">Meses firmados</p>
-                <p className="text-2xl font-bold text-emerald-700">{totalSigned}</p>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                  Meses firmados
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-700">
+                  {totalSigned}
+                </p>
+                <p className="text-[10px] text-emerald-600/80">períodos cerrados</p>
+              </div>
+              <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+                  Avance del año
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-indigo-700">
+                  {pctYear != null ? `${pctYear}%` : '—'}
+                </p>
+                <p className="text-[10px] text-indigo-600/80">
+                  {totalCompletadas}/{totalActividades} actividades
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                  Pendientes
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-amber-700">
+                  {totalWithData - totalSigned}
+                </p>
+                <p className="text-[10px] text-slate-400">por firmar</p>
               </div>
             </div>
           )}
 
           {/* Month grid */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="ppr-stagger grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
               <MonthCard
                 key={month}
@@ -222,13 +300,11 @@ export function PprPeriodosPage() {
           </div>
 
           {totalWithData === 0 && (
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[#c8d8e8] bg-white py-16 text-center">
-              <Calendar className="h-8 w-8 text-slate-300" />
-              <p className="text-sm font-semibold text-[#0c2340]">Sin períodos registrados</p>
-              <p className="max-w-xs text-xs text-slate-400">
-                No hay registros de actividades para el año {year}.
-              </p>
-            </div>
+            <PprEmptyState
+              icon={Calendar}
+              title="Sin períodos registrados"
+              description={`No hay registros de actividades para el año ${year}.`}
+            />
           )}
         </>
       )}

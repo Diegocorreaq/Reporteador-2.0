@@ -1,0 +1,931 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import ReactECharts from 'echarts-for-react'
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ClipboardList,
+  Layers,
+  Loader2,
+  Search,
+  X,
+} from 'lucide-react'
+import { usePprContext } from '@/modules/ppr/context/ppr-context'
+import { fetchProgramaDetalle } from '@/modules/ppr/services/ppr.service'
+import type { PprActividadDetalle, PprActividadMes, PprProgramaDetalle } from '@/modules/ppr/types'
+import { cn } from '@/lib/utils'
+
+const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+const MONTHS_LONG = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+]
+
+function fmt(n: number | null): string {
+  if (n == null) return '—'
+  return n.toLocaleString('es-PE')
+}
+
+function cellBg(value: number | null, isActive: boolean) {
+  if (value == null) return isActive ? 'bg-blue-50' : ''
+  if (value === 0) return isActive ? 'bg-amber-100' : 'bg-amber-50'
+  return isActive ? 'bg-emerald-100' : 'bg-emerald-50'
+}
+
+function cellText(value: number | null) {
+  if (value == null) return 'text-slate-300'
+  if (value === 0) return 'text-amber-600'
+  return 'text-emerald-700 font-semibold'
+}
+
+// ─── Cell detail modal ────────────────────────────────────────────────────────
+interface CellModalProps {
+  activity: PprActividadDetalle
+  monthData: PprActividadMes
+  year: number
+  onClose: () => void
+}
+
+function CellModal({ activity, monthData, year, onClose }: CellModalProps) {
+  const monthLabel = MONTHS_LONG[(monthData.month ?? 1) - 1]
+  const accum = activity.months
+    .filter((m) => m.month <= monthData.month && m.value != null)
+    .reduce((s, m) => s + (m.value ?? 0), 0)
+  const goalPct =
+    activity.annualGoal && activity.annualGoal > 0
+      ? Math.round((accum / activity.annualGoal) * 100)
+      : null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            {activity.code && (
+              <span className="mb-1 inline-block rounded bg-[#e8f0f8] px-1.5 py-0.5 font-mono text-[10px] text-[#3a6fa0]">
+                {activity.code}
+              </span>
+            )}
+            <p className="text-sm font-bold leading-snug text-[#0c2340]">{activity.name}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Period */}
+        <p className="mb-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          {monthLabel} {year}
+        </p>
+
+        {/* Stats */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+            <span className="text-xs text-slate-500">Valor reportado</span>
+            <span className={cn('text-sm font-bold', monthData.value == null ? 'text-slate-300' : monthData.value === 0 ? 'text-amber-600' : 'text-emerald-600')}>
+              {fmt(monthData.value)} {monthData.value != null ? activity.unit : ''}
+            </span>
+          </div>
+
+          {activity.annualGoal != null && (
+            <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+              <span className="text-xs text-slate-500">Meta anual</span>
+              <span className="text-sm font-semibold text-[#0c2340]">
+                {fmt(activity.annualGoal)} {activity.unit}
+              </span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+            <span className="text-xs text-slate-500">Acumulado al mes</span>
+            <span className="text-sm font-semibold text-[#0c2340]">
+              {fmt(accum)} {activity.unit}
+            </span>
+          </div>
+
+          {goalPct != null && (
+            <div className="rounded-xl bg-slate-50 px-3 py-2">
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-xs text-slate-500">Avance vs meta</span>
+                <span className={cn('text-sm font-bold', goalPct >= 100 ? 'text-emerald-600' : goalPct >= 60 ? 'text-amber-600' : 'text-red-500')}>
+                  {goalPct}%
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className={cn('h-full rounded-full', goalPct >= 100 ? 'bg-emerald-500' : goalPct >= 60 ? 'bg-amber-400' : 'bg-red-400')}
+                  style={{ width: `${Math.min(goalPct, 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {monthData.notes && (
+            <div className="rounded-xl bg-amber-50 px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600">Notas</p>
+              <p className="mt-0.5 text-xs text-slate-600">{monthData.notes}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Expanded row detail ──────────────────────────────────────────────────────
+interface ExpandedDetailProps {
+  activity: PprActividadDetalle
+  onGoToActividades: () => void
+}
+
+function ExpandedDetail({ activity, onGoToActividades }: ExpandedDetailProps) {
+  const total = activity.months.reduce((s, m) => s + (m.value ?? 0), 0)
+  const withValue = activity.months.filter((m) => m.value != null).length
+  const maxVal = Math.max(...activity.months.map((m) => m.value ?? 0), 1)
+
+  return (
+    <tr className="bg-[#f8fbff]">
+      <td colSpan={15} className="px-4 py-4">
+        <div className="flex flex-col gap-4">
+          {/* Activity meta */}
+          <div className="flex flex-wrap gap-4">
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase tracking-wider text-slate-400">Unidad</span>
+              <span className="text-xs font-semibold text-[#0c2340]">{activity.unit || '—'}</span>
+            </div>
+            {activity.annualGoal != null && (
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase tracking-wider text-slate-400">Meta anual</span>
+                <span className="text-xs font-semibold text-[#0c2340]">{fmt(activity.annualGoal)} {activity.unit}</span>
+              </div>
+            )}
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase tracking-wider text-slate-400">Acumulado</span>
+              <span className="text-xs font-semibold text-emerald-600">{fmt(total)} {activity.unit}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase tracking-wider text-slate-400">Meses reportados</span>
+              <span className="text-xs font-semibold text-[#0c2340]">{withValue} / 12</span>
+            </div>
+            {activity.annualGoal && activity.annualGoal > 0 && (
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase tracking-wider text-slate-400">% de meta</span>
+                <span className={cn('text-xs font-bold', (total / activity.annualGoal) * 100 >= 100 ? 'text-emerald-600' : 'text-amber-600')}>
+                  {Math.round((total / activity.annualGoal) * 100)}%
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Mini sparkline bars */}
+          <div className="flex items-end gap-1">
+            {activity.months.map((m) => {
+              const h = m.value != null ? Math.max(Math.round((m.value / maxVal) * 40), 4) : 4
+              return (
+                <div key={m.month} className="flex flex-col items-center gap-0.5">
+                  <div
+                    className={cn(
+                      'w-6 rounded-t transition-all',
+                      m.value == null ? 'bg-slate-100' : m.value === 0 ? 'bg-amber-200' : 'bg-emerald-400',
+                    )}
+                    style={{ height: `${h}px` }}
+                    title={`${MONTHS_LONG[(m.month ?? 1) - 1]}: ${fmt(m.value)}`}
+                  />
+                  <span className="text-[8px] text-slate-400">{MONTHS_SHORT[(m.month ?? 1) - 1]}</span>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Month values grid */}
+          <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-12">
+            {activity.months.map((m) => (
+              <div
+                key={m.month}
+                className={cn(
+                  'rounded-lg p-1.5 text-center',
+                  m.value == null ? 'bg-slate-50' : m.value === 0 ? 'bg-amber-50' : 'bg-emerald-50',
+                )}
+              >
+                <p className="text-[9px] text-slate-400">{MONTHS_SHORT[(m.month ?? 1) - 1]}</p>
+                <p className={cn('text-[11px] font-bold', m.value == null ? 'text-slate-300' : m.value === 0 ? 'text-amber-600' : 'text-emerald-700')}>
+                  {fmt(m.value)}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Action */}
+          <div>
+            <button
+              onClick={onGoToActividades}
+              className="flex items-center gap-1.5 rounded-xl bg-[#0c2340] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#153860]"
+            >
+              <ClipboardList className="h-3.5 w-3.5" />
+              Ingresar datos en Actividades
+            </button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+// ─── Monthly mini-bars ────────────────────────────────────────────────────────
+interface MonthlyBarsProps {
+  stats: Array<{ month: number; completadas: number; total: number; pct: number }>
+  activeMonth: number | null
+  currentMonth: number
+  onSelectMonth: (m: number | null) => void
+}
+
+function MonthlyBars({ stats, activeMonth, currentMonth, onSelectMonth }: MonthlyBarsProps) {
+  return (
+    <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4">
+      <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+        Avance mensual — clic para filtrar columna
+      </p>
+      <div className="flex items-end gap-1">
+        {stats.map((s) => {
+          const isClosed = s.month < currentMonth   // solo meses cerrados tienen dato real
+          const isActive = activeMonth === s.month
+          const barH = isClosed ? Math.max(s.pct, 2) : 0
+          return (
+            <button
+              key={s.month}
+              onClick={() => isClosed ? onSelectMonth(isActive ? null : s.month) : undefined}
+              disabled={!isClosed}
+              className={cn(
+                'group flex flex-1 flex-col items-center gap-1 rounded-xl pb-1 pt-2 transition',
+                isClosed ? 'hover:bg-slate-50 cursor-pointer' : 'cursor-default opacity-40',
+                isActive && 'bg-blue-50 ring-1 ring-blue-200',
+              )}
+            >
+              <span className={cn(
+                'text-[10px] font-semibold',
+                !isClosed ? 'text-slate-200'
+                  : isActive ? 'text-blue-600'
+                  : s.pct >= 100 ? 'text-emerald-600'
+                  : s.pct >= 60 ? 'text-amber-600'
+                  : s.pct > 0 ? 'text-slate-500'
+                  : 'text-slate-300',
+              )}>
+                {isClosed ? (s.pct > 0 ? `${s.pct}%` : '—') : '—'}
+              </span>
+              <div className="flex w-full items-end justify-center" style={{ height: '40px' }}>
+                <div
+                  className={cn(
+                    'w-4/5 rounded-t transition-all',
+                    !isClosed ? 'bg-slate-100'
+                      : isActive ? 'bg-blue-400'
+                      : s.pct >= 100 ? 'bg-emerald-400'
+                      : s.pct >= 60 ? 'bg-amber-400'
+                      : s.pct > 0 ? 'bg-red-300'
+                      : 'bg-slate-100',
+                  )}
+                  style={{ height: `${barH}%` }}
+                />
+              </div>
+              <span className={cn('text-[9px]', isActive ? 'font-bold text-blue-600' : isClosed ? 'text-slate-400' : 'text-slate-300')}>
+                {MONTHS_SHORT[s.month - 1]}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Charts helpers ───────────────────────────────────────────────────────────
+function fmtK(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} M`
+  if (n >= 1_000) return `${Math.round(n / 1_000)} mil`
+  return n.toLocaleString('es-PE')
+}
+
+interface ChartData {
+  monthlyLogrado: (number | null)[]
+  monthlyMeta: (number | null)[]
+  quarterlyLogrado: number[]
+  quarterlyMeta: number[]
+  totalLogrado: number
+  totalMeta: number
+}
+
+function buildChartData(data: PprProgramaDetalle): ChartData {
+  const currentMonth = new Date().getMonth() + 1  // 1-12, mes en curso (no cerrado)
+
+  const monthlyLogrado = Array.from({ length: 12 }, (_, i) => {
+    const m = i + 1
+    if (m >= currentMonth) return null   // mes actual y futuros: sin dato
+    return data.activities.reduce((s, a) => {
+      const md = a.months.find((mm) => mm.month === m)
+      return s + (md?.value ?? 0)
+    }, 0)
+  })
+
+  const totalAnnualGoal = data.activities.reduce((s, a) => s + (a.annualGoal ?? 0), 0)
+  const monthlyMeta = Array.from({ length: 12 }, (_, i) => {
+    const m = i + 1
+    if (m >= currentMonth) return null   // sin meta para meses no cerrados
+    return Math.round(totalAnnualGoal / 12)
+  })
+
+  // Trimestral: solo trimestres que tengan al menos 1 mes cerrado
+  const quarterlyLogrado = [0, 1, 2, 3].map((q) => {
+    const months = monthlyLogrado.slice(q * 3, q * 3 + 3).filter((v) => v !== null) as number[]
+    return months.length > 0 ? months.reduce((s, v) => s + v, 0) : 0
+  })
+  const quarterlyMeta = [0, 1, 2, 3].map((q) => {
+    const months = monthlyMeta.slice(q * 3, q * 3 + 3).filter((v) => v !== null) as number[]
+    return months.length > 0 ? months.reduce((s, v) => s + v, 0) : 0
+  })
+
+  const totalLogrado = (monthlyLogrado.filter((v) => v !== null) as number[]).reduce((s, v) => s + v, 0)
+
+  return { monthlyLogrado, monthlyMeta, quarterlyLogrado, quarterlyMeta, totalLogrado, totalMeta: totalAnnualGoal }
+}
+
+function ChartsSection({ chartData, programName, year }: { chartData: ChartData; programName: string; year: number }) {
+  const { monthlyLogrado, monthlyMeta, quarterlyLogrado, quarterlyMeta, totalLogrado, totalMeta } = chartData
+
+  const lineOption = {
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'axis', textStyle: { fontSize: 11 } },
+    legend: {
+      data: ['Logrado', 'Meta Por Act. Operativa'],
+      bottom: 0,
+      textStyle: { fontSize: 10, color: '#64748b' },
+      icon: 'circle',
+      itemWidth: 8,
+      itemHeight: 8,
+    },
+    grid: { top: 28, bottom: 38, left: 52, right: 12 },
+    xAxis: {
+      type: 'category',
+      data: MONTHS_SHORT,
+      axisLabel: { fontSize: 10, color: '#94a3b8' },
+      axisLine: { lineStyle: { color: '#e2e8f0' } },
+      axisTick: { show: false },
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { fontSize: 10, color: '#94a3b8', formatter: (v: number) => fmtK(v) },
+      splitLine: { lineStyle: { color: '#f1f5f9' } },
+    },
+    series: [
+      {
+        name: 'Logrado',
+        type: 'line',
+        data: monthlyLogrado,
+        smooth: false,
+        symbol: 'circle',
+        symbolSize: 6,
+        itemStyle: { color: '#2563eb' },
+        lineStyle: { color: '#2563eb', width: 2 },
+        label: { show: true, fontSize: 9, color: '#2563eb', fontWeight: 'bold', position: 'top' },
+      },
+      {
+        name: 'Meta Por Act. Operativa',
+        type: 'line',
+        data: monthlyMeta,
+        smooth: false,
+        symbol: 'none',
+        itemStyle: { color: '#94a3b8' },
+        lineStyle: { color: '#94a3b8', width: 1.5, type: 'dashed' },
+        label: { show: false },
+      },
+    ],
+  }
+
+  const barOption = {
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'axis', textStyle: { fontSize: 11 } },
+    legend: {
+      data: ['Logrado', 'Meta Trimestral'],
+      bottom: 0,
+      textStyle: { fontSize: 10, color: '#64748b' },
+      icon: 'circle',
+      itemWidth: 8,
+      itemHeight: 8,
+    },
+    grid: { top: 28, bottom: 38, left: 52, right: 12 },
+    xAxis: {
+      type: 'category',
+      data: ['1er Trim', '2do Trim', '3er Trim', '4to Trim'],
+      axisLabel: { fontSize: 10, color: '#94a3b8' },
+      axisLine: { lineStyle: { color: '#e2e8f0' } },
+      axisTick: { show: false },
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { fontSize: 10, color: '#94a3b8', formatter: (v: number) => fmtK(v) },
+      splitLine: { lineStyle: { color: '#f1f5f9' } },
+    },
+    series: [
+      {
+        name: 'Logrado',
+        type: 'bar',
+        data: quarterlyLogrado,
+        barMaxWidth: 40,
+        itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] },
+        label: { show: true, position: 'top', fontSize: 10, color: '#1d4ed8', fontWeight: 'bold', formatter: (p: { value: number }) => fmtK(p.value) },
+      },
+      {
+        name: 'Meta Trimestral',
+        type: 'bar',
+        data: quarterlyMeta,
+        barMaxWidth: 40,
+        itemStyle: { color: '#e2e8f0', borderRadius: [4, 4, 0, 0] },
+        label: { show: false },
+      },
+    ],
+  }
+
+  const gaugeMax = Math.max(totalMeta, totalLogrado, 1)
+  const gaugePct = totalMeta > 0 ? Math.round((totalLogrado / totalMeta) * 100) : 0
+
+  const gaugeOption = {
+    backgroundColor: 'transparent',
+    series: [
+      {
+        type: 'gauge',
+        startAngle: 180,
+        endAngle: 0,
+        min: 0,
+        max: gaugeMax,
+        splitNumber: 4,
+        radius: '90%',
+        center: ['50%', '68%'],
+        itemStyle: { color: '#22c55e' },
+        progress: { show: true, width: 16, itemStyle: { color: '#22c55e' } },
+        pointer: { show: false },
+        axisLine: { lineStyle: { width: 16, color: [[1, '#e2e8f0']] } },
+        axisTick: { show: false },
+        splitLine: { show: false },
+        axisLabel: { show: false },
+        title: { show: false },
+        detail: {
+          valueAnimation: true,
+          formatter: () => `${fmtK(totalLogrado)}\n${gaugePct}%`,
+          fontSize: 16,
+          fontWeight: 'bold',
+          color: '#0c2340',
+          lineHeight: 22,
+          offsetCenter: [0, '-10%'],
+        },
+        data: [{ value: totalLogrado }],
+      },
+    ],
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+      {/* Line chart — 2 cols */}
+      <div className="col-span-1 rounded-2xl border border-[#e2e8f0] bg-white p-4 lg:col-span-2">
+        <p className="mb-1 text-xs font-bold text-[#0c2340]">
+          Avance mensual · {programName}
+        </p>
+        <ReactECharts option={lineOption} style={{ height: '220px' }} />
+      </div>
+
+      {/* Bar chart — 2 cols */}
+      <div className="col-span-1 rounded-2xl border border-[#e2e8f0] bg-white p-4 lg:col-span-2">
+        <p className="mb-1 text-xs font-bold text-[#0c2340]">
+          Avance trimestral · {year}
+        </p>
+        <ReactECharts option={barOption} style={{ height: '220px' }} />
+      </div>
+
+      {/* KPI + Gauge — 1 col */}
+      <div className="col-span-1 flex flex-col gap-3">
+        {/* KPI cards */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-[#e2e8f0] bg-white p-3 text-center">
+            <p className="text-lg font-bold text-[#0c2340]">{fmtK(totalMeta)}</p>
+            <p className="text-[10px] text-slate-400">Meta Anual</p>
+          </div>
+          <div className="rounded-2xl border border-[#e2e8f0] bg-white p-3 text-center">
+            <p className="text-lg font-bold text-emerald-600">{fmtK(totalLogrado)}</p>
+            <p className="text-[10px] text-slate-400">Logro</p>
+          </div>
+        </div>
+
+        {/* Gauge */}
+        <div className="flex-1 rounded-2xl border border-[#e2e8f0] bg-white p-3">
+          <p className="text-center text-xs font-bold text-[#0c2340]">Logro Alcanzado</p>
+          <ReactECharts option={gaugeOption} style={{ height: '160px' }} />
+          <div className="flex justify-between px-2">
+            <span className="text-[10px] text-slate-400">0</span>
+            <span className="text-[10px] text-slate-400">{fmtK(gaugeMax)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+export function PprProgramaDashboardPage() {
+  const { id } = useParams<{ id: string }>()
+  const { pprUser } = usePprContext()
+  const navigate = useNavigate()
+  const currentYear = new Date().getFullYear()
+
+  const [data, setData] = useState<PprProgramaDetalle | null>(null)
+  const [year, setYear] = useState(currentYear)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
+  const [activeMonth, setActiveMonth] = useState<number | null>(null)
+  const [modalCell, setModalCell] = useState<{
+    activity: PprActividadDetalle
+    monthData: PprActividadMes
+  } | null>(null)
+
+  const programId = Number(id)
+
+  useEffect(() => {
+    if (!programId) return
+    setLoading(true)
+    setError(null)
+    fetchProgramaDetalle(programId, year, pprUser.employeeId)
+      .then(setData)
+      .catch(() => setError('No se pudo cargar el programa.'))
+      .finally(() => setLoading(false))
+  }, [programId, year, pprUser.employeeId])
+
+  function toggleRow(actId: number) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(actId)) next.delete(actId)
+      else next.add(actId)
+      return next
+    })
+  }
+
+  function handleCellClick(activity: PprActividadDetalle, monthData: PprActividadMes) {
+    if (monthData.value == null) return
+    setModalCell({ activity, monthData })
+  }
+
+  function handleGoToActividades(programaId: number) {
+    navigate('/ppr/actividades', { state: { programaId } })
+  }
+
+  // Derived: filtered activities
+  const filteredActivities = useMemo(() => {
+    if (!data) return []
+    const q = search.toLowerCase()
+    return data.activities.filter(
+      (a) => !q || a.name.toLowerCase().includes(q) || a.code.toLowerCase().includes(q),
+    )
+  }, [data, search])
+
+  // Derived: monthly stats
+  const monthlyStats = useMemo(() => {
+    if (!data) return []
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1
+      const total = data.activities.length
+      const completadas = data.activities.filter((a) => {
+        const md = a.months.find((mm) => mm.month === m)
+        return md?.value != null
+      }).length
+      const pct = total > 0 ? Math.round((completadas / total) * 100) : 0
+      return { month: m, completadas, total, pct }
+    })
+  }, [data])
+
+  // Derived: chart data
+  const chartData = useMemo(() => (data ? buildChartData(data) : null), [data])
+
+  // Derived: global stats
+  const globalStats = useMemo(() => {
+    if (!data) return { total: 0, withData: 0, globalPct: 0, totalValues: 0 }
+    const total = data.activities.length
+    const withData = data.activities.filter((a) => a.months.some((m) => m.value != null)).length
+    const allCells = data.activities.length * 12
+    const filledCells = data.activities.reduce(
+      (s, a) => s + a.months.filter((m) => m.value != null).length,
+      0,
+    )
+    const globalPct = allCells > 0 ? Math.round((filledCells / allCells) * 100) : 0
+    return { total, withData, globalPct, totalValues: filledCells }
+  }, [data])
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/ppr/programas')}
+            className="flex items-center gap-1.5 rounded-xl border border-[#e2e8f0] bg-white px-3 py-1.5 text-xs font-semibold text-[#0c2340] transition hover:bg-slate-50"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Programas
+          </button>
+          <div>
+            {data ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-[#e8f0f8] px-1.5 py-0.5 font-mono text-[10px] text-[#3a6fa0]">
+                    {data.programCode}
+                  </span>
+                  <h1 className="text-sm font-bold text-[#0c2340] sm:text-base">
+                    {data.programName}
+                  </h1>
+                </div>
+                <p className="text-[10px] text-slate-400">Dashboard de actividades · {year}</p>
+              </>
+            ) : (
+              <div className="h-5 w-48 animate-pulse rounded bg-slate-200" />
+            )}
+          </div>
+        </div>
+
+        {/* Year selector */}
+        <div className="flex items-center gap-1 rounded-xl border border-[#e2e8f0] bg-white px-1 py-1">
+          <button
+            onClick={() => setYear((y) => y - 1)}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[#0c2340]"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+          <span className="min-w-[3rem] text-center text-sm font-bold text-[#0c2340]">{year}</span>
+          <button
+            onClick={() => setYear((y) => y + 1)}
+            disabled={year >= currentYear}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[#0c2340] disabled:opacity-30"
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
+          {error}
+          <button onClick={() => setError(null)}><X className="h-3.5 w-3.5" /></button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-green-600" />
+        </div>
+      ) : !data ? null : (
+        <>
+          {/* Stats row */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              { label: 'Actividades', value: globalStats.total, color: 'text-[#0c2340]' },
+              { label: 'Con datos', value: globalStats.withData, color: 'text-emerald-600' },
+              { label: 'Celdas llenas', value: `${globalStats.totalValues} / ${globalStats.total * 12}`, color: 'text-slate-600' },
+              { label: '% global', value: `${globalStats.globalPct}%`, color: globalStats.globalPct >= 100 ? 'text-emerald-600' : globalStats.globalPct >= 60 ? 'text-amber-600' : 'text-red-500' },
+            ].map((s) => (
+              <div key={s.label} className="rounded-2xl border border-[#e2e8f0] bg-white p-3 text-center">
+                <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                <p className="text-[10px] text-slate-400">{s.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Charts */}
+          {chartData && (
+            <ChartsSection chartData={chartData} programName={data.programCode} year={year} />
+          )}
+
+          {/* Monthly bars */}
+          <MonthlyBars
+            stats={monthlyStats}
+            activeMonth={activeMonth}
+            currentMonth={new Date().getMonth() + 1}
+            onSelectMonth={setActiveMonth}
+          />
+
+          {/* Search */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar actividad por nombre o código…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-xl border border-[#e2e8f0] bg-white py-2 pl-8 pr-3 text-xs text-[#0c2340] placeholder-slate-300 outline-none focus:border-green-400 focus:ring-1 focus:ring-green-200"
+              />
+            </div>
+            {activeMonth && (
+              <button
+                onClick={() => setActiveMonth(null)}
+                className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+              >
+                <X className="h-3 w-3" />
+                {MONTHS_SHORT[activeMonth - 1]}
+              </button>
+            )}
+            <button
+              onClick={() => handleGoToActividades(programId)}
+              className="flex items-center gap-1.5 rounded-xl bg-[#0c2340] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#153860]"
+            >
+              <ClipboardList className="h-3.5 w-3.5" />
+              Ingresar datos
+            </button>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto rounded-2xl border border-[#e2e8f0] bg-white">
+            <table className="w-full min-w-[900px] border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-[#e2e8f0] bg-[#f8fbff]">
+                  <th className="sticky left-0 z-10 bg-[#f8fbff] px-4 py-3 text-left font-semibold text-[#0c2340]">
+                    Actividad
+                  </th>
+                  {MONTHS_SHORT.map((m, i) => (
+                    <th
+                      key={i}
+                      onClick={() => setActiveMonth(activeMonth === i + 1 ? null : i + 1)}
+                      className={cn(
+                        'cursor-pointer px-2 py-3 text-center font-semibold transition select-none',
+                        activeMonth === i + 1
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'text-slate-500 hover:bg-slate-100',
+                      )}
+                    >
+                      {m}
+                    </th>
+                  ))}
+                  <th className="px-3 py-3 text-right font-semibold text-slate-500">Total</th>
+                  <th className="px-3 py-3 text-center font-semibold text-slate-500">
+                    <Layers className="mx-auto h-3.5 w-3.5" />
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredActivities.length === 0 ? (
+                  <tr>
+                    <td colSpan={15} className="py-12 text-center text-xs text-slate-400">
+                      {search ? 'Sin resultados para la búsqueda.' : 'Sin actividades.'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredActivities.map((activity) => {
+                    const isExpanded = expandedIds.has(activity.id)
+                    const total = activity.months.reduce((s, m) => s + (m.value ?? 0), 0)
+                    const monthsMap = new Map(activity.months.map((m) => [m.month, m]))
+
+                    return [
+                      <tr
+                        key={activity.id}
+                        className={cn(
+                          'border-b border-[#f0f4f8] transition-colors',
+                          isExpanded ? 'bg-[#f0f7ff]' : 'hover:bg-[#fafcff]',
+                        )}
+                      >
+                        {/* Activity name */}
+                        <td
+                          className={cn(
+                            'sticky left-0 z-10 px-4 py-2.5 cursor-pointer',
+                            isExpanded ? 'bg-[#f0f7ff]' : 'bg-white hover:bg-[#fafcff]',
+                          )}
+                          onClick={() => toggleRow(activity.id)}
+                        >
+                          <div className="flex items-start gap-2 max-w-[220px]">
+                            {isExpanded ? (
+                              <ChevronUp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
+                            ) : (
+                              <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                            )}
+                            <div className="min-w-0">
+                              {activity.code && (
+                                <span className="mb-0.5 inline-block rounded bg-[#e8f0f8] px-1 py-px font-mono text-[9px] text-[#3a6fa0]">
+                                  {activity.code}
+                                </span>
+                              )}
+                              <p className="truncate text-[11px] font-medium leading-snug text-[#0c2340]" title={activity.name}>
+                                {activity.name}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Month cells */}
+                        {Array.from({ length: 12 }, (_, i) => {
+                          const m = i + 1
+                          const md = monthsMap.get(m) ?? { month: m, periodId: null, value: null, notes: null }
+                          const isActive = activeMonth === m
+                          return (
+                            <td
+                              key={m}
+                              onClick={() => handleCellClick(activity, md)}
+                              className={cn(
+                                'px-1 py-2.5 text-center transition-colors',
+                                md.value != null ? 'cursor-pointer hover:opacity-80' : '',
+                                cellBg(md.value, isActive),
+                              )}
+                            >
+                              <span className={cn('text-[11px]', cellText(md.value))}>
+                                {md.value != null ? fmt(md.value) : '—'}
+                              </span>
+                            </td>
+                          )
+                        })}
+
+                        {/* Total */}
+                        <td className="px-3 py-2.5 text-right">
+                          <span className="text-[11px] font-semibold text-[#0c2340]">
+                            {fmt(total)}
+                          </span>
+                        </td>
+
+                        {/* Expand icon */}
+                        <td
+                          className="cursor-pointer px-3 py-2.5 text-center text-slate-300 hover:text-blue-500"
+                          onClick={() => toggleRow(activity.id)}
+                        >
+                          {isExpanded ? <ChevronUp className="mx-auto h-3.5 w-3.5" /> : <ChevronDown className="mx-auto h-3.5 w-3.5" />}
+                        </td>
+                      </tr>,
+
+                      isExpanded && (
+                        <ExpandedDetail
+                          key={`exp-${activity.id}`}
+                          activity={activity}
+                          onGoToActividades={() => handleGoToActividades(programId)}
+                        />
+                      ),
+                    ]
+                  })
+                )}
+              </tbody>
+
+              {/* Footer totals */}
+              {filteredActivities.length > 0 && (
+                <tfoot>
+                  <tr className="border-t-2 border-[#e2e8f0] bg-[#f8fbff]">
+                    <td className="sticky left-0 bg-[#f8fbff] px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Total ({filteredActivities.length} act.)
+                    </td>
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const m = i + 1
+                      const colTotal = filteredActivities.reduce((s, a) => {
+                        const md = a.months.find((mm) => mm.month === m)
+                        return s + (md?.value ?? 0)
+                      }, 0)
+                      const isActive = activeMonth === m
+                      return (
+                        <td
+                          key={m}
+                          className={cn(
+                            'px-1 py-2.5 text-center text-[11px] font-bold',
+                            isActive ? 'bg-blue-100 text-blue-700' : 'text-[#0c2340]',
+                          )}
+                        >
+                          {colTotal > 0 ? fmt(colTotal) : <span className="text-slate-300">—</span>}
+                        </td>
+                      )
+                    })}
+                    <td className="px-3 py-2.5 text-right text-[11px] font-bold text-[#0c2340]">
+                      {fmt(
+                        filteredActivities.reduce(
+                          (s, a) => s + a.months.reduce((ms, m) => ms + (m.value ?? 0), 0),
+                          0,
+                        ),
+                      )}
+                    </td>
+                    <td />
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* Cell detail modal */}
+      {modalCell && (
+        <CellModal
+          activity={modalCell.activity}
+          monthData={modalCell.monthData}
+          year={year}
+          onClose={() => setModalCell(null)}
+        />
+      )}
+    </div>
+  )
+}

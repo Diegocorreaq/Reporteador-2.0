@@ -1,12 +1,18 @@
 import { httpClient } from '@/services/http/client'
 import type {
   PprActividad,
+  PprActividadAdmin,
   PprCoordinador,
+  PprEmpleadoResult,
+  PprImportResult,
+  PprImportSource,
   PprPeriodo,
   PprPeriodoItem,
   PprPrograma,
   PprProgramaAdmin,
+  PprProgramaDetalle,
   PprResumenPrograma,
+  PprValidationSummary,
 } from '@/modules/ppr/types'
 
 export interface PprValidationResult {
@@ -55,8 +61,35 @@ export async function saveValor(payload: {
   await httpClient.post('/ppr/valores', payload)
 }
 
-export async function firmarPeriodo(periodId: number, employeeId: number): Promise<{ signedAt: string }> {
-  const res = await httpClient.post<{ ok: boolean; signedAt: string }>('/ppr/firmar', { periodId, employeeId })
+export async function validarValor(payload: {
+  activityId: number
+  periodId: number
+  employeeId: number
+}): Promise<{ validatedAt: string }> {
+  const res = await httpClient.post<{ ok: boolean; validatedAt: string }>('/ppr/valores/validar', payload)
+  return { validatedAt: res.data.validatedAt }
+}
+
+export async function fetchValidationSummary(
+  employeeId: number,
+  periodId: number,
+): Promise<PprValidationSummary> {
+  const res = await httpClient.get<{ resumen: PprValidationSummary }>('/ppr/validacion/resumen', {
+    params: { employeeId, periodId },
+  })
+  return res.data.resumen
+}
+
+export async function firmarPeriodo(
+  periodId: number,
+  employeeId: number,
+  forceForTesting = false,
+): Promise<{ signedAt: string }> {
+  const res = await httpClient.post<{ ok: boolean; signedAt: string }>('/ppr/firmar', {
+    periodId,
+    employeeId,
+    forceForTesting,
+  })
   return { signedAt: res.data.signedAt }
 }
 
@@ -74,7 +107,25 @@ export async function fetchResumen(employeeId: number, year: number): Promise<Pp
   return res.data.resumen
 }
 
+export async function fetchProgramaDetalle(
+  programId: number,
+  year: number,
+  employeeId: number,
+): Promise<PprProgramaDetalle> {
+  const res = await httpClient.get<{ detalle: PprProgramaDetalle }>('/ppr/programa-detalle', {
+    params: { programId, year, employeeId },
+  })
+  return res.data.detalle
+}
+
 // ─── Admin ────────────────────────────────────────────────────────────────────
+
+export async function searchEmpleados(q: string, adminId: number): Promise<PprEmpleadoResult[]> {
+  const res = await httpClient.get<{ empleados: PprEmpleadoResult[] }>('/ppr/empleados/search', {
+    params: { q, adminId },
+  })
+  return res.data.empleados
+}
 
 export async function fetchCoordinadores(adminId: number): Promise<PprCoordinador[]> {
   const res = await httpClient.get<{ coordinadores: PprCoordinador[] }>('/ppr/admin/coordinadores', {
@@ -96,6 +147,71 @@ export async function fetchProgramasAdmin(adminId: number): Promise<PprProgramaA
     params: { adminId },
   })
   return res.data.programas
+}
+
+export async function fetchImportSources(adminId: number): Promise<PprImportSource[]> {
+  const res = await httpClient.get<{ sources: PprImportSource[] }>('/ppr/admin/cargas/sources', {
+    params: { adminId },
+  })
+  return res.data.sources
+}
+
+export async function runImportCarga(
+  programId: number,
+  sourceId: string,
+  adminId: number,
+): Promise<PprImportResult> {
+  const res = await httpClient.post<{ ok: boolean; result: PprImportResult }>('/ppr/admin/cargas/run', {
+    programId,
+    sourceId,
+    adminId,
+  })
+  return res.data.result
+}
+
+export async function downloadMatrizExcel(year: number, adminId: number): Promise<void> {
+  const res = await httpClient.get('/ppr/admin/export/matriz', {
+    params: { year, adminId },
+    responseType: 'blob',
+  })
+  const url = URL.createObjectURL(new Blob([res.data]))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `Matriz_PPR_${year}.xlsx`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+export async function fetchActividadesAdmin(programId: number, adminId: number): Promise<PprActividadAdmin[]> {
+  const res = await httpClient.get<{ actividades: PprActividadAdmin[] }>('/ppr/admin/actividades', {
+    params: { programId, adminId },
+  })
+  return res.data.actividades
+}
+
+export async function guardarActividadAdmin(payload: {
+  id: number | null
+  programId: number
+  code: string
+  name: string
+  unit: string
+  annualGoal: number | null
+  sortOrder: number
+  isActive: boolean
+  adminId: number
+}): Promise<{ id: number }> {
+  const res = await httpClient.post<{ ok: boolean; id: number }>('/ppr/admin/actividades', payload)
+  return { id: res.data.id }
+}
+
+export async function toggleActividadAdmin(
+  activityId: number,
+  isActive: boolean,
+  adminId: number,
+): Promise<void> {
+  await httpClient.patch(`/ppr/admin/actividades/${activityId}/toggle`, { isActive, adminId })
 }
 
 export async function guardarAsignacion(

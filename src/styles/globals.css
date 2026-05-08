@@ -77,3 +77,67 @@ body {
 .sidebar-scroll::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* ───── PPR Portal animations ──────────────────────────────────────────── */
+@keyframes ppr-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes ppr-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ppr-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ppr-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ppr-pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+.animate-ppr-fade   { animation: ppr-fade-in   0.35s ease-out both; }
+.animate-ppr-slide  { animation: ppr-slide-in  0.4s  ease-out both; }
+.animate-ppr-scale  { animation: ppr-scale-in  0.3s  ease-out both; }
+.animate-ppr-pulse  { animation: ppr-pulse-soft 2.4s ease-in-out infinite; }
+
+/* Stagger helper for children */
+.ppr-stagger > * {
+  animation: ppr-slide-in 0.35s ease-out both;
+}
+.ppr-stagger > *:nth-child(1)  { animation-delay: 0ms; }
+.ppr-stagger > *:nth-child(2)  { animation-delay: 40ms; }
+.ppr-stagger > *:nth-child(3)  { animation-delay: 80ms; }
+.ppr-stagger > *:nth-child(4)  { animation-delay: 120ms; }
+.ppr-stagger > *:nth-child(5)  { animation-delay: 160ms; }
+.ppr-stagger > *:nth-child(6)  { animation-delay: 200ms; }
+.ppr-stagger > *:nth-child(7)  { animation-delay: 240ms; }
+.ppr-stagger > *:nth-child(8)  { animation-delay: 280ms; }
+.ppr-stagger > *:nth-child(9)  { animation-delay: 320ms; }
+.ppr-stagger > *:nth-child(10) { animation-delay: 360ms; }
+.ppr-stagger > *:nth-child(n+11) { animation-delay: 400ms; }
+
+/* PPR scrollbars in light surfaces */
+.ppr-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+}
+.ppr-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.ppr-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 999px;
+}
+.ppr-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.5);
+}
