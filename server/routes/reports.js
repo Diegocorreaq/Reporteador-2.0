@@ -55,6 +55,7 @@ import {
   searchLavadoEmpleados,
   updateLavadoRegistro,
 } from '../services/lavado-manos.service.js'
+import { exportEpidemiologiaReporte } from '../services/epidemiologia-reportes.service.js'
 import { requireAuth } from '../middleware/require-auth.js'
 import { authLimiter, exportLimiter } from '../middleware/rate-limit.js'
 import {
@@ -177,6 +178,57 @@ reportsRouter.post('/epidemiologia/lavado/validate', authLimiter, async (request
 })
 
 // ─── Protected routes (require valid session cookie) ──────────────────────────
+
+reportsRouter.post('/epidemiologia/reportes/validate', authLimiter, async (request, response) => {
+  try {
+    const { username, password, report } = request.body ?? {}
+    const reportKey = String(report ?? '').trim()
+    const allowedReports = new Set([
+      'pacientes-oncologicos',
+      'pfa-sifilis-sarampion',
+      'isqx',
+      'mordedura-canina',
+      'cirugia-procedimiento',
+      'seguimiento-dengue',
+    ])
+
+    if (!allowedReports.has(reportKey)) {
+      return response.status(400).json({
+        ok: false,
+        employeeId: null,
+        employeeName: '',
+        message: 'El modulo de epidemiologia solicitado no existe.',
+      })
+    }
+
+    const ip = getClientIp(request)
+    const scope = `epidemiologia/${reportKey}`
+    const validation = await validateLegacyUser({
+      dni: String(username ?? '').trim(),
+      password: String(password ?? '').trim(),
+      ip,
+      scope,
+    })
+
+    if (validation.ok && validation.employeeId) {
+      const employeeName = String(validation.employeeName ?? '').trim()
+      if (employeeName && !/^\d+$/.test(employeeName)) {
+        const token = createSession({
+          id: `emp-${validation.employeeId}`,
+          username: String(username ?? '').trim(),
+          employeeId: validation.employeeId,
+          name: employeeName,
+          scope,
+        })
+        response.cookie(SESSION_COOKIE_NAME, token, getSessionCookieOptions())
+      }
+    }
+
+    response.json(validation)
+  } catch (error) {
+    handleError(response, error, 'No se pudo validar el usuario para epidemiologia.')
+  }
+})
 
 reportsRouter.get('/reports/centro-obstetrico', requireAuth, async (request, response) => {
   try {
@@ -597,6 +649,21 @@ reportsRouter.get('/epidemiologia/lavado/export', requireAuth, exportLimiter, as
     sendDownload(response, file)
   } catch (error) {
     handleError(response, error, 'No se pudo exportar el listado de lavado de manos.')
+  }
+})
+
+reportsRouter.get('/epidemiologia/reportes/export', requireAuth, exportLimiter, async (request, response) => {
+  try {
+    const file = await exportEpidemiologiaReporte({
+      report: String(request.query.report ?? '').trim(),
+      subtype: String(request.query.subtype ?? '').trim(),
+      startDate: request.query.fechaInicio ? String(request.query.fechaInicio) : undefined,
+      endDate: request.query.fechaFin ? String(request.query.fechaFin) : undefined,
+      date: request.query.fecha ? String(request.query.fecha) : undefined,
+    })
+    sendDownload(response, file)
+  } catch (error) {
+    handleError(response, error, 'No se pudo exportar el reporte de epidemiologia.')
   }
 })
 

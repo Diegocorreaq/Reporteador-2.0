@@ -2655,13 +2655,39 @@ function resolveEmployeeName(row) {
   return namedCandidate ?? candidates[0] ?? ''
 }
 
-export async function validateLegacyUser({ dni, password, ip, scope = 'general' }) {
-  const procedure = scope === 'lavado' ? 'SP_USUARIO_VALIDA_LM' : 'SP_USUARIO_VALIDA'
-  const rows = await executeProcedure(procedure, [
+const LEGACY_AUTH_PROCEDURES = {
+  general: { procedure: 'SP_USUARIO_VALIDA', paramStyle: 'general' },
+  lavado: { procedure: 'SP_USUARIO_VALIDA_LM', paramStyle: 'legacy' },
+  'epidemiologia/pacientes-oncologicos': { procedure: 'SP_USUARIO_VALIDA_EPI_ONCOLOGICOS', paramStyle: 'legacy' },
+  'epidemiologia/pfa-sifilis-sarampion': { procedure: 'SP_USUARIO_VALIDA_EPI_PFA_SIFILIS_SARAMPION', paramStyle: 'legacy' },
+  'epidemiologia/isqx': { procedure: 'SP_USUARIO_VALIDA_EPI_ISQX', paramStyle: 'legacy' },
+  'epidemiologia/mordedura-canina': { procedure: 'SP_USUARIO_VALIDA_EPI_MORDEDURA_CANINA', paramStyle: 'legacy' },
+  'epidemiologia/cirugia-procedimiento': { procedure: 'SP_USUARIO_VALIDA_EPI_CIRUGIA_PROCEDIMIENTO', paramStyle: 'legacy' },
+  'epidemiologia/seguimiento-dengue': { procedure: 'SP_USUARIO_VALIDA_EPI_SEGUIMIENTO_DENGUE', paramStyle: 'legacy' },
+}
+
+function buildAuthParams({ dni, password, ip, paramStyle }) {
+  if (paramStyle === 'legacy') {
+    return [
+      { name: 'usuario', type: sql.VarChar(20), value: String(dni ?? '').substring(0, 20) },
+      { name: 'clave', type: sql.VarChar(20), value: String(password ?? '').substring(0, 20) },
+      { name: 'ipequipo', type: sql.VarChar(20), value: String(ip || '0.0.0.0').substring(0, 20) },
+    ]
+  }
+
+  return [
     { name: 'dni', type: sql.NVarChar, value: dni },
     { name: 'password', type: sql.NVarChar, value: password },
     { name: 'ip', type: sql.NVarChar, value: ip },
-  ])
+  ]
+}
+
+export async function validateLegacyUser({ dni, password, ip, scope = 'general' }) {
+  const authDefinition = LEGACY_AUTH_PROCEDURES[scope] ?? LEGACY_AUTH_PROCEDURES.general
+  const rows = await executeProcedure(
+    authDefinition.procedure,
+    buildAuthParams({ dni, password, ip, paramStyle: authDefinition.paramStyle }),
+  )
 
   const row = rows[0]
   if (!row) {

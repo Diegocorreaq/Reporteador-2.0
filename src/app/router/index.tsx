@@ -13,11 +13,6 @@ import { useAuthStore } from '@/modules/auth/store/use-auth-store'
 const LoginPage = lazy(() =>
   import('@/modules/auth/pages/login-clean-page').then((module) => ({ default: module.LoginCleanPage })),
 )
-const CentroObstetricoPage = lazy(() =>
-  import('@/modules/centro-obstetrico/pages/centro-obstetrico-page').then((module) => ({
-    default: module.CentroObstetricoPage,
-  })),
-)
 const MainHomePage = lazy(() =>
   import('@/modules/inicio/pages/main-home-page').then((module) => ({ default: module.MainHomePage })),
 )
@@ -37,6 +32,11 @@ const ExportacionesPage = lazy(() =>
 )
 const LavadoManosPage = lazy(() =>
   import('@/modules/lavado-manos/pages/lavado-manos-page').then((module) => ({ default: module.LavadoManosPage })),
+)
+const EpidemiologiaReportesPage = lazy(() =>
+  import('@/modules/epidemiologia-reportes/pages/epidemiologia-reportes-page').then((module) => ({
+    default: module.EpidemiologiaReportesPage,
+  })),
 )
 const PprInicioPage = lazy(() =>
   import('@/modules/ppr/pages/ppr-inicio-page').then((module) => ({ default: module.PprInicioPage })),
@@ -176,12 +176,17 @@ const explicitMainRoutePaths = new Set(
   legacyMainEmbedRoutes
     .map((route) => route.path)
     .concat([
-      'atencion-ambulatoria-hospitalizacion/centro-obstetrico',
       'emergencia-cuidados-criticos/indicadores-ucca',
       'emergencia-cuidados-criticos/indicadores-uccp',
       'monitoreo-salud-mental/reportes-monitoreo',
       'zona-descarga/registros-procesados',
       'epidemiologia/lavado-de-manos',
+      'epidemiologia/pacientes-oncologicos',
+      'epidemiologia/pfa-sifilis-sarampion',
+      'epidemiologia/isqx',
+      'epidemiologia/mordedura-canina',
+      'epidemiologia/cirugia-procedimiento',
+      'epidemiologia/seguimiento-dengue',
     ]),
 )
 
@@ -221,10 +226,6 @@ const sighScaffoldRoutes = getModulesByWorkspace('sigh')
 const mainImplementedRoutes = [
   ...legacyMainEmbedRoutes,
   {
-    path: 'atencion-ambulatoria-hospitalizacion/centro-obstetrico',
-    element: lazyElement(<CentroObstetricoPage />),
-  },
-  {
     path: 'emergencia-cuidados-criticos/indicadores-ucca',
     element: lazyElement(<UccaPage />),
   },
@@ -243,6 +244,30 @@ const mainImplementedRoutes = [
   {
     path: 'epidemiologia/lavado-de-manos',
     element: lazyElement(<LavadoManosPage />),
+  },
+  {
+    path: 'epidemiologia/pacientes-oncologicos',
+    element: lazyElement(<EpidemiologiaReportesPage />),
+  },
+  {
+    path: 'epidemiologia/pfa-sifilis-sarampion',
+    element: lazyElement(<EpidemiologiaReportesPage />),
+  },
+  {
+    path: 'epidemiologia/isqx',
+    element: lazyElement(<EpidemiologiaReportesPage />),
+  },
+  {
+    path: 'epidemiologia/mordedura-canina',
+    element: lazyElement(<EpidemiologiaReportesPage />),
+  },
+  {
+    path: 'epidemiologia/cirugia-procedimiento',
+    element: lazyElement(<EpidemiologiaReportesPage />),
+  },
+  {
+    path: 'epidemiologia/seguimiento-dengue',
+    element: lazyElement(<EpidemiologiaReportesPage />),
   },
 ]
 

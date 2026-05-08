@@ -5,6 +5,7 @@ import {
   Brain,
   CalendarClock,
   Download,
+  ShieldPlus,
   LineChart,
   Monitor,
 } from 'lucide-react'
@@ -51,6 +52,14 @@ const intentCards: IntentCard[] = [
     icon: Brain,
     action: 'search',
     searchTerm: 'salud mental',
+  },
+  {
+    id: 'epidemiologia',
+    label: 'Quiero exportables de epidemiologia',
+    description: 'Oncologicos, PFA, sifilis, sarampion, ISQx, mordedura, cirugia y dengue.',
+    icon: ShieldPlus,
+    action: 'search',
+    searchTerm: 'exportables epidemiologia',
   },
   {
     id: 'camas',

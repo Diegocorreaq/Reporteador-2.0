@@ -32,6 +32,8 @@ const pluralStemExceptions = new Set([
   'herpes',
 ])
 
+const shortAliasStopwords = new Set(['a', 'al', 'de', 'del', 'el', 'la', 'las', 'lo', 'los', 'o', 'u', 'y'])
+
 function normalize(text: string): string {
   return text
     .toLowerCase()
@@ -44,7 +46,7 @@ const validShortAliases = new Set(
   navigationCatalog.flatMap((resource) =>
     resource.aliases
       .flatMap((alias) => normalize(alias).split(/\s+/))
-      .filter((token) => token.length > 0 && token.length < 3),
+      .filter((token) => token.length > 0 && token.length < 3 && !shortAliasStopwords.has(token)),
   ),
 )
 
@@ -81,6 +83,10 @@ export function tokenize(text: string): string[] {
 }
 
 function tokenMatches(fieldToken: string, queryToken: string): boolean {
+  if (fieldToken.length < 3 || queryToken.length < 3) {
+    return fieldToken === queryToken
+  }
+
   return (
     fieldToken === queryToken ||
     fieldToken.startsWith(queryToken) ||
@@ -244,6 +250,10 @@ export function getQuickSuggestions(): string[] {
     'salud mental',
     'fallecidos',
     'epidemiología',
+    'exportables epidemiologia',
+    'pacientes oncologicos',
+    'pfa sifilis sarampion',
+    'dengue',
     'lavado de manos',
     'tickets',
     'historias clínicas',
