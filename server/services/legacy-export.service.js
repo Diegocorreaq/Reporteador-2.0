@@ -2348,23 +2348,21 @@ const MENTAL_HEALTH_TEMPLATE_CONFIG = {
     tipoReporte: '0070610 TRATAMIENTO AMBULATORIO DE PERSONAS CON CONDUCTA SUICIDA',
     metaColspan: 12,
     groups: [
-      { title: 'CONSULTA PSIQUIATRICA',  color: '#FA7985', keys: ['p1','p2','p3'] },
-      { title: 'PSICO-EDUCACION',         color: '#70D3FE', keys: ['s1','s2','s3','s4','s5','s6'] },
+      { title: 'PSIQUIATRIA', color: '#FA7985', keys: ['p1','p2','p3'] },
       { title: 'PSICOTERAPIA INDIVIDUAL', color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6'] },
-      { title: 'PSICOTERAPIA FAMILIAR',   color: '#A8FE91', keys: ['y1'] },
-      { title: 'GRUPO DE AYUDA MUTUA',    color: '#96FCF3', keys: ['z1','z2','z3','z4','z5','z6'] },
+      { title: 'INTERVENCION FAMILIAR', color: '#A8FE91', keys: ['y1','y2'] },
+      { title: 'REDES DE APOYO O VISITA DOMICILIARIA', color: '#96FCF3', keys: ['z1'] },
     ],
   },
 
   exporta_xls_2: {
     tipoReporte: '0060614 - TRATAMIENTO DE NI\u00D1OS, NI\u00D1AS Y ADOLESCENTES AFECTADOS POR MALTRATO INFANTIL',
-    metaColspan: 12,
+    metaColspan: 11,
     groups: [
-      { title: 'CONSULTA PSIQUIATRICA',          color: '#FA7985', keys: ['p1','p2','p3'] },
-      { title: 'PSICO-EDUCACION',                color: '#70D3FE', keys: ['s1','s2'] },
-      { title: 'PSICOTERAPIA INDIVIDUAL',        color: '#FEF170', keys: ['x1','x2','x3','x4'] },
-      { title: 'PSCIOTERAPIA FAMILIAR',          color: '#A8FE91', keys: ['y1','y2'] },
-      { title: 'MOVILIZACION DE REDES DE APOYO', color: '#96FCF3', keys: ['z1'] },
+      { title: 'PSIQUIATRIA', color: '#FA7985', keys: ['p1','p2'] },
+      { title: 'PSICOTERAPIA INDIVIDUAL', color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6'] },
+      { title: 'INTERVENCION FAMILIAR', color: '#A8FE91', keys: ['y1','y2'] },
+      { title: 'REDES DE APOYO O VISITA DOMICILIARIA', color: '#96FCF3', keys: ['z1'] },
     ],
   },
 
@@ -2372,23 +2370,22 @@ const MENTAL_HEALTH_TEMPLATE_CONFIG = {
     tipoReporte: '0070611 TRATAMIENTO AMBULATORIO DE PERSONAS CON ANSIEDAD',
     metaColspan: 12,
     groups: [
-      { title: 'CONSULTA PSIQUIATRICA',  color: '#FA7985', keys: ['p1','p2','p3','p4'] },
-      { title: 'PSICO-EDUCACION',         color: '#70D3FE', keys: ['s1','s2'] },
-      { title: 'PSICOTERAPIA INDIVIDUAL', color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6','x7','x8'] },
-      { title: 'PSICOTERAPIA GRUPAL',     color: '#96FCF3', keys: ['y1','y2','y3','y4','y5','y6'] },
-      { title: 'GRUPO DE AYUDA MUTUA',    color: '#A8FE91', keys: ['z1','z2'] },
+      { title: 'PSIQUIATRIA', color: '#FA7985', keys: ['p1','p2','p3'] },
+      { title: 'PSICOTERAPIA INDIVIDUAL', color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6'] },
+      { title: 'INTERVENCION FAMILIAR', color: '#A8FE91', keys: ['y1','y2'] },
+      { title: 'REDES DE APOYO O VISITA DOMICILIARIA', color: '#96FCF3', keys: ['z1'] },
     ],
   },
 
   exporta_xls_4: {
     tipoReporte: '0070612 - TRATAMIENTO ESPECIALIZADO EN VIOLENCIA FAMILIAR',
-    metaColspan: 12,
+    metaColspan: 11,
+    headerLabels: { hc: 'HC' },
     groups: [
-      { title: 'CONSULTA PSIQUIATRICA',          color: '#FA7985', keys: ['p1','p2','p3'] },
-      { title: 'PSICO-EDUCACION',                color: '#70D3FE', keys: ['s1','s2','s3'] },
-      { title: 'PSICOTERAPIA INDIVIDUAL',        color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6'] },
-      { title: 'PSCIOTERAPIA FAMILIAR',          color: '#A8FE91', keys: ['y1','y2'] },
-      { title: 'MOVILIZACION DE REDES DE APOYO', color: '#96FCF3', keys: ['z1'] },
+      { title: 'PSIQUIATRIA', color: '#FA7985', keys: ['p1','p2'] },
+      { title: 'PSICOTERAPIA INDIVIDUAL', color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6'] },
+      { title: 'INTERVENCION FAMILIAR', color: '#A8FE91', keys: ['y1','y2'] },
+      { title: 'REDES DE APOYO O VISITA DOMICILIARIA', color: '#96FCF3', keys: ['z1'] },
     ],
   },
 
@@ -2396,10 +2393,10 @@ const MENTAL_HEALTH_TEMPLATE_CONFIG = {
     tipoReporte: '5005190 TRATAMIENTO AMBULATORIO DE PERSONAS CON DEPRESI\u00D3N MODERADA',
     metaColspan: 12,
     groups: [
-      { title: 'CONSULTA PSIQUIATRICA',  color: '#FA7985', keys: ['p1','p2','p3'] },
-      { title: 'PSICO-EDUCACION',         color: '#70D3FE', keys: ['s1','s2','s3','s4'] },
+      { title: 'PSIQUIATRIA', color: '#FA7985', keys: ['p1','p2','p3'] },
       { title: 'PSICOTERAPIA INDIVIDUAL', color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6'] },
-      { title: 'GRUPO DE AYUDA MUTUA',    color: '#A8FE91', keys: ['y1','y2','y3','y4'] },
+      { title: 'INTERVENCION FAMILIAR', color: '#A8FE91', keys: ['y1','y2'] },
+      { title: 'REDES DE APOYO O VISITA DOMICILIARIA', color: '#96FCF3', keys: ['z1'] },
     ],
   },
 
@@ -2413,38 +2410,36 @@ const MENTAL_HEALTH_TEMPLATE_CONFIG = {
     ],
   },
 
-  // Note: legacy uses colspan="11" (not 12) for the meta value cells
   exporta_xls_7: {
     tipoReporte: '5005927 TRATAMIENTO AMBULATORIO DE NI\u00D1OS Y NI\u00D1AS Y ADOLESCENTES DE 0 A 17 A\u00D1OS POR TRASTORNOS MENTALES Y DEL COMPORTAMIENTO',
-    metaColspan: 11,
+    metaColspan: 12,
     groups: [
-      { title: 'CONSULTA PSIQUIATRICA',          color: '#FA7985', keys: ['p1','p2','p3'] },
-      { title: 'PSICOTERAPIA INDIVIDUAL',        color: '#70D3FE', keys: ['s1','s2','s3','s4','s5'] },
-      { title: 'PSICOTERAPIA GRUPAL',            color: '#FEF170', keys: ['x1','x2'] },
-      { title: 'MOVILIZACION DE REDES DE APOYO', color: '#96FCF3', keys: ['y1'] },
+      { title: 'PSIQUIATRIA', color: '#FA7985', keys: ['p1','p2'] },
+      { title: 'PSICOTERAPIA INDIVIDUAL', color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6'] },
+      { title: 'INTERVENCION FAMILIAR', color: '#A8FE91', keys: ['y1','y2','y3'] },
+      { title: 'REDES DE APOYO O VISITA DOMICILIARIA', color: '#96FCF3', keys: ['z1'] },
     ],
   },
 
   exporta_xls_8: {
     tipoReporte: '0070615 TRATAMIENTO ESPECIALIZADO NI\u00D1OS, NI\u00D1AS Y ADOLESCENTES AFECTADOS POR VIOLENCIA SEXUAL',
-    metaColspan: 12,
+    metaColspan: 11,
     groups: [
-      { title: 'CONSULTA PSIQUIATRICA',          color: '#FA7985', keys: ['p1','p2','p3'] },
-      { title: 'PSICO-EDUCACION',                color: '#70D3FE', keys: ['s1','s2'] },
-      { title: 'PSICOTERAPIA INDIVIDUAL',        color: '#FEF170', keys: ['x1','x2','x3','x4'] },
-      { title: 'PSCIOTERAPIA FAMILIAR',          color: '#A8FE91', keys: ['y1','y2'] },
-      { title: 'MOVILIZACION DE REDES DE APOYO', color: '#96FCF3', keys: ['z1'] },
+      { title: 'PSIQUIATRIA', color: '#FA7985', keys: ['p1','p2'] },
+      { title: 'PSICOTERAPIA INDIVIDUAL', color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6'] },
+      { title: 'INTERVENCION FAMILIAR', color: '#A8FE91', keys: ['y1','y2'] },
+      { title: 'REDES DE APOYO O VISITA DOMICILIARIA', color: '#96FCF3', keys: ['z1'] },
     ],
   },
 
   exporta_xls_9: {
     tipoReporte: '0070616 - TRATAMIENTO AMBULATORIO DE NI\u00D1OS Y NI\u00D1AS DE 0 A 17 A\u00D1OS CON TRASTORNOS DEL ESPECTRO AUTISTA',
-    metaColspan: 12,
+    metaColspan: 15,
     groups: [
-      { title: 'CONSULTA PSIQUIATRICA',          color: '#FA7985', keys: ['p1','p2','p3'] },
-      { title: 'PSICOTERAPIA INDIVIDUAL',        color: '#70D3FE', keys: ['s1','s2','s3','s4','s5','s6'] },
-      { title: 'PSICOTERAPIA GRUPAL',            color: '#FEF170', keys: ['x1','x2','x3','x4'] },
-      { title: 'MOVILIZACION DE REDES DE APOYO', color: '#96FCF3', keys: ['y1'] },
+      { title: 'PSIQUIATRIA', color: '#FA7985', keys: ['p1','p2'] },
+      { title: 'PSICOTERAPIA INDIVIDUAL', color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6'] },
+      { title: 'INTERVENCION GRUPAL / TERAPIA OCUPACIONAL / TERAPIA DE LENGUAJE', color: '#A8FE91', keys: ['y1','y2','y3','y4','y5','y6'] },
+      { title: 'REDES DE APOYO O VISITA DOMICILIARIA', color: '#96FCF3', keys: ['z1'] },
     ],
   },
 
@@ -2452,43 +2447,41 @@ const MENTAL_HEALTH_TEMPLATE_CONFIG = {
     tipoReporte: '5005195 TRATAMIENTO AMBULATORIO A PERSONAS CON S\u00EDNDROME PSIC\u00D3TICO O TRASTORNO DEL ESPECTRO DE LA ESQUIZOFRENIA',
     metaColspan: 12,
     groups: [
-      { title: 'CONSULTA PSIQUIATRICA',          color: '#FA7985', keys: ['p1','p2','p3','p4'] },
-      { title: 'PSICO-EDUCACION',                color: '#70D3FE', keys: ['s1','s2'] },
-      { title: 'PSICOTERAPIA INDIVIDUAL',        color: '#FEF170', keys: ['x1','x2','x3','x4','x5'] },
-      { title: 'PSCIOTERAPIA FAMILIAR',          color: '#A8FE91', keys: ['y1'] },
-      { title: 'INTERVENCION SOCIAL',            color: '#96FCF3', keys: ['z1'] },
-      { title: 'INTERVENCION SOCIO COMUNITARIO', color: '#FC96D7', keys: ['a1','a2'] },
+      { title: 'PSIQUIATRIA', color: '#FA7985', keys: ['p1','p2','p3'] },
+      { title: 'PSICOTERAPIA INDIVIDUAL', color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6'] },
+      { title: 'INTERVENCION FAMILIAR', color: '#A8FE91', keys: ['y1','y2'] },
+      { title: 'REDES DE APOYO O VISITA DOMICILIARIA', color: '#96FCF3', keys: ['z1'] },
     ],
   },
 
   exporta_xls_11: {
     tipoReporte: '5005192 INTERVENCIONES BREVES MOTIVACIONALES PARA PERSONAS CON CONSUMO PERJUDICIAL DEL ALCOHOL Y TABACO.',
-    metaColspan: 12,
+    metaColspan: 5,
     groups: [
-      { title: 'CONSULTA PSIQUIATRIA', color: '#FA7985', keys: ['p1'] },
-      { title: 'INTERVENCION BREVE',   color: '#70D3FE', keys: ['s1','s2','s3','s4'] },
+      { title: 'PSIQUIATRIA / CONSEJERIA', color: '#FA7985', keys: ['p1'] },
+      { title: 'INTERVENCION BREVE', color: '#70D3FE', keys: ['s1','s2','s3','s4'] },
     ],
   },
 
   exporta_xls_12: {
     tipoReporte: 'TRATAMIENTO AMBULATORIO PARA PERSONAS CON DETERIORO COGNITIVO',
-    metaColspan: 12,
+    metaColspan: 16,
     groups: [
-      { title: 'CONSULTA PSIQUIATRICA',  color: '#FA7985', keys: ['p1','p2','p3','p4'] },
-      { title: 'PSICO-EDUCACION',         color: '#70D3FE', keys: ['s1'] },
-      { title: 'PSICOTERAPIA INDIVIDUAL', color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6'] },
+      { title: 'PSIQUIATRIA', color: '#FA7985', keys: ['p1','p2','p3','p4'] },
+      { title: 'REHABILITACION COGNITIVA', color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6'] },
+      { title: 'PSICOEDUCACION A FAMILIA', color: '#A8FE91', keys: ['y1','y2'] },
+      { title: 'TERAPIA OCUPACIONAL GRUPAL / TERAPIAS FISICAS', color: '#96FCF3', keys: ['z1','z2','z3','z4'] },
     ],
   },
 
   exporta_xls_13: {
     tipoReporte: '0060613 - TRATAMIENTO ESPECIALIZADO DE PERSONAS POR VIOLENCIA SEXUAL',
-    metaColspan: 12,
+    metaColspan: 11,
     groups: [
-      { title: 'CONSULTA PSIQUIATRICA',          color: '#FA7985', keys: ['p1','p2','p3'] },
-      { title: 'PSICO-EDUCACION',                color: '#70D3FE', keys: ['s1','s2','s3'] },
-      { title: 'PSICOTERAPIA INDIVIDUAL',        color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6'] },
-      { title: 'PSCIOTERAPIA FAMILIAR',          color: '#A8FE91', keys: ['y1','y2'] },
-      { title: 'MOVILIZACION DE REDES DE APOYO', color: '#96FCF3', keys: ['z1'] },
+      { title: 'PSIQUIATRIA', color: '#FA7985', keys: ['p1','p2'] },
+      { title: 'PSICOTERAPIA INDIVIDUAL', color: '#FEF170', keys: ['x1','x2','x3','x4','x5','x6'] },
+      { title: 'INTERVENCION FAMILIAR', color: '#A8FE91', keys: ['y1','y2'] },
+      { title: 'REDES DE APOYO O VISITA DOMICILIARIA', color: '#96FCF3', keys: ['z1'] },
     ],
   },
 
@@ -2496,11 +2489,10 @@ const MENTAL_HEALTH_TEMPLATE_CONFIG = {
     tipoReporte: 'INTERVENCI\u00D3N PARA PERSONA CON DEPENDENCIA DE ALCOHOL Y TABACO',
     metaColspan: 12,
     groups: [
-      { title: 'CONSULTA PSIQUIATRICA',   color: '#FA7985', keys: ['p1','p2','p3','p4'] },
-      { title: 'PSICOTERAPIA INDIVIDUAL', color: '#70D3FE', keys: ['s1','s2','s3','s4'] },
-      { title: 'ENTREVISTA MOTIVACIONAL', color: '#FEF170', keys: ['x1','x2'] },
-      { title: 'PSCIOTERAPIA GRUPAL',     color: '#A8FE91', keys: ['y1','y2'] },
-      { title: 'PSCIOTERAPIA FAMILIAR',   color: '#96FCF3', keys: ['z1','z2'] },
+      { title: 'PSIQUIATRIA', color: '#FA7985', keys: ['p1','p2','p3','p4'] },
+      { title: 'PSICOTERAPIA INDIVIDUAL', color: '#FEF170', keys: ['x1','x2'] },
+      { title: 'INTERVENCION FAMILIAR', color: '#A8FE91', keys: ['y1','y2','y3','y4'] },
+      { title: 'REDES DE APOYO O VISITA DOMICILIARIA', color: '#96FCF3', keys: ['z1','z2'] },
     ],
   },
 }

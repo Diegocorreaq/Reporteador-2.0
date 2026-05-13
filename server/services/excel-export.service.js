@@ -464,7 +464,7 @@ function estimateSampleWidth(values, { min = 8, max = 40, padding = 2 } = {}) {
   return clamp(longest + padding, min, max)
 }
 
-function resolveColumnWidth({ header, samples = [], explicitWidth, fallback = 12 }) {
+function resolveColumnWidth({ header, samples = [], explicitWidth, fallback = 12, fitSessionSamples = false }) {
   if (Number.isFinite(Number(explicitWidth))) {
     return Math.max(2, Number(explicitWidth))
   }
@@ -480,7 +480,7 @@ function resolveColumnWidth({ header, samples = [], explicitWidth, fallback = 12
     return clamp(Math.max(sampledWidth, 28), 28, 40)
   }
 
-  if (isSessionIndexHeader(normalizedHeader)) {
+  if (isSessionIndexHeader(normalizedHeader) && !fitSessionSamples) {
     return 9
   }
 
@@ -583,6 +583,10 @@ export async function buildSimpleWorkbook({ title, rows }) {
 //       numeric?: number,
 //       byKey?: Record<string, number>,
 //     }
+//     headerLabels?: {
+//       hc?: string,
+//       paciente?: string,
+//     }
 //   }
 //
 // Layout (default):
@@ -663,9 +667,11 @@ export async function buildStructuredWorkbook({ config, rows, startDate, endDate
   ws.getRow(ROW_GRP).height = 22
   ws.getRow(ROW_SUB).height = 20
 
+  const headerLabels = config.headerLabels ?? {}
+
   // H.C. spans both header rows
   mergeCellsAndStyle(ws, ROW_GRP, 1, ROW_SUB, 1, {
-    value: 'H.C.',
+    value: headerLabels.hc ?? 'H.C.',
     fill: argbFill('FA7985'),
     font: HEADER_FONT,
     border: THIN_BORDER,
@@ -674,7 +680,7 @@ export async function buildStructuredWorkbook({ config, rows, startDate, endDate
 
   // PACIENTE spans both header rows
   mergeCellsAndStyle(ws, ROW_GRP, 2, ROW_SUB, 2, {
-    value: 'PACIENTE',
+    value: headerLabels.paciente ?? 'PACIENTE',
     fill: argbFill('FA7985'),
     font: HEADER_FONT,
     border: THIN_BORDER,
@@ -769,8 +775,9 @@ export async function buildStructuredWorkbook({ config, rows, startDate, endDate
       ws.getColumn(widthColCursor).width = resolveColumnWidth({
         header: String(widthColCursor - 2),
         explicitWidth: explicit,
-        samples: sampledRows.map((row) => col(row, key)),
+        samples: sorted.map((row) => col(row, key)),
         fallback: 9,
+        fitSessionSamples: true,
       })
       widthColCursor++
     }
