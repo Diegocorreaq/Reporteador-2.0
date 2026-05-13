@@ -35,6 +35,14 @@ function buildUserResponse(sessionPayload) {
   }
 }
 
+function normalizeLegacyValidationScope(scope) {
+  const value = String(scope ?? '').trim()
+  if (value === 'lavado' || value === 'zona-descarga/morbilidad-materna') {
+    return value
+  }
+  return 'general'
+}
+
 // POST /auth/login — validate credentials, issue session cookie
 authRouter.post('/auth/login', authLimiter, async (request, response) => {
   const correlationId = request.correlationId
@@ -42,11 +50,12 @@ authRouter.post('/auth/login', authLimiter, async (request, response) => {
     const { username, password, scope } = request.body ?? {}
     const ip = getClientIp(request)
 
+    const normalizedScope = normalizeLegacyValidationScope(scope)
     const validation = await validateLegacyUser({
       dni: String(username ?? '').trim(),
       password: String(password ?? '').trim(),
       ip,
-      scope: scope === 'lavado' ? 'lavado' : 'general',
+      scope: normalizedScope,
     })
 
     if (!validation.ok || !validation.employeeId) {
@@ -78,7 +87,7 @@ authRouter.post('/auth/login', authLimiter, async (request, response) => {
       username: String(username ?? '').trim(),
       employeeId: validation.employeeId,
       name: employeeName,
-      scope: scope === 'lavado' ? 'lavado' : 'general',
+      scope: normalizedScope,
     }
 
     const token = createSession(sessionPayload)

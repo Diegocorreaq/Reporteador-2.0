@@ -57,14 +57,14 @@ export function LoginCleanForm() {
       {/* Username field */}
       <div className="space-y-2">
         <label htmlFor="username" className="block text-sm font-semibold text-brand-strong">
-          Usuario
+          DNI
         </label>
         <div className="relative">
           <UserRound className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" />
           <input
             id="username"
             type="text"
-            placeholder="DNI o usuario institucional"
+            placeholder="DNI"
             className={cn(
               'h-12 w-full rounded-xl border bg-white pl-12 pr-4 text-brand-strong placeholder:text-muted/60',
               'transition-all duration-200',

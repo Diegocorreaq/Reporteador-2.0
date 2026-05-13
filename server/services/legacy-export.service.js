@@ -2664,6 +2664,7 @@ const LEGACY_AUTH_PROCEDURES = {
   'epidemiologia/mordedura-canina': { procedure: 'SP_USUARIO_VALIDA_EPI_MORDEDURA_CANINA', paramStyle: 'legacy' },
   'epidemiologia/cirugia-procedimiento': { procedure: 'SP_USUARIO_VALIDA_EPI_CIRUGIA_PROCEDIMIENTO', paramStyle: 'legacy' },
   'epidemiologia/seguimiento-dengue': { procedure: 'SP_USUARIO_VALIDA_EPI_SEGUIMIENTO_DENGUE', paramStyle: 'legacy' },
+  'zona-descarga/morbilidad-materna': { procedure: 'SP_USUARIO_VALIDA_MORBILIDAD_MATERNA', paramStyle: 'legacy' },
 }
 
 function buildAuthParams({ dni, password, ip, paramStyle }) {

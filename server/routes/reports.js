@@ -81,6 +81,14 @@ function sendDownload(response, file) {
   response.send(file.content)
 }
 
+function normalizeLegacyValidationScope(scope) {
+  const value = String(scope ?? '').trim()
+  if (value === 'lavado' || value === 'zona-descarga/morbilidad-materna') {
+    return value
+  }
+  return 'general'
+}
+
 // Safe error handler: logs internally, never exposes error details to client
 function handleError(response, error, fallbackMessage = 'No se pudo procesar la solicitud.') {
   logger.error({
@@ -116,11 +124,12 @@ reportsRouter.post('/exports/validate', authLimiter, async (request, response) =
     const { username, password, scope } = request.body ?? {}
     const ip = getClientIp(request)
 
+    const normalizedScope = normalizeLegacyValidationScope(scope)
     const validation = await validateLegacyUser({
       dni: String(username ?? '').trim(),
       password: String(password ?? '').trim(),
       ip,
-      scope: scope === 'lavado' ? 'lavado' : 'general',
+      scope: normalizedScope,
     })
 
     // Issue session cookie if validation succeeds (backwards-compat path)
@@ -132,7 +141,7 @@ reportsRouter.post('/exports/validate', authLimiter, async (request, response) =
           username: String(username ?? '').trim(),
           employeeId: validation.employeeId,
           name: employeeName,
-          scope: scope === 'lavado' ? 'lavado' : 'general',
+          scope: normalizedScope,
         })
         response.cookie(SESSION_COOKIE_NAME, token, getSessionCookieOptions())
       }

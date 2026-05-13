@@ -85,7 +85,7 @@ export function ExportacionesPage() {
     setAuthError(null)
     setIsAuthorizing(true)
     try {
-      const validation = await validateLegacyExportUser(username, password, 'general')
+      const validation = await validateLegacyExportUser(username, password, 'zona-descarga/morbilidad-materna')
       if (!validation.ok || !validation.employeeId) {
         setAuthError(validation.message || 'No se pudo validar el usuario.')
         return
