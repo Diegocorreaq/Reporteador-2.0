@@ -4,6 +4,8 @@ import { Topbar } from '@/components/navigation/topbar'
 import { WorkspaceSidebar } from '@/components/navigation/workspace-sidebar'
 import { findLegacyModuleMapping } from '@/config/legacy-functional-map'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
+import { CentroOrientacionTour } from '@/modules/onboarding/components/centro-orientacion-tour'
+import { useCentroOrientacionOnboarding } from '@/modules/onboarding/hooks/use-centro-orientacion-onboarding'
 import { menuService } from '@/services/menu/menu.service'
 import { useShellUiStore } from '@/stores/use-shell-ui-store'
 import type { WorkspaceKey } from '@/types/auth'
@@ -23,6 +25,10 @@ export function WorkspaceShellFrame({ workspace }: WorkspaceShellFrameProps) {
   const sections = useMemo(() => menuService.getSections(workspace, user), [workspace, user])
   const activeLegacyModule = useMemo(() => findLegacyModuleMapping(location.pathname), [location.pathname])
   const isPowerBiEmbed = Boolean(activeLegacyModule?.powerBiUrl)
+  const {
+    open: centroOrientacionTourOpen,
+    closeTour: closeCentroOrientacionTour,
+  } = useCentroOrientacionOnboarding()
 
   useEffect(() => {
     setWorkspace(workspace)
@@ -56,6 +62,10 @@ export function WorkspaceShellFrame({ workspace }: WorkspaceShellFrameProps) {
           </div>
         </main>
       </div>
+      <CentroOrientacionTour
+        open={workspace === 'main' && centroOrientacionTourOpen}
+        onClose={closeCentroOrientacionTour}
+      />
     </div>
   )
 }

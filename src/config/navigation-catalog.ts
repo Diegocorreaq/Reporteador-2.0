@@ -15,11 +15,37 @@ export interface CatalogResource {
   legacyName?: string
   aliases: string[]
   keywords: string[]
+  summary?: string
+  questions?: string[]
+  mainIndicators?: string[]
+  filters?: string[]
+  targetUsers?: string[]
+  useCases?: string[]
   permissionKey?: string
   featured?: boolean
 }
 
-export const navigationCatalog: CatalogResource[] = [
+type CatalogResourceEnhancement = Partial<
+  Pick<
+    CatalogResource,
+    | 'title'
+    | 'description'
+    | 'category'
+    | 'breadcrumb'
+    | 'legacyName'
+    | 'aliases'
+    | 'keywords'
+    | 'summary'
+    | 'questions'
+    | 'mainIndicators'
+    | 'filters'
+    | 'targetUsers'
+    | 'useCases'
+    | 'featured'
+  >
+>
+
+const navigationCatalogBase: CatalogResource[] = [
   // ── PRINCIPAL / REPORTEADOR ──────────────────────────────────────────────
 
   // Indicadores Hospitalarios
@@ -464,35 +490,6 @@ export const navigationCatalog: CatalogResource[] = [
     aliases: ['enfermeria', 'indicadores enfermeria'],
     keywords: ['enfermeria', 'indicadores', 'sala', 'inteligente'],
     permissionKey: 'menu.main.sala-inteligente.indicadores-de-enfermeria',
-  },
-  {
-    id: 'main-sala-inteligente-pacientes-hospitalizados',
-    title: 'Pacientes Hospitalizados',
-    description: 'Monitoreo en línea de pacientes hospitalizados por piso y servicio.',
-    workspace: 'principal',
-    workspaceLabel: 'Reporteador',
-    type: 'monitoreo',
-    category: 'Sala Inteligente',
-    route: '/app/sala-inteligente/pacientes-hospitalizados',
-    breadcrumb: 'Reporteador → Sala Inteligente',
-    aliases: ['hospitalizados', 'pacientes internados', 'estancia hospitalaria', 'pacientes cama'],
-    keywords: ['paciente', 'hospitalizado', 'internado', 'estancia', 'cama', 'piso'],
-    permissionKey: 'menu.main.sala-inteligente.pacientes-hospitalizados',
-    featured: true,
-  },
-  {
-    id: 'main-sala-inteligente-continuadores',
-    title: 'Pacientes Continuadores',
-    description: 'Seguimiento de pacientes continuadores en consulta externa.',
-    workspace: 'principal',
-    workspaceLabel: 'Reporteador',
-    type: 'monitoreo',
-    category: 'Sala Inteligente',
-    route: '/app/sala-inteligente/pacientes-continuadores',
-    breadcrumb: 'Reporteador → Sala Inteligente',
-    aliases: ['continuadores', 'pacientes continuadores'],
-    keywords: ['paciente', 'continuador', 'consulta', 'seguimiento'],
-    permissionKey: 'menu.main.sala-inteligente.pacientes-continuadores',
   },
   {
     id: 'main-sala-inteligente-isq',
@@ -1022,6 +1019,769 @@ export const navigationCatalog: CatalogResource[] = [
   },
 
 ]
+
+const dashboardEnhancements: Record<string, CatalogResourceEnhancement> = {
+  'main-indicadores-eficiencia': {
+    description: 'Tablero para evaluar eficiencia hospitalaria.',
+    summary:
+      'Evalua productividad, uso de consultorios, camas, sala de operaciones y laboratorio para seguimiento institucional.',
+    questions: [
+      '¿Cómo está la productividad médica?',
+      '¿Cómo se están utilizando los consultorios?',
+      '¿Cuál es el nivel de ocupación de camas?',
+      '¿Cuál es el rendimiento de sala de operaciones?',
+      '¿Cómo se comporta la producción de laboratorio?',
+    ],
+    mainIndicators: [
+      'Productividad hora médico',
+      'Rendimiento hora médico',
+      'Utilización de consultorios físicos',
+      'Promedio de permanencia cama',
+      'Intervalo de sustitución cama',
+      'Porcentaje de ocupación cama',
+      'Rendimiento cama',
+      'Rendimiento de sala de operaciones',
+      'Exámenes de laboratorio',
+    ],
+    filters: ['Año', 'Mes', 'Servicio', 'Especialidad'],
+    targetUsers: ['Dirección', 'Estadística', 'Planeamiento', 'Coordinadores asistenciales'],
+    useCases: ['Analizar productividad médica', 'Revisar uso de camas', 'Monitorear producción de laboratorio'],
+    aliases: [
+      'indicadores',
+      'eficiencia',
+      'productividad',
+      'hora médico',
+      'rendimiento médico',
+      'consultorios',
+      'camas',
+      'ocupación cama',
+      'permanencia',
+      'laboratorio',
+      'sala de operaciones',
+    ],
+    keywords: [
+      'indicador',
+      'eficiencia',
+      'productividad',
+      'hora medico',
+      'rendimiento medico',
+      'consultorio',
+      'cama',
+      'ocupacion',
+      'permanencia',
+      'laboratorio',
+      'sala operaciones',
+    ],
+    featured: true,
+  },
+  'main-indicadores-eficacia': {
+    summary:
+      'Evalua la eficacia de la atención mediante concentración en consulta externa y razón de emergencia por consulta externa.',
+    questions: [
+      '¿Cuál es la concentración de atenciones en consulta externa?',
+      '¿Qué relación existe entre emergencia y consulta externa?',
+      '¿Cómo se comporta la continuidad de atención?',
+    ],
+    mainIndicators: ['Concentración en consulta externa', 'Razón de emergencia por consulta externa'],
+    filters: ['Año', 'Mes', 'Servicio'],
+    targetUsers: ['Dirección', 'Estadística', 'Consulta externa'],
+    useCases: ['Revisar continuidad de atención', 'Comparar emergencia y consulta externa'],
+    aliases: ['indicadores', 'eficacia', 'concentración', 'consulta externa', 'razón emergencia', 'continuidad'],
+    keywords: ['eficacia', 'concentracion', 'consulta externa', 'razon emergencia', 'continuidad', 'atenciones'],
+  },
+  'main-indicadores-calidad': {
+    summary:
+      'Revisa indicadores de calidad asistencial relacionados con mortalidad, cesáreas, cirugías suspendidas y muerte materna.',
+    questions: [
+      '¿Cuál es la tasa de mortalidad hospitalaria?',
+      '¿Cómo se comportan las cesáreas?',
+      '¿Cuántas cirugías fueron suspendidas?',
+      '¿Existen registros de muerte materna?',
+    ],
+    mainIndicators: [
+      'Tasa neta de mortalidad hospitalaria',
+      'Mortalidad neonatal o perinatal',
+      'Tasa de cesáreas',
+      'Cirugías suspendidas',
+      'Muerte materna',
+    ],
+    filters: ['Año', 'Mes', 'Servicio'],
+    targetUsers: ['Calidad', 'Dirección', 'Estadística'],
+    useCases: ['Revisar mortalidad hospitalaria', 'Monitorear cirugías suspendidas', 'Seguir muerte materna'],
+    aliases: ['indicadores', 'calidad', 'mortalidad hospitalaria', 'cesáreas', 'cirugías suspendidas', 'muerte materna'],
+    keywords: ['calidad', 'mortalidad', 'mortalidad hospitalaria', 'neonatal', 'perinatal', 'cesarea', 'cirugia suspendida', 'muerte materna'],
+  },
+  'main-consulta-externa': {
+    description: 'Tablero para revisar la producción general de consulta externa.',
+    summary:
+      'Permite revisar producción por periodo, sexo, edad, departamento, especialidad y tipo de atención.',
+    questions: [
+      '¿Cuántas atenciones se realizaron en consulta externa?',
+      '¿Qué especialidades concentran mayor producción?',
+      '¿Cómo se distribuyen las atenciones por edad y sexo?',
+      '¿Qué tipo de atención se registra?',
+    ],
+    mainIndicators: [
+      'Atenciones de consulta externa',
+      'Atenciones por sexo',
+      'Atenciones por edad',
+      'Atenciones por departamento',
+      'Atenciones por especialidad',
+      'Tipo de atención',
+    ],
+    filters: ['Año', 'Mes', 'Departamento', 'Especialidad', 'Tipo de atención'],
+    targetUsers: ['Consulta externa', 'Estadística', 'Dirección'],
+    useCases: ['Revisar producción ambulatoria', 'Analizar especialidades', 'Comparar atenciones por edad y sexo'],
+    aliases: ['consulta externa', 'consultorios externos', 'ambulatoria', 'ce', 'especialidad', 'producción'],
+    keywords: ['consulta externa', 'consultorios externos', 'atenciones', 'especialidad', 'departamento', 'produccion', 'edad', 'sexo', 'tipo atencion'],
+    featured: true,
+  },
+  'main-consulta-externa-servicio': {
+    summary:
+      'Analiza atenciones por especialidad, horas programadas, horas efectivas, rendimiento hora médico, concentración mensual y productividad por servicio.',
+    questions: [
+      '¿Qué servicio tiene mayor producción?',
+      '¿Cuántas horas fueron programadas y efectivas?',
+      '¿Cuál es el rendimiento por hora médico?',
+      '¿Cómo se comporta la concentración mensual?',
+    ],
+    mainIndicators: [
+      'Atenciones por servicio',
+      'Horas programadas',
+      'Horas efectivas',
+      'Rendimiento hora médico',
+      'Concentración mensual',
+      'Productividad por servicio',
+    ],
+    filters: ['Año', 'Mes', 'Servicio', 'Especialidad'],
+    targetUsers: ['Consulta externa', 'Coordinadores de servicio', 'Estadística'],
+    useCases: ['Comparar productividad por servicio', 'Revisar horas efectivas', 'Analizar rendimiento médico'],
+    aliases: ['consulta externa por servicio', 'servicio', 'especialidad', 'horas programadas', 'horas efectivas', 'rendimiento médico', 'productividad'],
+    keywords: ['consulta externa', 'servicio', 'especialidad', 'horas programadas', 'horas efectivas', 'rendimiento medico', 'productividad', 'concentracion'],
+  },
+  'main-consulta-externa-consultorio-profesional': {
+    description: 'Vista de producción por consultorio, profesional y procedimiento.',
+    summary:
+      'Revisa producción por consultorio, profesional y procedimiento para analizar desempeño individual o por ambiente de atención.',
+    questions: [
+      '¿Qué profesional registra mayor producción?',
+      '¿Qué consultorio concentra más atenciones?',
+      '¿Qué procedimientos se realizan con mayor frecuencia?',
+    ],
+    mainIndicators: ['Producción por consultorio', 'Producción por profesional', 'Procedimientos realizados', 'Atenciones por ambiente'],
+    filters: ['Año', 'Mes', 'Consultorio', 'Profesional', 'Procedimiento'],
+    targetUsers: ['Consulta externa', 'Jefaturas de servicio', 'Estadística'],
+    useCases: ['Analizar producción profesional', 'Revisar consultorios con mayor demanda', 'Identificar procedimientos frecuentes'],
+    aliases: ['consultorio', 'profesional', 'médico', 'procedimiento', 'producción profesional', 'producción consultorio', 'consulta externa'],
+    keywords: ['consultorio', 'profesional', 'medico', 'procedimiento', 'produccion profesional', 'produccion consultorio', 'consulta externa'],
+  },
+  'main-consulta-externa-monitoreo': {
+    summary:
+      'Monitorea atenciones presenciales, telemonitoreo y resumen de producción por modalidad.',
+    questions: [
+      '¿Cuántas atenciones fueron presenciales?',
+      '¿Cuántas corresponden a telemonitoreo?',
+      '¿Cómo se distribuye la producción por modalidad?',
+    ],
+    mainIndicators: ['Atenciones presenciales', 'Telemonitoreo', 'Producción por modalidad', 'Resumen operativo'],
+    filters: ['Año', 'Mes', 'Modalidad', 'Servicio'],
+    targetUsers: ['Consulta externa', 'Estadística', 'Coordinadores'],
+    useCases: ['Monitorear producción operativa', 'Separar atenciones presenciales y telemonitoreo'],
+    aliases: ['monitoreo consulta externa', 'presencial', 'telemonitoreo', 'modalidad', 'producción', 'atenciones'],
+    keywords: ['monitoreo consulta externa', 'presencial', 'telemonitoreo', 'modalidad', 'produccion', 'atenciones'],
+  },
+  'main-consulta-externa-diagnosticos': {
+    title: 'Consulta Externa - Diagnósticos Frecuentes',
+    summary:
+      'Identifica diagnósticos frecuentes por especialidad, servicio, edad, sexo, grupo etario y código CIE.',
+    questions: [
+      '¿Cuáles son los diagnósticos más frecuentes?',
+      '¿Qué diagnósticos predominan por especialidad?',
+      '¿Cómo se distribuyen los diagnósticos por edad o sexo?',
+    ],
+    mainIndicators: [
+      'Diagnósticos frecuentes',
+      'Diagnósticos por especialidad',
+      'Diagnósticos por servicio',
+      'Código CIE',
+      'Distribución por edad y sexo',
+      'Grupo etario',
+    ],
+    filters: ['Año', 'Mes', 'Especialidad', 'Servicio', 'Edad', 'Sexo', 'CIE'],
+    targetUsers: ['Consulta externa', 'Epidemiología', 'Estadística'],
+    useCases: ['Identificar morbilidad frecuente', 'Revisar diagnósticos por especialidad', 'Analizar diagnósticos por grupo etario'],
+    aliases: ['diagnósticos frecuentes', 'cie', 'cie10', 'morbilidad', 'consulta externa', 'especialidad', 'grupo etario'],
+    keywords: ['diagnosticos frecuentes', 'cie', 'cie10', 'morbilidad', 'consulta externa', 'especialidad', 'grupo etario', 'edad', 'sexo'],
+  },
+  'main-hospitalizacion': {
+    summary:
+      'Revisa indicadores hospitalarios de permanencia, intervalo de sustitución, porcentaje de ocupación cama y rendimiento cama.',
+    questions: [
+      '¿Cuál es la ocupación de camas?',
+      '¿Cuál es el promedio de permanencia?',
+      '¿Cuál es el rendimiento cama?',
+      '¿Cómo se comporta la hospitalización por periodo?',
+    ],
+    mainIndicators: ['Promedio de permanencia', 'Intervalo de sustitución', 'Porcentaje de ocupación cama', 'Rendimiento cama', 'Hospitalización'],
+    filters: ['Año', 'Mes', 'Servicio', 'Piso'],
+    targetUsers: ['Hospitalización', 'Gestión de camas', 'Estadística'],
+    useCases: ['Revisar ocupación de camas', 'Analizar permanencia', 'Monitorear rendimiento cama'],
+    aliases: ['hospitalización', 'camas', 'ocupación cama', 'permanencia', 'intervalo de sustitución', 'rendimiento cama', 'egresos'],
+    keywords: ['hospitalizacion', 'camas', 'ocupacion cama', 'permanencia', 'intervalo sustitucion', 'rendimiento cama', 'egresos'],
+    featured: true,
+  },
+  'main-centro-obstetrico': {
+    summary:
+      'Revisa indicadores operativos del centro obstétrico relacionados con permanencia, camas, ocupación y rendimiento.',
+    questions: [
+      '¿Cómo se comporta la producción del centro obstétrico?',
+      '¿Cuál es la ocupación y rendimiento del servicio?',
+      '¿Qué indicadores obstétricos requieren seguimiento?',
+    ],
+    mainIndicators: ['Producción obstétrica', 'Permanencia', 'Ocupación', 'Rendimiento', 'Indicadores de centro obstétrico'],
+    filters: ['Año', 'Mes', 'Servicio'],
+    targetUsers: ['Obstetricia', 'Estadística', 'Dirección'],
+    useCases: ['Revisar producción obstétrica', 'Monitorear ocupación', 'Seguir indicadores obstétricos'],
+    aliases: ['centro obstétrico', 'obstetricia', 'partos', 'camas', 'ocupación', 'permanencia', 'rendimiento'],
+    keywords: ['centro obstetrico', 'obstetricia', 'partos', 'camas', 'ocupacion', 'permanencia', 'rendimiento'],
+    featured: false,
+  },
+  'main-triaje-admisionados': {
+    summary:
+      'Revisa pacientes nuevos en emergencia, prioridad de atención, condición, turno y horarios de atención.',
+    questions: [
+      '¿Cuántos pacientes nuevos ingresaron por emergencia?',
+      '¿Qué prioridades de atención predominan?',
+      '¿En qué turnos se concentra la demanda?',
+      '¿Qué horarios tienen mayor ingreso?',
+    ],
+    mainIndicators: ['Pacientes nuevos', 'Prioridad de atención', 'Turno', 'Condición', 'Horario de atención'],
+    filters: ['Año', 'Mes', 'Turno', 'Prioridad', 'Condición'],
+    targetUsers: ['Emergencia', 'Admisión', 'Estadística'],
+    useCases: ['Revisar admisionados en emergencia', 'Analizar triaje', 'Identificar turnos de mayor demanda'],
+    aliases: ['triaje', 'admisionados', 'emergencia', 'prioridad', 'turno', 'pacientes nuevos', 'atención emergencia'],
+    keywords: ['triaje', 'admisionados', 'emergencia', 'prioridad', 'turno', 'pacientes nuevos', 'atencion emergencia'],
+  },
+  'main-emergencia': {
+    description: 'Tablero para revisar la producción general del servicio de emergencia.',
+    summary:
+      'Analiza atenciones por servicio, prioridad, reingresos, observación y pacientes pendientes de hospitalización.',
+    questions: [
+      '¿Cuántas atenciones de emergencia hubo?',
+      '¿Qué servicios concentran mayor demanda?',
+      '¿Cuántos pacientes quedaron en observación?',
+      '¿Cuántos pacientes están pendientes de hospitalización?',
+      '¿Cuántos reingresos se registraron?',
+    ],
+    mainIndicators: [
+      'Atenciones de emergencia',
+      'Atenciones por servicio',
+      'Prioridad',
+      'Reingresos',
+      'Pacientes en observación',
+      'Pendientes de hospitalización',
+    ],
+    filters: ['Año', 'Mes', 'Servicio', 'Prioridad', 'Turno'],
+    targetUsers: ['Emergencia', 'Estadística', 'Dirección', 'Coordinadores asistenciales'],
+    useCases: ['Revisar demanda de emergencia', 'Ver pacientes en observación', 'Identificar pendientes de hospitalización'],
+    aliases: ['emergencia', 'urgencia', 'triaje', 'prioridad', 'reingreso', 'observación', 'pacientes pendientes', 'hospitalización'],
+    keywords: ['emergencia', 'urgencia', 'triaje', 'prioridad', 'reingreso', 'observacion', 'pacientes pendientes', 'hospitalizacion', 'atencion emergencia'],
+    featured: true,
+  },
+  'main-emergencia-por-servicio': {
+    summary:
+      'Revisa atenciones de emergencia por primer servicio, prioridad y condición de ingreso o egreso.',
+    questions: [
+      '¿Qué servicio recibe más atenciones de emergencia?',
+      '¿Qué prioridades predominan por servicio?',
+      '¿Cómo egresan los pacientes atendidos?',
+    ],
+    mainIndicators: ['Atenciones por primer servicio', 'Prioridad', 'Condición de ingreso', 'Condición de egreso'],
+    filters: ['Año', 'Mes', 'Servicio', 'Prioridad', 'Condición'],
+    targetUsers: ['Emergencia', 'Coordinadores', 'Estadística'],
+    useCases: ['Comparar demanda por servicio', 'Revisar prioridades por especialidad', 'Analizar egresos de emergencia'],
+    aliases: ['emergencia por servicio', 'primer servicio', 'prioridad', 'condición ingreso', 'condición egreso', 'urgencia'],
+    keywords: ['emergencia por servicio', 'primer servicio', 'prioridad', 'condicion ingreso', 'condicion egreso', 'urgencia'],
+  },
+  'main-cuidados-criticos': {
+    summary:
+      'Revisa indicadores de UCE y UCI relacionados con permanencia, intervalo de sustitución, ocupación cama y rendimiento cama.',
+    questions: [
+      '¿Cuál es la ocupación de camas UCI o UCE?',
+      '¿Cuál es el promedio de permanencia?',
+      '¿Cómo se comporta el rendimiento cama en cuidados críticos?',
+    ],
+    mainIndicators: ['Promedio de permanencia', 'Intervalo de sustitución', 'Ocupación cama', 'Rendimiento cama', 'Indicadores UCE', 'Indicadores UCI'],
+    filters: ['Año', 'Mes', 'Unidad', 'Servicio'],
+    targetUsers: ['Cuidados críticos', 'UCI', 'UCE', 'Estadística'],
+    useCases: ['Revisar ocupación UCI/UCE', 'Analizar permanencia en críticos', 'Monitorear rendimiento cama'],
+    aliases: ['uci', 'uce', 'cuidados críticos', 'camas críticas', 'ocupación cama', 'permanencia', 'rendimiento cama'],
+    keywords: ['uci', 'uce', 'cuidados criticos', 'camas criticas', 'ocupacion cama', 'permanencia', 'rendimiento cama'],
+    featured: false,
+  },
+  'main-centro-quirurgico': {
+    summary:
+      'Revisa rendimiento de salas de operaciones, intervenciones por turno, tipo de cirugía, procedencia, especialidad, sala y tipo de procedimiento.',
+    questions: [
+      '¿Cuántas cirugías se realizaron?',
+      '¿Qué sala quirúrgica tiene mayor producción?',
+      '¿Qué especialidades concentran más intervenciones?',
+      '¿Qué tipos de cirugía predominan?',
+    ],
+    mainIndicators: [
+      'Rendimiento de sala de operaciones',
+      'Intervenciones quirúrgicas',
+      'Cirugías por turno',
+      'Tipo de cirugía',
+      'Procedencia',
+      'Especialidad',
+      'Sala quirúrgica',
+      'Tipo de procedimiento',
+    ],
+    filters: ['Año', 'Mes', 'Turno', 'Especialidad', 'Sala', 'Tipo de cirugía'],
+    targetUsers: ['Centro quirúrgico', 'Dirección', 'Estadística'],
+    useCases: ['Revisar producción quirúrgica', 'Analizar sala de operaciones', 'Identificar cirugías suspendidas o procedimientos'],
+    aliases: ['centro quirúrgico', 'sala de operaciones', 'cirugía', 'intervenciones', 'sala quirúrgica', 'procedimiento', 'especialidad', 'turno'],
+    keywords: ['centro quirurgico', 'sala de operaciones', 'cirugia', 'intervenciones', 'sala quirurgica', 'procedimiento', 'especialidad', 'turno'],
+    featured: true,
+  },
+  'main-laboratorio': {
+    summary:
+      'Revisa producción de laboratorio por mes, tipo de prueba, servicio, procedencia y volumen de exámenes.',
+    questions: [
+      '¿Cuántos exámenes de laboratorio se realizaron?',
+      '¿Qué pruebas son más frecuentes?',
+      '¿Qué servicios solicitan más exámenes?',
+      '¿Cómo evoluciona la producción mensual?',
+    ],
+    mainIndicators: ['Exámenes de laboratorio', 'Producción mensual', 'Tipo de prueba', 'Servicio solicitante', 'Procedencia'],
+    filters: ['Año', 'Mes', 'Prueba', 'Servicio', 'Procedencia'],
+    targetUsers: ['Laboratorio', 'Apoyo al diagnóstico', 'Estadística'],
+    useCases: ['Revisar producción de laboratorio', 'Identificar pruebas frecuentes', 'Comparar servicios solicitantes'],
+    aliases: ['laboratorio', 'exámenes', 'pruebas', 'análisis', 'producción laboratorio', 'servicio solicitante', 'procedencia'],
+    keywords: ['laboratorio', 'examenes', 'pruebas', 'analisis', 'produccion laboratorio', 'servicio solicitante', 'procedencia'],
+    featured: false,
+  },
+  'main-imagenologia': {
+    summary:
+      'Revisa producción de imágenes, estudios por tipo, servicio, procedencia y comportamiento mensual.',
+    questions: [
+      '¿Cuántos estudios de imagen se realizaron?',
+      '¿Qué tipos de estudio son más frecuentes?',
+      '¿Qué servicios solicitan más imágenes?',
+      '¿Cómo evoluciona la producción mensual?',
+    ],
+    mainIndicators: ['Estudios de imagen', 'Producción mensual', 'Tipo de estudio', 'Servicio solicitante', 'Procedencia'],
+    filters: ['Año', 'Mes', 'Tipo de estudio', 'Servicio', 'Procedencia'],
+    targetUsers: ['Imagenología', 'Apoyo al diagnóstico', 'Estadística'],
+    useCases: ['Revisar producción de imágenes', 'Identificar estudios frecuentes', 'Comparar servicios solicitantes'],
+    aliases: ['imagenología', 'imágenes', 'radiología', 'ecografía', 'tomografía', 'estudios', 'producción imágenes', 'diagnóstico por imágenes'],
+    keywords: ['imagenologia', 'imagenes', 'radiologia', 'ecografia', 'tomografia', 'estudios', 'produccion imagenes', 'diagnostico por imagenes'],
+  },
+  'main-incidentes-eventos-adversos': {
+    summary:
+      'Revisa eventos adversos e incidentes por servicio, unidad, severidad, tipo, categoría y detalle de notificación.',
+    questions: [
+      '¿Cuántos incidentes fueron notificados?',
+      '¿Qué tipos de eventos adversos se registran?',
+      '¿Qué servicios notifican más eventos?',
+      '¿Cuál es la severidad de los casos?',
+    ],
+    mainIndicators: ['Incidentes notificados', 'Eventos adversos', 'Severidad', 'Tipo de evento', 'Categoría', 'Servicio o unidad notificante'],
+    filters: ['Año', 'Mes', 'Servicio', 'Unidad', 'Severidad', 'Tipo de evento'],
+    targetUsers: ['Calidad', 'Seguridad del paciente', 'Dirección'],
+    useCases: ['Revisar incidentes notificados', 'Analizar eventos adversos', 'Priorizar casos por severidad'],
+    aliases: ['incidentes', 'eventos adversos', 'seguridad del paciente', 'severidad', 'notificación', 'riesgo', 'unidad notificante'],
+    keywords: ['incidentes', 'eventos adversos', 'seguridad paciente', 'severidad', 'notificacion', 'riesgo', 'unidad notificante'],
+  },
+  'main-tamizaje-neonatal': {
+    summary:
+      'Revisa registros de tamizaje neonatal, prueba de talón, pendientes, tiempos de toma y seguimiento por recién nacido.',
+    questions: [
+      '¿Cuántos recién nacidos tienen tamizaje?',
+      '¿Cuántos están pendientes?',
+      '¿Cuánto tiempo toma realizar la prueba?',
+      '¿Qué registros requieren seguimiento?',
+    ],
+    mainIndicators: ['Tamizaje neonatal', 'Prueba de talón', 'Pendientes de tamizaje', 'Tiempo de toma', 'Seguimiento de recién nacido'],
+    filters: ['Año', 'Mes', 'Servicio', 'Estado'],
+    targetUsers: ['Enfermería', 'Neonatología', 'Estadística'],
+    useCases: ['Revisar tamizaje neonatal', 'Detectar pendientes', 'Seguir prueba de talón'],
+    aliases: ['tamizaje neonatal', 'prueba de talón', 'recién nacido', 'enfermería', 'pendientes', 'neonatología'],
+    keywords: ['tamizaje neonatal', 'prueba talon', 'recien nacido', 'enfermeria', 'pendientes', 'neonatologia'],
+  },
+  'main-extraccion-lm': {
+    title: 'Extracción de Leche Materna',
+    summary:
+      'Revisa registros de extracción de leche materna y producción relacionada a neonatología.',
+    questions: [
+      '¿Cuántos registros de extracción existen?',
+      '¿Cómo se comporta la producción de leche materna?',
+      '¿Qué seguimiento se realiza en neonatología?',
+    ],
+    mainIndicators: ['Extracción de leche materna', 'Producción registrada', 'Seguimiento neonatal', 'Registros de enfermería'],
+    filters: ['Año', 'Mes', 'Servicio'],
+    targetUsers: ['Enfermería', 'Neonatología'],
+    useCases: ['Revisar extracción de leche materna', 'Analizar producción registrada', 'Seguir registros neonatales'],
+    aliases: ['leche materna', 'extracción', 'neonatología', 'enfermería', 'banco de leche', 'recién nacido'],
+    keywords: ['leche materna', 'extraccion', 'neonatologia', 'enfermeria', 'banco leche', 'recien nacido'],
+  },
+  'main-defunciones': {
+    summary:
+      'Revisa defunciones por servicio, sexo, edad, diagnóstico, condición y comportamiento mensual.',
+    questions: [
+      '¿Cuántas defunciones se registraron?',
+      '¿Qué servicios concentran más defunciones?',
+      '¿Qué diagnósticos aparecen con mayor frecuencia?',
+      '¿Cómo se distribuyen por edad y sexo?',
+    ],
+    mainIndicators: ['Defunciones', 'Defunciones por servicio', 'Defunciones por diagnóstico', 'Distribución por edad', 'Distribución por sexo', 'Comportamiento mensual'],
+    filters: ['Año', 'Mes', 'Servicio', 'Diagnóstico', 'Sexo', 'Edad'],
+    targetUsers: ['Hechos vitales', 'Estadística', 'Dirección'],
+    useCases: ['Revisar mortalidad', 'Analizar defunciones por servicio', 'Identificar diagnósticos frecuentes'],
+    aliases: ['defunciones', 'fallecidos', 'mortalidad', 'diagnóstico', 'servicio', 'edad', 'sexo'],
+    keywords: ['defunciones', 'fallecidos', 'mortalidad', 'diagnostico', 'servicio', 'edad', 'sexo'],
+    featured: false,
+  },
+  'main-inconsistencia-cdef': {
+    summary:
+      'Monitorea inconsistencias entre registros de certificado de defunción y defunción general.',
+    questions: [
+      '¿Qué registros presentan inconsistencias?',
+      '¿Qué certificados requieren revisión?',
+      '¿Qué diferencias existen entre fuentes?',
+    ],
+    mainIndicators: ['Inconsistencias CDEF', 'Certificado de defunción', 'Defunción general', 'Validación de registros'],
+    filters: ['Año', 'Mes', 'Estado'],
+    targetUsers: ['Hechos vitales', 'Estadística'],
+    useCases: ['Validar certificados de defunción', 'Detectar inconsistencias', 'Comparar fuentes de registro'],
+    aliases: ['cdef', 'certificado defunción', 'inconsistencia', 'defunciones', 'validación', 'registros'],
+    keywords: ['cdef', 'certificado defuncion', 'inconsistencia', 'defunciones', 'validacion', 'registros'],
+  },
+  'main-nacimientos': {
+    summary:
+      'Revisa nacidos vivos por sexo, peso, edad gestacional, tipo de parto, profesional y participación institucional.',
+    questions: [
+      '¿Cuántos nacimientos se registraron?',
+      '¿Cómo se distribuyen por sexo y peso?',
+      '¿Qué tipos de parto predominan?',
+      '¿Qué profesionales participaron?',
+    ],
+    mainIndicators: ['Nacidos vivos', 'Sexo del recién nacido', 'Peso', 'Edad gestacional', 'Tipo de parto', 'Profesional', 'Participación institucional'],
+    filters: ['Año', 'Mes', 'Sexo', 'Tipo de parto', 'Profesional'],
+    targetUsers: ['Hechos vitales', 'Obstetricia', 'Estadística'],
+    useCases: ['Revisar nacimientos', 'Analizar tipo de parto', 'Evaluar peso y edad gestacional'],
+    aliases: ['nacimientos', 'nacidos vivos', 'recién nacido', 'parto', 'peso', 'edad gestacional', 'obstetricia'],
+    keywords: ['nacimientos', 'nacidos vivos', 'recien nacido', 'parto', 'peso', 'edad gestacional', 'obstetricia'],
+  },
+  'main-sala-inteligente-emergencia': {
+    title: 'Sala Inteligente - Indicadores de Emergencia',
+    summary:
+      'Revisa indicadores de emergencia, atenciones, prioridad, tiempos, tipo de ingreso, diagnóstico y concentración de demanda.',
+    questions: [
+      '¿Cómo se comporta la emergencia en tiempo operativo?',
+      '¿Qué prioridades predominan?',
+      '¿Cuáles son los diagnósticos frecuentes?',
+      '¿Dónde se concentra la demanda?',
+    ],
+    mainIndicators: ['Atenciones de emergencia', 'Prioridad', 'Tiempos de atención', 'Tipo de ingreso', 'Diagnósticos', 'Concentración de demanda'],
+    filters: ['Periodo', 'Prioridad', 'Tipo de ingreso', 'Diagnóstico'],
+    targetUsers: ['Emergencia', 'Sala inteligente', 'Dirección'],
+    useCases: ['Monitorear emergencia', 'Revisar tiempos de atención', 'Identificar diagnósticos frecuentes'],
+    aliases: ['sala inteligente', 'emergencia', 'indicadores emergencia', 'prioridad', 'tiempos', 'diagnóstico', 'demanda'],
+    keywords: ['sala inteligente', 'emergencia', 'indicadores emergencia', 'prioridad', 'tiempos', 'diagnostico', 'demanda'],
+  },
+  'main-sala-inteligente-referencia-ce': {
+    summary:
+      'Revisa referencias de consulta externa aceptadas, rechazadas, no coordinadas, motivos, IPRESS origen, especialidad, producto, hito y oportunidad.',
+    questions: [
+      '¿Cuántas referencias fueron aceptadas?',
+      '¿Cuántas fueron rechazadas?',
+      '¿Qué IPRESS generan más referencias?',
+      '¿Qué especialidades reciben más referencias?',
+      '¿Cuáles son los motivos de rechazo?',
+    ],
+    mainIndicators: ['Referencias aceptadas', 'Referencias rechazadas', 'Referencias no coordinadas', 'Motivos de rechazo', 'IPRESS origen', 'Especialidad', 'Producto o hito', 'Oportunidad'],
+    filters: ['Año', 'Mes', 'IPRESS', 'Especialidad', 'Estado', 'Motivo'],
+    targetUsers: ['Referencia', 'Consulta externa', 'Articulación prestacional'],
+    useCases: ['Revisar referencias rechazadas', 'Analizar IPRESS origen', 'Seguir oportunidad de atención'],
+    aliases: ['referencias', 'referencia consulta externa', 'aceptadas', 'rechazadas', 'no coordinadas', 'ipress', 'especialidad', 'oportunidad', 'hito', 'producto'],
+    keywords: ['referencias', 'referencia consulta externa', 'aceptadas', 'rechazadas', 'no coordinadas', 'ipress', 'especialidad', 'oportunidad', 'hito', 'producto'],
+    featured: true,
+  },
+  'main-sala-inteligente-referencia-emergencia': {
+    summary:
+      'Revisa referencias desde emergencia, incluyendo aceptadas, rechazadas, suspendidas, no coordinadas, diagnóstico frecuente e IPRESS destino u origen.',
+    questions: [
+      '¿Cuántas referencias de emergencia se registraron?',
+      '¿Cuántas fueron aceptadas o rechazadas?',
+      '¿Qué diagnósticos motivan más referencias?',
+      '¿Qué IPRESS participan con mayor frecuencia?',
+    ],
+    mainIndicators: ['Referencias de emergencia', 'Referencias aceptadas', 'Referencias rechazadas', 'Referencias suspendidas', 'Referencias no coordinadas', 'Diagnósticos frecuentes', 'IPRESS destino', 'IPRESS origen'],
+    filters: ['Año', 'Mes', 'IPRESS', 'Estado', 'Diagnóstico'],
+    targetUsers: ['Emergencia', 'Referencia', 'Articulación prestacional'],
+    useCases: ['Revisar referencias de emergencia', 'Identificar rechazadas o suspendidas', 'Analizar diagnósticos frecuentes'],
+    aliases: ['referencia emergencia', 'referencias', 'emergencia', 'aceptadas', 'rechazadas', 'suspendidas', 'no coordinadas', 'diagnóstico', 'ipress'],
+    keywords: ['referencia emergencia', 'referencias', 'emergencia', 'aceptadas', 'rechazadas', 'suspendidas', 'no coordinadas', 'diagnostico', 'ipress'],
+    featured: true,
+  },
+  'main-sala-inteligente-interconsulta': {
+    summary:
+      'Revisa solicitudes de interconsulta, tiempos, especialidades solicitantes, especialidades de respuesta y ranking de servicios.',
+    questions: [
+      '¿Cuántas interconsultas se solicitaron?',
+      '¿Qué especialidades solicitan más interconsultas?',
+      '¿Qué especialidades responden más?',
+      '¿Cuánto tiempo demora la respuesta?',
+    ],
+    mainIndicators: ['Solicitudes de interconsulta', 'Tiempo de respuesta', 'Especialidad solicitante', 'Especialidad que responde', 'Ranking de servicios'],
+    filters: ['Año', 'Mes', 'Especialidad solicitante', 'Especialidad de respuesta'],
+    targetUsers: ['Hospitalización', 'Especialidades', 'Dirección'],
+    useCases: ['Revisar interconsultas hospitalarias', 'Medir tiempos de respuesta', 'Comparar especialidades'],
+    aliases: ['interconsulta', 'interconsulta hospitalaria', 'especialidad solicitante', 'respuesta', 'tiempo de respuesta', 'servicios'],
+    keywords: ['interconsulta', 'interconsulta hospitalaria', 'especialidad solicitante', 'respuesta', 'tiempo respuesta', 'servicios'],
+  },
+  'main-sala-inteligente-enfermeria': {
+    summary:
+      'Revisa registros e indicadores de enfermería relacionados con escalas NEMS, NSRAS, TISS, Braden, LPP adulto y LPP pediátrico.',
+    questions: [
+      '¿Qué escalas de enfermería se están registrando?',
+      '¿Qué pacientes presentan riesgo según Braden?',
+      '¿Cómo se comportan los registros NEMS, TISS o NSRAS?',
+      '¿Qué registros de LPP requieren seguimiento?',
+    ],
+    mainIndicators: ['Escala NEMS', 'Escala NSRAS', 'Escala TISS', 'Escala Braden', 'LPP adulto', 'LPP pediátrico', 'Registros de enfermería'],
+    filters: ['Año', 'Mes', 'Servicio', 'Escala'],
+    targetUsers: ['Enfermería', 'Cuidados críticos', 'Calidad'],
+    useCases: ['Revisar indicadores de enfermería', 'Seguir riesgo Braden', 'Monitorear LPP'],
+    aliases: ['enfermería', 'nems', 'nsras', 'tiss', 'braden', 'lpp', 'lesión por presión', 'riesgo', 'escalas'],
+    keywords: ['enfermeria', 'nems', 'nsras', 'tiss', 'braden', 'lpp', 'lesion por presion', 'riesgo', 'escalas'],
+  },
+  'main-sala-inteligente-isq': {
+    title: 'Indicadores ISQ - Endometritis',
+    summary:
+      'Revisa seguimiento de infección de sitio quirúrgico, endometritis, incidencia, cirugías, procedimientos y casos por grupo.',
+    questions: [
+      '¿Cuántos casos de ISQ se registran?',
+      '¿Cuál es la incidencia de endometritis?',
+      '¿Qué procedimientos se relacionan con los casos?',
+      '¿Cómo se comportan los casos por grupo?',
+    ],
+    mainIndicators: ['Infección de sitio quirúrgico', 'Endometritis', 'Incidencia', 'Cirugías', 'Procedimientos', 'Casos por grupo'],
+    filters: ['Año', 'Mes', 'Procedimiento', 'Grupo'],
+    targetUsers: ['Epidemiología', 'Centro quirúrgico', 'Calidad'],
+    useCases: ['Revisar ISQ', 'Analizar endometritis', 'Seguir procedimientos relacionados'],
+    aliases: ['isq', 'infección sitio quirúrgico', 'endometritis', 'incidencia', 'cirugía', 'procedimiento', 'epidemiología'],
+    keywords: ['isq', 'infeccion sitio quirurgico', 'endometritis', 'incidencia', 'cirugia', 'procedimiento', 'epidemiologia'],
+  },
+  'main-sala-inteligente-vacunas': {
+    summary:
+      'Revisa la estrategia de inmunizaciones, aplicaciones por vacuna, dosis, edad, grupo y tipo de seguro.',
+    questions: [
+      '¿Cuántas vacunas se aplicaron?',
+      '¿Qué vacunas se aplican con mayor frecuencia?',
+      '¿Cómo se distribuyen por edad o grupo?',
+      '¿Qué tipo de seguro tienen los pacientes vacunados?',
+    ],
+    mainIndicators: ['Vacunas aplicadas', 'Tipo de vacuna', 'Dosis', 'Edad', 'Grupo poblacional', 'Tipo de seguro'],
+    filters: ['Año', 'Mes', 'Vacuna', 'Dosis', 'Edad', 'Seguro'],
+    targetUsers: ['Enfermería', 'Inmunizaciones', 'Epidemiología'],
+    useCases: ['Revisar vacunas aplicadas', 'Analizar dosis por grupo', 'Seguir estrategia sanitaria'],
+    aliases: ['vacunas', 'inmunizaciones', 'enfermería', 'dosis', 'edad', 'seguro', 'estrategia sanitaria'],
+    keywords: ['vacunas', 'inmunizaciones', 'enfermeria', 'dosis', 'edad', 'seguro', 'estrategia sanitaria'],
+  },
+  'main-sala-inteligente-iaas': {
+    title: 'Monitoreo IAAS',
+    summary:
+      'Revisa infecciones asociadas a la atención en salud, densidad de incidencia, casos por servicio, días de riesgo, dispositivos y evolución mensual.',
+    questions: [
+      '¿Cuántos casos de IAAS se registran?',
+      '¿Cuál es la densidad de incidencia?',
+      '¿Qué servicios concentran más casos?',
+      '¿Qué dispositivos están asociados?',
+      '¿Cómo evoluciona mensualmente?',
+    ],
+    mainIndicators: ['IAAS', 'Infecciones asociadas a la atención en salud', 'Densidad de incidencia', 'Casos por servicio', 'Días de riesgo', 'Dispositivos', 'Evolución mensual'],
+    filters: ['Año', 'Mes', 'Servicio', 'Dispositivo'],
+    targetUsers: ['Epidemiología', 'IAAS', 'Calidad'],
+    useCases: ['Revisar infecciones IAAS', 'Monitorear densidad de incidencia', 'Analizar dispositivos asociados'],
+    aliases: ['iaas', 'infecciones', 'infección intrahospitalaria', 'densidad de incidencia', 'dispositivos', 'días de riesgo', 'epidemiología', 'vigilancia'],
+    keywords: ['iaas', 'infecciones', 'infeccion intrahospitalaria', 'densidad incidencia', 'dispositivos', 'dias riesgo', 'epidemiologia', 'vigilancia'],
+    featured: true,
+  },
+  'main-tamizaje-salud-mental': {
+    summary:
+      'Revisa tamizajes de salud mental relacionados con violencia familiar, deterioro cognitivo, problemas del neurodesarrollo, maltrato infantil y trastornos mentales.',
+    questions: [
+      '¿Cuántos tamizajes de salud mental se realizaron?',
+      '¿Qué tipos de tamizaje se registran?',
+      '¿Qué grupos requieren seguimiento?',
+      '¿Cómo se distribuyen los casos por condición evaluada?',
+    ],
+    mainIndicators: ['Tamizaje de salud mental', 'Violencia familiar', 'Deterioro cognitivo', 'Problemas del neurodesarrollo', 'Maltrato infantil', 'Trastornos mentales'],
+    filters: ['Año', 'Mes', 'Tipo de tamizaje', 'Condición'],
+    targetUsers: ['Salud mental', 'Estrategias sanitarias', 'Estadística'],
+    useCases: ['Revisar tamizajes de salud mental', 'Seguir violencia familiar', 'Analizar deterioro cognitivo o neurodesarrollo'],
+    aliases: ['salud mental', 'tamizaje', 'violencia familiar', 'deterioro cognitivo', 'neurodesarrollo', 'maltrato infantil', 'trastornos mentales'],
+    keywords: ['salud mental', 'tamizaje', 'violencia familiar', 'deterioro cognitivo', 'neurodesarrollo', 'maltrato infantil', 'trastornos mentales'],
+    featured: true,
+  },
+  'main-salud-mental-reportes': {
+    featured: false,
+  },
+  'main-monitoreo-citas': {
+    summary:
+      'Revisa atención de citas por departamento, especialidad, consultorio, médico, turno y estado de atención.',
+    questions: [
+      '¿Cuántas citas fueron atendidas?',
+      '¿Qué especialidades concentran más citas?',
+      '¿Qué médicos o consultorios tienen mayor carga?',
+      '¿Cómo se distribuyen por turno?',
+    ],
+    mainIndicators: ['Citas atendidas', 'Citas por departamento', 'Citas por especialidad', 'Citas por consultorio', 'Médico', 'Turno', 'Estado de atención'],
+    filters: ['Año', 'Mes', 'Departamento', 'Especialidad', 'Consultorio', 'Médico', 'Turno'],
+    targetUsers: ['Consulta externa', 'Articulación prestacional', 'Admisión'],
+    useCases: ['Monitorear citas atendidas', 'Revisar carga por médico', 'Analizar turnos y consultorios'],
+    aliases: ['citas', 'monitoreo citas', 'especialidad', 'consultorio', 'médico', 'turno', 'estado de atención'],
+    keywords: ['citas', 'monitoreo citas', 'especialidad', 'consultorio', 'medico', 'turno', 'estado atencion'],
+    featured: true,
+  },
+  'main-citas-reprogramadas': {
+    title: 'Indicador Citas Reprogramadas',
+    summary:
+      'Revisa citas reprogramadas, motivos, especialidad y cantidad de reprogramaciones.',
+    questions: [
+      '¿Cuántas citas fueron reprogramadas?',
+      '¿Qué motivos generan más reprogramaciones?',
+      '¿Qué especialidades concentran más cambios?',
+    ],
+    mainIndicators: ['Citas reprogramadas', 'Motivo de reprogramación', 'Especialidad', 'Cantidad de reprogramaciones'],
+    filters: ['Año', 'Mes', 'Especialidad', 'Motivo'],
+    targetUsers: ['Articulación prestacional', 'Consulta externa', 'Admisión'],
+    useCases: ['Revisar citas reprogramadas', 'Identificar motivos frecuentes', 'Comparar especialidades con cambios'],
+    aliases: ['citas reprogramadas', 'reprogramación', 'motivos', 'especialidad', 'citas', 'indicador citas'],
+    keywords: ['citas reprogramadas', 'reprogramacion', 'motivos', 'especialidad', 'citas', 'indicador citas'],
+  },
+  'main-accidente-transito': {
+    summary:
+      'Sala situacional VEA para revisar lesionados por accidente de tránsito, edad, sexo, grupo etario, traslado, severidad, día y hora del accidente.',
+    questions: [
+      '¿Cuántos lesionados por accidente de tránsito se registraron?',
+      '¿Cómo se distribuyen por edad y sexo?',
+      '¿Qué severidad presentan los casos?',
+      '¿En qué días y horas ocurren más accidentes?',
+    ],
+    mainIndicators: ['Accidentes de tránsito', 'Lesionados', 'Edad', 'Sexo', 'Grupo etario', 'Traslado', 'Severidad', 'Día del accidente', 'Hora del accidente'],
+    filters: ['Año', 'Mes', 'Edad', 'Sexo', 'Severidad', 'Traslado'],
+    targetUsers: ['Epidemiología', 'Emergencia', 'Sala situacional'],
+    useCases: ['Revisar lesionados por accidente', 'Analizar severidad', 'Monitorear sala situacional VEA'],
+    aliases: ['accidente de tránsito', 'accidentes', 'lesionados', 'vea', 'severidad', 'traslado', 'grupo etario', 'epidemiología', 'sala situacional'],
+    keywords: ['accidente de transito', 'accidentes', 'lesionados', 'vea', 'severidad', 'traslado', 'grupo etario', 'epidemiologia', 'sala situacional'],
+  },
+  'main-pacientes-oncologicos': {
+    title: 'Pacientes Oncológicos',
+    description: 'Exportación de pacientes con diagnóstico oncológico desde el reporte legacy de UIS.',
+    category: 'Epidemiología',
+    breadcrumb: 'Reporteador -> Epidemiología',
+    legacyName: 'Búsqueda de Pacientes Oncológicos',
+    aliases: ['oncológicos', 'bai onco', 'pacientes cáncer', 'oncología'],
+    keywords: ['oncologico', 'oncologia', 'cancer', 'bai', 'epidemiologia', 'exportar'],
+    featured: true,
+  },
+  'main-pfa-sifilis-sarampion': {
+    title: 'PFA, Sífilis y Sarampión',
+    description: 'Exportación de PFA, sífilis, sarampión, rubéola y SRC.',
+    category: 'Epidemiología',
+    breadcrumb: 'Reporteador -> Epidemiología',
+    legacyName: 'PFA/Sífilis/Sarampión',
+    aliases: ['pfa', 'sífilis', 'sarampión', 'rubéola', 'src'],
+    keywords: ['pfa', 'sifilis', 'sarampion', 'rubeola', 'src', 'epidemiologia', 'exportar'],
+    featured: false,
+  },
+  'main-isqx': {
+    description: 'Monitoreo y exportación de infección del sitio quirúrgico.',
+    category: 'Epidemiología',
+    breadcrumb: 'Reporteador -> Epidemiología',
+    aliases: ['bai isqx', 'isq', 'infección sitio quirúrgico', 'endometritis'],
+    keywords: ['isqx', 'isq', 'infeccion', 'quirurgico', 'endometritis', 'epidemiologia', 'exportar'],
+    featured: false,
+  },
+  'main-mordedura-canina': {
+    description: 'Exportación de pacientes con diagnósticos relacionados a mordedura canina.',
+    category: 'Epidemiología',
+    breadcrumb: 'Reporteador -> Epidemiología',
+    featured: false,
+  },
+  'main-cirugia-procedimiento': {
+    title: 'Cirugía Procedimiento',
+    description: 'Exportación de procedimientos quirúrgicos por periodo.',
+    category: 'Epidemiología',
+    breadcrumb: 'Reporteador -> Epidemiología',
+    legacyName: 'Cirugía Procedimiento',
+    aliases: ['cirugía procedimiento', 'procedimientos quirúrgicos'],
+    keywords: ['cirugia', 'procedimiento', 'quirurgico', 'epidemiologia', 'exportar'],
+    featured: false,
+  },
+  'main-seguimiento-dengue': {
+    description: 'Exportación de pacientes hospitalizados con dengue.',
+    category: 'Epidemiología',
+    breadcrumb: 'Reporteador -> Epidemiología',
+    featured: true,
+  },
+  'main-registros-procesados': {
+    featured: false,
+  },
+  'main-lavado-manos': {
+    featured: false,
+  },
+  'sigh-informe-familia-pendientes': {
+    featured: false,
+  },
+  'sigh-sala-monitoreo-dengue-monitoreo': {
+    featured: false,
+  },
+  'sigh-registros-nominales': {
+    featured: false,
+  },
+  'sigh-registros-produccion': {
+    featured: false,
+  },
+  'sigh-produccion-medicos': {
+    featured: false,
+  },
+  'sigh-monitoreo-camas': {
+    title: 'Gestión de Camas',
+    featured: true,
+  },
+  'sigh-gestion-estancia-cama': {
+    featured: false,
+  },
+  'sigh-gestion-citas': {
+    featured: false,
+  },
+  'sigh-monitoreo-tickets': {
+    featured: false,
+  },
+}
+
+function mergeCatalogArrays(baseValues: string[], enhancementValues?: string[]): string[] {
+  if (!enhancementValues) return baseValues
+
+  return Array.from(new Set([...baseValues, ...enhancementValues]))
+}
+
+export const navigationCatalog: CatalogResource[] = navigationCatalogBase.map((resource) => {
+  const enhancement = dashboardEnhancements[resource.id]
+  if (!enhancement) return resource
+
+  return {
+    ...resource,
+    ...enhancement,
+    aliases: mergeCatalogArrays(resource.aliases, enhancement.aliases),
+    keywords: mergeCatalogArrays(resource.keywords, enhancement.keywords),
+  }
+})
 
 export const resourceTypeLabels: Record<CatalogResourceType, string> = {
   exportable: 'Exportable',

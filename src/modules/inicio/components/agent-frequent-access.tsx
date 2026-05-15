@@ -7,7 +7,7 @@ export function AgentFrequentAccess() {
   const featured = getFeaturedResources()
 
   return (
-    <section aria-label="Accesos frecuentes">
+    <section aria-label="Accesos frecuentes" data-tour="orientation-frequent-access">
       <div className="mb-4">
         <h2 className="text-base font-semibold text-brand-strong">Accesos frecuentes</h2>
         <p className="text-sm text-muted">

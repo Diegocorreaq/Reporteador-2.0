@@ -1,13 +1,16 @@
 import { Link } from 'react-router-dom'
 import {
+  Activity,
   ArrowRight,
   BedDouble,
   Brain,
   CalendarClock,
-  Download,
+  FlaskConical,
+  HeartPulse,
   ShieldPlus,
   LineChart,
-  Monitor,
+  Scissors,
+  Stethoscope,
 } from 'lucide-react'
 
 interface IntentCard {
@@ -22,68 +25,92 @@ interface IntentCard {
 
 const intentCards: IntentCard[] = [
   {
-    id: 'exportar',
-    label: 'Quiero exportar información',
-    description: 'Datos exportables, registros nominales y descargas por periodo.',
-    icon: Download,
-    action: 'search',
-    searchTerm: 'exportar',
-  },
-  {
-    id: 'dia',
-    label: 'Quiero ver datos del día',
-    description: 'Monitoreo en tiempo real: camas, pacientes, emergencia.',
-    icon: Monitor,
-    action: 'search',
-    searchTerm: 'monitoreo',
-  },
-  {
-    id: 'indicadores',
-    label: 'Quiero ver indicadores',
-    description: 'Indicadores de eficiencia, eficacia y calidad hospitalaria.',
+    id: 'indicadores-hospitalarios',
+    label: 'Quiero ver indicadores hospitalarios',
+    description: 'Eficiencia, eficacia, calidad, productividad, camas y sala de operaciones.',
     icon: LineChart,
     action: 'search',
-    searchTerm: 'indicadores hospitalarios',
+    searchTerm: 'indicadores eficiencia calidad hospitalarios',
+  },
+  {
+    id: 'consulta-externa',
+    label: 'Quiero revisar consulta externa',
+    description: 'Producción, diagnósticos, servicio, consultorio y profesional.',
+    icon: Stethoscope,
+    action: 'search',
+    searchTerm: 'consulta externa producción diagnósticos servicio consultorio',
+  },
+  {
+    id: 'emergencia',
+    label: 'Quiero analizar emergencia',
+    description: 'Triaje, prioridad, observación, reingresos y pacientes pendientes.',
+    icon: Activity,
+    action: 'search',
+    searchTerm: 'emergencia triaje prioridad observación pacientes pendientes',
+  },
+  {
+    id: 'hospitalizacion-camas',
+    label: 'Quiero revisar hospitalización y camas',
+    description: 'Ocupación, permanencia, rendimiento, camas y egresos.',
+    icon: BedDouble,
+    action: 'search',
+    searchTerm: 'hospitalización camas ocupación permanencia rendimiento',
+  },
+  {
+    id: 'referencias',
+    label: 'Quiero revisar referencias',
+    description: 'Aceptadas, rechazadas, no coordinadas, emergencia y consulta externa.',
+    icon: ShieldPlus,
+    action: 'search',
+    searchTerm: 'referencias aceptadas rechazadas no coordinadas emergencia consulta externa',
+  },
+  {
+    id: 'apoyo-diagnostico',
+    label: 'Quiero revisar apoyo al diagnóstico',
+    description: 'Laboratorio, imagenología, exámenes, estudios y producción.',
+    icon: FlaskConical,
+    action: 'search',
+    searchTerm: 'laboratorio imagenología exámenes estudios producción',
+  },
+  {
+    id: 'sala-operaciones',
+    label: 'Quiero revisar sala de operaciones',
+    description: 'Centro quirúrgico, cirugías, procedimientos y suspendidas.',
+    icon: Scissors,
+    action: 'search',
+    searchTerm: 'centro quirúrgico cirugías sala operaciones suspendidas',
   },
   {
     id: 'salud-mental',
-    label: 'Quiero ubicar salud mental',
-    description: 'Reportes de monitoreo: violencia, ansiedad, depresión y tamizaje.',
+    label: 'Quiero revisar salud mental',
+    description: 'Tamizaje, violencia, deterioro cognitivo y neurodesarrollo.',
     icon: Brain,
     action: 'search',
-    searchTerm: 'salud mental',
+    searchTerm: 'salud mental tamizaje violencia deterioro neurodesarrollo maltrato trastornos',
   },
   {
-    id: 'epidemiologia',
-    label: 'Quiero exportables de epidemiologia',
-    description: 'Oncologicos, PFA, sifilis, sarampion, ISQx, mordedura, cirugia y dengue.',
-    icon: ShieldPlus,
+    id: 'epidemiologia-iaas',
+    label: 'Quiero revisar epidemiología e IAAS',
+    description: 'Infecciones, vigilancia, dengue y accidente de tránsito.',
+    icon: HeartPulse,
     action: 'search',
-    searchTerm: 'exportables epidemiologia',
-  },
-  {
-    id: 'camas',
-    label: 'Quiero ubicar gestión de camas',
-    description: 'Monitoreo, resumen, ocupación y estancia de camas.',
-    icon: BedDouble,
-    action: 'search',
-    searchTerm: 'camas',
+    searchTerm: 'iaas epidemiología infecciones vigilancia dengue accidente tránsito',
   },
   {
     id: 'citas',
-    label: 'Quiero ver citas y tickets',
-    description: 'Gestión de citas, monitoreo de tickets y ventanilla.',
+    label: 'Quiero revisar citas',
+    description: 'Citas reprogramadas, médico, turno, atención y consultorio.',
     icon: CalendarClock,
     action: 'search',
-    searchTerm: 'citas',
+    searchTerm: 'citas reprogramadas médico turno atención consultorio',
   },
   {
-    id: 'hospitalizados',
-    label: 'Quiero ver hospitalizados',
-    description: 'Pacientes internados, altas, fallecidos y estadísticas diarias.',
+    id: 'enfermeria',
+    label: 'Quiero revisar enfermería',
+    description: 'NEMS, TISS, Braden, LPP, vacunas y tamizaje neonatal.',
     icon: ArrowRight,
     action: 'search',
-    searchTerm: 'hospitalizados',
+    searchTerm: 'enfermería nems tiss braden lpp vacunas tamizaje neonatal',
   },
 ]
 
@@ -93,7 +120,7 @@ interface AgentIntentCardsProps {
 
 export function AgentIntentCards({ onSearch }: AgentIntentCardsProps) {
   return (
-    <section aria-label="Navegación por intención">
+    <section aria-label="Navegación por intención" data-tour="orientation-intents">
       <div className="mb-4">
         <h2 className="text-base font-semibold text-brand-strong">
           O también puedes entrar por intención

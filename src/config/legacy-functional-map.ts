@@ -318,26 +318,6 @@ export const legacyPowerBiModules: LegacyModuleMapping[] = [
   },
   {
     workspace: 'main',
-    path: 'sala-inteligente/pacientes-hospitalizados',
-    legacyRoute: '/salamonitoreo/estancia',
-    moduleType: 'powerbi',
-    title: 'Pacientes Hospitalizados',
-    powerBiUrl:
-      'https://app.powerbi.com/view?r=eyJrIjoiNTY4NWZlYzYtOTJmOC00MDk3LTk5N2QtYjIxZDVhNTNiYWIwIiwidCI6ImIwZDQ1ZmViLTM5MzUtNGE4ZS04YTc1LTNhYWM4MGQ4NTMzYSJ9',
-    frameHeight: 800,
-  },
-  {
-    workspace: 'main',
-    path: 'sala-inteligente/pacientes-continuadores',
-    legacyRoute: '/salamonitoreo/continuador',
-    moduleType: 'powerbi',
-    title: 'Pacientes Continuadores',
-    powerBiUrl:
-      'https://app.powerbi.com/view?r=eyJrIjoiNWY2YjBhYmYtNDc1MS00MzM0LTkzOWItNDNjYjk5ZWJkNzIxIiwidCI6ImIwZDQ1ZmViLTM5MzUtNGE4ZS04YTc1LTNhYWM4MGQ4NTMzYSJ9',
-    frameHeight: 1000,
-  },
-  {
-    workspace: 'main',
     path: 'sala-inteligente/indicadores-de-isq-endometritis',
     legacyRoute: '/salamonitoreo/indicadorisq',
     moduleType: 'powerbi',

@@ -28,7 +28,7 @@ export function AgentSearchInput({ value, onChange, onSubmit, onClear }: AgentSe
   }
 
   return (
-    <div className="relative">
+    <div className="relative" data-tour="orientation-search">
       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
         <Search className="h-5 w-5 text-brand/60" />
       </div>

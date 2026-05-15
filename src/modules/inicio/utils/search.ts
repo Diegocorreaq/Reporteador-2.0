@@ -33,6 +33,19 @@ const pluralStemExceptions = new Set([
 ])
 
 const shortAliasStopwords = new Set(['a', 'al', 'de', 'del', 'el', 'la', 'las', 'lo', 'los', 'o', 'u', 'y'])
+const queryIntentStopwords = new Set([
+  'buscar',
+  'consultar',
+  'encontrar',
+  'necesito',
+  'puedo',
+  'querer',
+  'quiero',
+  'revisar',
+  'saber',
+  'sobre',
+  'ver',
+])
 
 function normalize(text: string): string {
   return text
@@ -79,6 +92,7 @@ export function tokenize(text: string): string[] {
     .split(/\s+/)
     .filter(Boolean)
     .map(stemPlural)
+    .filter((token) => !queryIntentStopwords.has(token))
     .filter((token) => token.length >= 3 || validShortAliases.has(token))
 }
 
@@ -138,40 +152,34 @@ function scoreResource(resource: CatalogResource, query: string): ResourceScore 
   let score = 0
   let directScore = 0
 
-  // Title: highest weight
-  const titleNorm = normalize(resource.title)
-  const titleScore = scoreField(titleNorm, q)
-  const titleTokenScore = scoreTokenCoverage(resource.title, q, 92, 45)
-  score = Math.max(score, titleScore * 1.0, titleTokenScore)
-  directScore = Math.max(directScore, titleScore * 1.0, titleTokenScore)
+  function applyFieldScore(value: string, exactWeight: number, fullTokenScore: number, partialTokenScore: number) {
+    const normalized = normalize(value)
+    const fieldScore = scoreField(normalized, q) * exactWeight
+    const tokenScore = scoreTokenCoverage(value, q, fullTokenScore, partialTokenScore)
+    const nextScore = Math.max(fieldScore, tokenScore)
 
-  // Aliases: very high weight (user-facing intent terms)
-  for (const alias of resource.aliases) {
-    const aliasNorm = normalize(alias)
-    const aliasScore = scoreField(aliasNorm, q)
-    const aliasTokenScore = scoreTokenCoverage(alias, q, 88, 40)
-    score = Math.max(score, aliasScore * 0.95, aliasTokenScore)
-    directScore = Math.max(directScore, aliasScore * 0.95, aliasTokenScore)
+    score = Math.max(score, nextScore)
+    directScore = Math.max(directScore, nextScore)
   }
 
-  // Keywords: medium weight (also handles plural/stem variations)
-  for (const kw of resource.keywords) {
-    const kwNorm = normalize(kw)
-    let keywordScore = 0
+  function applyListScore(values: string[] | undefined, exactWeight: number, fullTokenScore: number, partialTokenScore: number) {
+    if (!values || values.length === 0) return
 
-    if (kwNorm === q) keywordScore = 70
-    else if (kwNorm.startsWith(q)) keywordScore = 50
-    else if (q.startsWith(kwNorm) && kwNorm.length >= 4) keywordScore = 45
-    else if (kwNorm.includes(q)) keywordScore = 35
-    else if (q.includes(kwNorm) && kwNorm.length >= 4) keywordScore = 30
+    for (const value of values) {
+      applyFieldScore(value, exactWeight, fullTokenScore, partialTokenScore)
+    }
 
-    score = Math.max(score, keywordScore)
-    directScore = Math.max(directScore, keywordScore)
+    applyFieldScore(values.join(' '), exactWeight * 0.9, fullTokenScore, partialTokenScore)
   }
 
-  const keywordTokenScore = scoreTokenCoverage(resource.keywords.join(' '), q, 72, 34)
-  score = Math.max(score, keywordTokenScore)
-  directScore = Math.max(directScore, keywordTokenScore)
+  // Weighted fields by user intent relevance.
+  applyFieldScore(resource.title, 1, 96, 46)
+  applyListScore(resource.aliases, 0.95, 90, 42)
+  applyListScore(resource.keywords, 0.82, 78, 36)
+  applyListScore(resource.mainIndicators, 0.78, 74, 34)
+  applyListScore(resource.questions, 0.72, 70, 31)
+  if (resource.summary) applyFieldScore(resource.summary, 0.66, 64, 28)
+  applyListScore(resource.filters, 0.58, 56, 24)
 
   // Category: lower weight
   const catNorm = normalize(resource.category)
@@ -181,12 +189,9 @@ function scoreResource(resource: CatalogResource, query: string): ResourceScore 
   score = Math.max(score, categoryIntent ? Math.max(categoryScore, 50) : categoryScore)
   if (categoryIntent) directScore = Math.max(directScore, 50)
 
-  // Description: lowest weight
-  const descNorm = normalize(resource.description)
-  if (descNorm.includes(q)) {
-    score = Math.max(score, 25)
-    directScore = Math.max(directScore, 25)
-  }
+  applyFieldScore(resource.description, 0.48, 46, 20)
+  applyListScore(resource.targetUsers, 0.42, 40, 18)
+  applyListScore(resource.useCases, 0.38, 36, 16)
 
   // Legacy name
   if (resource.legacyName) {
@@ -245,20 +250,20 @@ export function searchCatalog(query: string): SearchResult[] {
 export function getQuickSuggestions(): string[] {
   return [
     'camas',
-    'hospitalizados',
-    'producción médicos',
+    'emergencia',
+    'consulta externa',
+    'hospitalización',
+    'referencias',
+    'IAAS',
     'salud mental',
-    'fallecidos',
-    'epidemiología',
-    'exportables epidemiologia',
-    'pacientes oncologicos',
-    'pfa sifilis sarampion',
-    'dengue',
-    'lavado de manos',
-    'tickets',
-    'historias clínicas',
-    'alta médica',
+    'citas',
+    'diagnósticos frecuentes',
+    'centro quirúrgico',
+    'laboratorio',
+    'imagenología',
     'indicadores',
+    'accidentes de tránsito',
+    'enfermería',
   ]
 }
 

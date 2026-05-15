@@ -124,7 +124,7 @@ export function WorkspaceSidebar({
 }: WorkspaceSidebarProps) {
   const location = useLocation()
   const closeTimeoutRef = useRef<number | null>(null)
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  const [openGroupKey, setOpenGroupKey] = useState<string | null | undefined>(undefined)
   const [flyout, setFlyout] = useState<FlyoutState | null>(null)
   const effectiveCollapsed = collapsed && !mobileOpen
 
@@ -147,6 +147,10 @@ export function WorkspaceSidebar({
       window.clearTimeout(timeoutId)
     }
   }, [effectiveCollapsed, location.pathname])
+
+  useEffect(() => {
+    setOpenGroupKey(undefined)
+  }, [location.pathname])
 
   useEffect(
     () => () => {
@@ -300,7 +304,8 @@ export function WorkspaceSidebar({
                       )
                     }
 
-                    const isOpen = openGroups[entry.key] ?? activeGroupKeys.includes(entry.key)
+                    const isOpen =
+                      openGroupKey === undefined ? activeGroupKeys[0] === entry.key : openGroupKey === entry.key
                     const isActive = groupHasActiveItem(entry, location.pathname)
 
                     return (
@@ -316,12 +321,7 @@ export function WorkspaceSidebar({
                             'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition',
                             isActive ? 'text-accent' : 'text-white/80 hover:bg-white/10 hover:text-white',
                           )}
-                          onClick={() =>
-                            setOpenGroups((current) => ({
-                              ...current,
-                              [entry.key]: !isOpen,
-                            }))
-                          }
+                          onClick={() => setOpenGroupKey(isOpen ? null : entry.key)}
                           type="button"
                         >
                           <entry.icon className="h-4 w-4 shrink-0" />

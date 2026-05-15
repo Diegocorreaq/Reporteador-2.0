@@ -21,11 +21,12 @@ export function AgentHelpBlock() {
   return (
     <section
       aria-label="Ayuda y orientación"
+      data-tour="orientation-help"
       className="rounded-xl border border-border bg-canvas p-5"
     >
       <h2 className="mb-3 text-sm font-semibold text-brand-strong">Ayuda y orientación</h2>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2" data-tour="orientation-top-actions">
         {helpLinks.map((link) => {
           const Icon = link.icon
           return (
@@ -50,6 +51,7 @@ export function AgentHelpBlock() {
           )
         })}
       </div>
+
     </section>
   )
 }

@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
+import { clearCentroOrientacionOnboardingSession } from '@/modules/onboarding/hooks/use-centro-orientacion-onboarding'
 import { usePprContext } from '@/modules/ppr/context/ppr-context'
 import { PprAvatar } from '@/modules/ppr/components/ui-primitives'
 import { cn } from '@/lib/utils'
@@ -55,6 +56,7 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
     import('@/services/auth/auth.service').then(({ authService }) => {
       authService.signOut().catch(() => {})
     })
+    clearCentroOrientacionOnboardingSession()
     signOut()
     navigate('/login')
   }

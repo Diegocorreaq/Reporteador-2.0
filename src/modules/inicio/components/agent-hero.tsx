@@ -37,7 +37,10 @@ export function AgentHero({ query, activeQuery, onQueryChange, onQuerySubmit, on
   const suggestions = getQuickSuggestions()
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-brand/10 bg-gradient-to-br from-brand-strong via-brand to-brand-medium shadow-shell">
+    <div
+      data-tour="orientation-hero"
+      className="overflow-hidden rounded-2xl border border-brand/10 bg-gradient-to-br from-brand-strong via-brand to-brand-medium shadow-shell"
+    >
       <div className="relative px-6 py-8 sm:px-8 sm:py-10">
         {/* Subtle grid pattern overlay */}
         <div
@@ -75,7 +78,7 @@ export function AgentHero({ query, activeQuery, onQueryChange, onQuerySubmit, on
               </div>
 
               {/* Suggestion chips */}
-              <div>
+              <div data-tour="orientation-suggestions">
                 <AgentSuggestionChips
                   suggestions={suggestions}
                   onSelect={onQuerySubmit}

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { LogOut, Menu, MoreHorizontal, User } from 'lucide-react'
 import { menuService } from '@/services/menu/menu.service'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
+import { clearCentroOrientacionOnboardingSession } from '@/modules/onboarding/hooks/use-centro-orientacion-onboarding'
 import { WorkspaceQuickLinkAction } from '@/components/navigation/workspace-quick-link-action'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -187,6 +188,7 @@ export function Topbar({ workspace, onOpenMobile }: TopbarProps) {
         // Proceed with local cleanup even if the backend call fails
       })
     })
+    clearCentroOrientacionOnboardingSession()
     signOut()
     navigate('/login')
   }
