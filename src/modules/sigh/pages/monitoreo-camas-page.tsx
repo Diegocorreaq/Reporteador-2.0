@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Download, RefreshCcw } from 'lucide-react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Download, RefreshCcw, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { SighPageShell } from '@/modules/sigh/components/sigh-page-shell'
 import { CAMAS_DETAIL_MODAL_SPECS } from '@/modules/sigh/camas-detail-modal-specs'
 import { compareNullableTextLast } from '@/modules/sigh/sigh-utils'
@@ -122,6 +124,22 @@ interface ServiceGroup {
   servicio: string
   rows: CamasRow[]
   metrics: ServiceMetrics
+}
+
+interface FilterState {
+  search: string
+  piso: string
+  onlyDemand: boolean
+  onlyNoAvailable: boolean
+  onlyCovid: boolean
+  onlyPending: boolean
+  onlyRespiratory: boolean
+}
+
+interface DetailContext {
+  servicio: string
+  tipo: string
+  title: string
 }
 
 // ─── Data processing ─────────────────────────────────────────────────────────
@@ -372,6 +390,61 @@ function processCamasData(rawRows: SighTableRow[]): TableItem[] {
   return items
 }
 
+function normalizeFilterText(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+function filterCamasRows(rawRows: SighTableRow[], filters: FilterState): SighTableRow[] {
+  const search = normalizeFilterText(filters.search)
+  const indexedRows = rawRows.map((raw, index) => ({ raw, row: parseCamasRow(raw), index }))
+  const sortedRows = indexedRows
+    .sort((left, right) => (
+      compareNullableTextLast(left.row.piso, right.row.piso) ||
+      compareNullableTextLast(left.row.servicio, right.row.servicio) ||
+      compareNullableTextLast(left.row.tipo, right.row.tipo) ||
+      left.index - right.index
+    ))
+
+  const groups: Array<{ rows: typeof sortedRows; metrics: ServiceMetrics }> = []
+  for (const item of sortedRows) {
+    const key = `${item.row.piso}|${item.row.idservicio}|${item.row.servicio}`
+    const last = groups[groups.length - 1]
+    const lastRow = last?.rows[0]?.row
+    const lastKey = lastRow ? `${lastRow.piso}|${lastRow.idservicio}|${lastRow.servicio}` : ''
+    if (last && lastKey === key) {
+      last.rows.push(item)
+      continue
+    }
+    groups.push({ rows: [item], metrics: computeServiceMetrics([item.row]) })
+  }
+
+  return groups.flatMap((group) => {
+    group.metrics = computeServiceMetrics(group.rows.map((item) => item.row))
+    const first = group.rows[0]?.row
+    if (!first) return []
+
+    const available = group.rows.reduce((sum, item) => sum + item.row.clibr, 0)
+    const hasCovid = group.rows.some((item) => item.row.pcr > 0)
+    const hasPending = group.rows.some((item) => item.row.espera_ant > 0 || item.row.espera_mol > 0)
+    const hasRespiratory = group.metrics.c_vm > 0 || group.metrics.c_fl > 0
+    const serviceText = normalizeFilterText(first.servicio)
+
+    if (search && !serviceText.includes(search)) return []
+    if (filters.piso && first.piso !== filters.piso) return []
+    if (filters.onlyDemand && group.metrics.demanda <= 0) return []
+    if (filters.onlyNoAvailable && available > 0) return []
+    if (filters.onlyCovid && !hasCovid) return []
+    if (filters.onlyPending && !hasPending) return []
+    if (filters.onlyRespiratory && !hasRespiratory) return []
+
+    return group.rows.map((item) => item.raw)
+  })
+}
+
 // ─── Color helpers ────────────────────────────────────────────────────────────
 
 function pctBg(pct: number): string {
@@ -427,19 +500,172 @@ function isAfInactive(metrics: ServiceMetrics): boolean {
   return metrics.c_fl === 0 && metrics.totalaf === 0 && metrics.afopera === 0 && metrics.afinopera === 0
 }
 
+function detailTitle(type: string): string {
+  const titles: Record<string, string> = {
+    '1': 'camas operativas',
+    '2': 'camas ocupadas',
+    '3': 'camas disponibles',
+    '4': 'camas transitorias',
+    '5': 'camas inhabilitadas',
+    '6': 'ventilación mecánica',
+    '7': 'oxígeno de alto flujo',
+    '8': 'pacientes Covid (+)',
+    '9': 'pendientes antígeno',
+    '9a': 'pendientes molecular',
+  }
+
+  return titles[type] ?? 'detalle'
+}
+
 // ─── Cell helpers ─────────────────────────────────────────────────────────────
 
-const TH = 'border border-border px-1.5 py-1 text-[10px] font-semibold text-center'
-const TH_GROUP = `${TH} bg-[#e2edf7] text-[#123B63]`
-const TH_SUB = `${TH} bg-[#f1f6fb] text-[#123B63]`
-const TD = 'border border-border/60 px-1.5 py-0.5 text-[10px] text-center'
-const TD_PISO = `${TD} bg-[#fafcff] font-medium text-[#1f3650] align-top`
-const TD_SERVICIO = `${TD} bg-[#f6fbff] font-semibold text-[#123B63] text-left align-top`
-const TD_TIPO = `${TD} text-left pl-4 text-[#334155]`
-const TD_SUBTOTAL = 'border border-border/60 px-1.5 py-0.5 text-[10px] text-center font-bold'
+const STICKY_PISO_WIDTH = 116
+const STICKY_SERVICIO_WIDTH = 248
+const STICKY_TIPO_WIDTH = 132
+
+const TH = 'border border-[#b8c8d8] px-2 py-1.5 text-[10px] font-bold text-center leading-tight'
+const TH_GROUP = `${TH} bg-[#dbeaf6] text-[#0f3558]`
+const TH_SUB = `${TH} bg-[#f3f8fc] text-[#123B63]`
+const TD = 'border border-border/60 px-2 py-1 text-[10.5px] text-center leading-tight'
+const TD_PISO = `${TD} bg-[#f8fbff] font-semibold text-[#1f3650] align-top`
+const TD_SERVICIO = `${TD} bg-[#f4f9fd] font-semibold text-[#123B63] text-left align-top leading-snug`
+const TD_TIPO = `${TD} text-left pl-3 text-[#334155] bg-white`
+const TD_SUBTOTAL = 'border border-border/60 px-2 py-1 text-[10.5px] text-center font-bold'
+const STICKY_SHADOW = 'shadow-[8px_0_12px_-12px_rgba(15,41,66,0.6)]'
+
+const stickyPisoStyle: CSSProperties = { left: 0, minWidth: STICKY_PISO_WIDTH, width: STICKY_PISO_WIDTH }
+const stickyServicioStyle: CSSProperties = {
+  left: STICKY_PISO_WIDTH,
+  minWidth: STICKY_SERVICIO_WIDTH,
+  width: STICKY_SERVICIO_WIDTH,
+}
+const stickyTipoStyle: CSSProperties = {
+  left: STICKY_PISO_WIDTH + STICKY_SERVICIO_WIDTH,
+  minWidth: STICKY_TIPO_WIDTH,
+  width: STICKY_TIPO_WIDTH,
+}
 
 function numCell(v: number): string {
   return String(Number.isFinite(v) ? v : 0)
+}
+
+function DetailValueButton({
+  value,
+  label,
+  tone = 'default',
+  onClick,
+}: {
+  value: number
+  label: string
+  tone?: 'default' | 'warning' | 'success' | 'support'
+  onClick: () => void
+}) {
+  if (value <= 0) {
+    return <>{value}</>
+  }
+
+  const toneClass = {
+    default: 'border-[#91b2cc] bg-white text-[#0f3558] hover:bg-[#e9f4fb]',
+    warning: 'border-[#d89a40] bg-[#fff7e6] text-[#7a3b00] hover:bg-[#ffe9ba]',
+    success: 'border-[#58a56f] bg-[#e9f8ee] text-[#176234] hover:bg-[#d6f2df]',
+    support: 'border-[#5aa7cc] bg-[#e5f6fd] text-[#075985] hover:bg-[#d4eef9]',
+  }[tone]
+
+  return (
+    <button
+      type="button"
+      className={`inline-flex min-w-6 cursor-pointer items-center justify-center rounded-full border px-2 py-0.5 text-[10px] font-bold shadow-sm transition ${toneClass}`}
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+    >
+      {value}
+    </button>
+  )
+}
+
+function FilterChip({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean
+  children: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className={`h-8 rounded-full border px-3 text-[11px] font-semibold transition ${
+        active
+          ? 'border-[#005F8F] bg-[#e3f2fb] text-[#005F8F] shadow-sm'
+          : 'border-border bg-white text-[#39546b] hover:border-[#7aaac4] hover:bg-[#f4f9fd]'
+      }`}
+      aria-pressed={active}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  )
+}
+
+function KpiStrip({ totals }: { totals: Sums | null }) {
+  if (!totals) return null
+
+  const items = [
+    { label: 'Operativas', value: totals.chabi },
+    { label: 'Ocupadas', value: totals.cocup },
+    { label: 'Disponibles', value: totals.clibr },
+    { label: 'Demanda adicional', value: totals.demanda, alert: totals.demanda > 0 },
+    { label: 'Covid (+)', value: totals.pcr, alert: totals.pcr > 0 },
+    { label: 'Pendientes antígeno', value: totals.espera_ant, alert: totals.espera_ant > 0 },
+    { label: 'Pendientes molecular', value: totals.espera_mol, alert: totals.espera_mol > 0 },
+    { label: 'VM en uso', value: totals.c_vm, support: true },
+    { label: 'AF en uso', value: totals.c_fl, support: true },
+  ]
+
+  return (
+    <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5 xl:grid-cols-9">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className={`rounded-md border px-3 py-2 shadow-sm ${
+            item.alert
+              ? 'border-[#e3b15f] bg-[#fff8e8]'
+              : item.support
+                ? 'border-[#a7d7ec] bg-[#eef9fd]'
+                : 'border-border bg-[#fbfdff]'
+          }`}
+        >
+          <p className="text-[10px] font-bold uppercase leading-tight text-[#4b6478]">{item.label}</p>
+          <p className="mt-1 text-xl font-bold text-[#0f3558]">{item.value}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ColorLegend() {
+  const items = [
+    { label: 'Estable / disponible', color: '#BFE8C3' },
+    { label: 'Atención', color: '#F6E78B' },
+    { label: 'Alerta', color: '#F2C27A' },
+    { label: 'Crítico', color: '#F2A6A6' },
+    { label: 'Soporte VM/AF', color: '#B8E6FC' },
+    { label: 'No aplica / sin datos', color: '#F1F5F9' },
+  ]
+
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-border/70 bg-[#fbfdff] px-3 py-2">
+      <span className="mr-1 text-[11px] font-bold uppercase text-[#365268]">Leyenda</span>
+      {items.map((item) => (
+        <span key={item.label} className="inline-flex items-center gap-1.5 text-[11px] text-[#425b70]">
+          <span className="h-3 w-3 rounded-sm border border-black/10" style={{ backgroundColor: item.color }} />
+          {item.label}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 // ─── Modal config ─────────────────────────────────────────────────────────────
@@ -507,13 +733,19 @@ function SubtotalRow({ sums, bg }: { sums: Sums; bg: string }) {
 
   return (
     <tr style={{ backgroundColor: subtotalBg }}>
-      <td colSpan={3} className={`${tdSubtotal} text-right tracking-wide text-[#1f3650]`}>Sub Total</td>
+      <td
+        colSpan={3}
+        className={`${tdSubtotal} sticky z-20 text-right tracking-wide text-[#1f3650] ${STICKY_SHADOW}`}
+        style={{ left: 0, minWidth: STICKY_PISO_WIDTH + STICKY_SERVICIO_WIDTH + STICKY_TIPO_WIDTH, backgroundColor: subtotalBg }}
+      >
+        Sub Total
+      </td>
       {/* Escenario (1) */}
       <td className={tdSubtotal}>{sums.camas}</td>
       <td className={tdSubtotal}>{sums.totcamas - sums.camas}</td>
       <td className={tdSubtotal}>{safePct(Math.min(sums.tocupa, sums.camas), sums.camas)}</td>
       <td className={tdSubtotal}>{sums.demanda}</td>
-      {/* Camas segun condicion */}
+      {/* Camas según condición */}
       <td className={tdSubtotal}>{sums.total}</td>
       <td className={tdSubtotal}>{sums.chabi}</td>
       <td className={tdSubtotal}>{sums.cocup}</td>
@@ -545,7 +777,13 @@ function TotalGeneralRow({ sums }: { sums: Sums }) {
 
   return (
     <tr>
-      <td colSpan={3} className={`${tdTotal} text-right text-[11px] tracking-wide`}>Total General</td>
+      <td
+        colSpan={3}
+        className={`${tdTotal} sticky z-20 text-right text-[11px] tracking-wide ${STICKY_SHADOW}`}
+        style={{ left: 0, minWidth: STICKY_PISO_WIDTH + STICKY_SERVICIO_WIDTH + STICKY_TIPO_WIDTH }}
+      >
+        Total General
+      </td>
       <td className={tdTotal}>{sums.camas}</td>
       <td className={tdTotal}>{sums.totcamas - sums.camas}</td>
       <td className={tdTotal}>{safePct(Math.min(sums.tocupa, sums.camas), sums.camas)}</td>
@@ -579,13 +817,24 @@ export function MonitoreoCamasPage() {
   const [rows, setRows] = useState<SighTableRow[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [filters, setFilters] = useState<FilterState>({
+    search: '',
+    piso: '',
+    onlyDemand: false,
+    onlyNoAvailable: false,
+    onlyCovid: false,
+    onlyPending: false,
+    onlyRespiratory: false,
+  })
 
   const [detailRows, setDetailRows] = useState<SighTableRow[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailType, setDetailType] = useState<string>('')
+  const [detailContext, setDetailContext] = useState<DetailContext | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
 
   const handleFetch = async () => {
+    if (loading) return
     setLoading(true)
     setError(null)
     try {
@@ -600,6 +849,11 @@ export function MonitoreoCamasPage() {
   const openDetail = async (type: string, row: CamasRow) => {
     if (!row.idservicio) return
     setDetailType(type)
+    setDetailContext({
+      servicio: row.servicio,
+      tipo: row.tipo,
+      title: detailTitle(type),
+    })
     setDetailRows([])
     setIsDetailOpen(true)
     setDetailLoading(true)
@@ -615,20 +869,20 @@ export function MonitoreoCamasPage() {
 
   useEffect(() => { void handleFetch() }, [])
 
-  const tableItems = useMemo(() => processCamasData(rows), [rows])
-  const mobileTotals = useMemo(() => {
+  const pisos = useMemo(() => {
+    const values = new Set(rows.map((row) => parseCamasRow(row).piso).filter(Boolean))
+    return [...values].sort(compareNullableTextLast)
+  }, [rows])
+
+  const filteredRows = useMemo(() => filterCamasRows(rows, filters), [rows, filters])
+  const tableItems = useMemo(() => processCamasData(filteredRows), [filteredRows])
+  const totalSummary = useMemo(() => {
     const totalItem = [...tableItems].reverse().find((item) => item.type === 'total')
     if (!totalItem || totalItem.type !== 'total') {
       return null
     }
 
-    return {
-      operativas: totalItem.sums.chabi,
-      ocupadas: totalItem.sums.cocup,
-      disponibles: totalItem.sums.clibr,
-      demanda: totalItem.sums.demanda,
-      covid: totalItem.sums.pcr,
-    }
+    return totalItem.sums
   }, [tableItems])
 
   const modalSpec = CAMAS_DETAIL_MODAL_SPECS[detailType] ?? { title: 'Detalle', columns: [] }
@@ -636,11 +890,12 @@ export function MonitoreoCamasPage() {
   return (
     <SighPageShell
       error={error}
-      description="Resumen operativo de camas por piso/servicio/tipo con accesos de detalle y exportacion."
+      description="Resumen operativo de camas por piso/servicio/tipo con accesos de detalle y exportación."
       actions={
         <>
-          <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={() => void handleFetch()}>
-            <RefreshCcw className="h-4 w-4" /> Actualizar
+          <Button className="w-full sm:w-auto" size="sm" variant="outline" disabled={loading} onClick={() => void handleFetch()}>
+            <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Actualizando' : 'Actualizar'}
           </Button>
           <Button
             size="sm"
@@ -656,7 +911,7 @@ export function MonitoreoCamasPage() {
             style={{ backgroundColor: '#2C6E99', color: '#fff' }}
             onClick={() => void downloadMonitoreoCamasSusalud()}
           >
-            <Download className="h-4 w-4" /> Resumen Susalud
+            <Download className="h-4 w-4" /> Resumen SUSALUD
           </Button>
         </>
       }
@@ -666,76 +921,104 @@ export function MonitoreoCamasPage() {
           <CardTitle className="text-sm">Resumen de camas</CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
-          {mobileTotals ? (
-            <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:hidden">
-              <div className="rounded-md border border-border bg-canvas/60 px-3 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Operativas</p>
-                <p className="mt-1 text-lg font-semibold text-brand-strong">{mobileTotals.operativas}</p>
-              </div>
-              <div className="rounded-md border border-border bg-canvas/60 px-3 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Ocupadas</p>
-                <p className="mt-1 text-lg font-semibold text-brand-strong">{mobileTotals.ocupadas}</p>
-              </div>
-              <div className="rounded-md border border-border bg-canvas/60 px-3 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Disponibles</p>
-                <p className="mt-1 text-lg font-semibold text-brand-strong">{mobileTotals.disponibles}</p>
-              </div>
-              <div className="rounded-md border border-border bg-canvas/60 px-3 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Demanda adicional</p>
-                <p className="mt-1 text-lg font-semibold text-brand-strong">{mobileTotals.demanda}</p>
-              </div>
-              <div className="rounded-md border border-border bg-canvas/60 px-3 py-2 sm:col-span-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Covid (+)</p>
-                <p className="mt-1 text-lg font-semibold text-brand-strong">{mobileTotals.covid}</p>
+          <KpiStrip totals={totalSummary} />
+
+          <div className="mb-3 rounded-md border border-border/70 bg-[#f8fbfe] p-3">
+            <div className="grid gap-2 lg:grid-cols-[minmax(220px,1fr)_220px_auto]">
+              <label className="relative block">
+                <span className="sr-only">Buscar servicio</span>
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                <Input
+                  className="h-9 rounded-md pl-9 text-xs"
+                  placeholder="Buscar por servicio"
+                  value={filters.search}
+                  onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
+                />
+              </label>
+              <Select
+                className="h-9 rounded-md text-xs"
+                value={filters.piso}
+                aria-label="Filtrar por piso"
+                onChange={(event) => setFilters((current) => ({ ...current, piso: event.target.value }))}
+              >
+                <option value="">Todos los pisos</option>
+                {pisos.map((piso) => (
+                  <option key={piso} value={piso}>{piso}</option>
+                ))}
+              </Select>
+              <div className="flex flex-wrap gap-2">
+                <FilterChip active={filters.onlyDemand} onClick={() => setFilters((current) => ({ ...current, onlyDemand: !current.onlyDemand }))}>
+                  Solo con demanda adicional
+                </FilterChip>
+                <FilterChip active={filters.onlyNoAvailable} onClick={() => setFilters((current) => ({ ...current, onlyNoAvailable: !current.onlyNoAvailable }))}>
+                  Solo sin disponibles
+                </FilterChip>
+                <FilterChip active={filters.onlyCovid} onClick={() => setFilters((current) => ({ ...current, onlyCovid: !current.onlyCovid }))}>
+                  Solo con Covid
+                </FilterChip>
+                <FilterChip active={filters.onlyPending} onClick={() => setFilters((current) => ({ ...current, onlyPending: !current.onlyPending }))}>
+                  Solo con pendientes
+                </FilterChip>
+                <FilterChip active={filters.onlyRespiratory} onClick={() => setFilters((current) => ({ ...current, onlyRespiratory: !current.onlyRespiratory }))}>
+                  Solo con VM/AF en uso
+                </FilterChip>
               </div>
             </div>
-          ) : null}
+          </div>
+
+          <ColorLegend />
 
           <p className="mb-2 text-[11px] text-muted sm:hidden">Desliza horizontalmente para ver toda la matriz operativa.</p>
 
-          <div className="overflow-x-auto rounded-md border border-border/70 bg-white">
-            <table className="border-collapse text-[10px]" style={{ minWidth: 1560 }}>
+          <div className="relative">
+            {loading && rows.length > 0 ? (
+              <div className="pointer-events-none absolute right-3 top-3 z-30 rounded-full border border-[#bcd8e8] bg-white/95 px-3 py-1 text-[11px] font-semibold text-[#005F8F] shadow-sm">
+                Actualizando datos...
+              </div>
+            ) : null}
+            <div className="max-h-[68vh] overflow-auto rounded-md border border-border/70 bg-white">
+            <table className="border-separate border-spacing-0 text-[10px]" style={{ minWidth: 1780 }}>
               <thead className="bg-[#eef5fb] text-[#123B63]">
-                {/* Row 1 — group headers */}
+                {/* Row 1 - group headers */}
                 <tr>
-                  <th className={TH_GROUP} rowSpan={2}>Piso</th>
-                  <th className={TH_GROUP} rowSpan={2}>Servicio</th>
-                  <th className={TH_GROUP} rowSpan={2}>Tipo</th>
-                  <th className={TH_GROUP} colSpan={4}>Escenario (1)</th>
-                  <th className={TH_GROUP} colSpan={7}>Estado de Camas</th>
-                  <th className={TH_GROUP} colSpan={2}>Resultados Pendientes</th>
-                  <th className={TH_GROUP} colSpan={5}>Ventilacion Mecanica (VM)</th>
-                  <th className={TH_GROUP} colSpan={5}>Oxigeno Alto Flujo (AF)</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-50`} style={{ ...stickyPisoStyle, backgroundColor: '#dbeaf6' }} rowSpan={2}>Piso</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-50`} style={{ ...stickyServicioStyle, backgroundColor: '#dbeaf6' }} rowSpan={2}>Servicio</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-50 ${STICKY_SHADOW}`} style={{ ...stickyTipoStyle, backgroundColor: '#dbeaf6' }} rowSpan={2}>Tipo</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-40`} colSpan={4}>Escenario (1)</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-40`} colSpan={7}>Camas según condición</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-40`} colSpan={2}>Resultados Pendientes</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-40`} colSpan={5}>Ventilación Mecánica (VM)</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-40`} colSpan={5}>Oxígeno Alto Flujo (AF)</th>
                 </tr>
-                {/* Row 2 — subcolumns */}
+                {/* Row 2 - subcolumns */}
                 <tr>
-                  <th className={TH_SUB}>Camas Aprobadas (A)</th>
-                  <th className={TH_SUB}>Brecha (B-A)</th>
-                  <th className={TH_SUB}>% Ocupacion (C/A)</th>
-                  <th className={TH_SUB}>Demanda Adicional</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Camas Aprobadas (A)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Brecha (B-A)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>% Ocupación (C/A)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Demanda Adicional</th>
 
-                  <th className={TH_SUB}>Totales (B)</th>
-                  <th className={TH_SUB}>Operativas</th>
-                  <th className={TH_SUB}>Ocupadas (C)</th>
-                  <th className={TH_SUB}>Disponibles</th>
-                  <th className={TH_SUB}>Transitorias</th>
-                  <th className={TH_SUB}>Inhabilitadas</th>
-                  <th className={TH_SUB}>Covid (+)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Totales (B)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Operativas</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Ocupadas (C)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Disponibles</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Transitorias</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Inhabilitadas</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Covid (+)</th>
 
-                  <th className={TH_SUB}>Antigena</th>
-                  <th className={TH_SUB}>Molecular</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Antígena</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Molecular</th>
 
-                  <th className={TH_SUB}>VM en uso (D)</th>
-                  <th className={TH_SUB}>Total</th>
-                  <th className={TH_SUB}>Operativas (E)</th>
-                  <th className={TH_SUB}>Inoperativas</th>
-                  <th className={TH_SUB}>% uso VM (D/E)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>VM en uso (D)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Total</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Operativas (E)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Inoperativas</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>% uso VM (D/E)</th>
 
-                  <th className={TH_SUB}>AF en uso (F)</th>
-                  <th className={TH_SUB}>Total</th>
-                  <th className={TH_SUB}>Operativas (G)</th>
-                  <th className={TH_SUB}>Inoperativas</th>
-                  <th className={TH_SUB}>% uso AF (F/G)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>AF en uso (F)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Total</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Operativas (G)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Inoperativas</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>% uso AF (F/G)</th>
                 </tr>
               </thead>
               <tbody>
@@ -771,16 +1054,31 @@ export function MonitoreoCamasPage() {
 
                         {/* Piso */}
                         {showPiso && (
-                          <td className={TD_PISO} rowSpan={pisoSpan}>{row.piso}</td>
+                          <td
+                            className={`${TD_PISO} sticky z-20`}
+                            style={{ ...stickyPisoStyle, backgroundColor: '#f8fbff' }}
+                            rowSpan={pisoSpan}
+                          >
+                            {row.piso}
+                          </td>
                         )}
                         {/* Servicio */}
                         {showServicio && (
-                          <td className={TD_SERVICIO} rowSpan={servicioSpan}>{row.servicio}</td>
+                          <td
+                            className={`${TD_SERVICIO} sticky z-20`}
+                            style={{ ...stickyServicioStyle, backgroundColor: '#f4f9fd' }}
+                            rowSpan={servicioSpan}
+                          >
+                            {row.servicio}
+                          </td>
                         )}
                         {/* Tipo */}
-                        <td className={TD_TIPO}>
+                        <td
+                          className={`${TD_TIPO} sticky z-20 ${STICKY_SHADOW}`}
+                          style={{ ...stickyTipoStyle, backgroundColor: '#fff' }}
+                        >
                           <span className="inline-flex items-center gap-1">
-                            <span className="text-slate-400">•</span>
+                            <span className="text-slate-400">-</span>
                             <span>{row.tipo}</span>
                           </span>
                         </td>
@@ -803,109 +1101,55 @@ export function MonitoreoCamasPage() {
                           </>
                         )}
 
-                        {/* Camas segun condicion */}
+                        {/* Camas según condición */}
                         <td className={TD}>{row.total}</td>
 
                         {/* Operativas */}
                         <td className={TD}>
-                          {row.chabi > 0 ? (
-                            <button type="button"
-                              className="h-5 rounded px-1.5 text-[10px] hover:opacity-80"
-                              onClick={() => void openDetail('1', row)}>
-                              {row.chabi}
-                            </button>
-                          ) : row.chabi}
+                          <DetailValueButton value={row.chabi} label="Ver detalle de camas operativas" onClick={() => void openDetail('1', row)} />
                         </td>
 
                         {/* Ocupadas */}
                         <td className={TD} style={{ backgroundColor: row.cocup > 0 ? '#F3D979' : undefined }}>
-                          {row.cocup > 0 ? (
-                            <button type="button"
-                              className="h-5 rounded px-1.5 text-[10px] hover:opacity-80"
-                              onClick={() => void openDetail('2', row)}>
-                              {row.cocup}
-                            </button>
-                          ) : row.cocup}
+                          <DetailValueButton value={row.cocup} label="Ver detalle de camas ocupadas" tone="warning" onClick={() => void openDetail('2', row)} />
                         </td>
 
                         {/* Disponibles */}
                         <td className={TD} style={{ backgroundColor: disponiblesBgColor }}>
-                          {row.clibr > 0 ? (
-                            <button type="button"
-                              className="h-5 rounded px-1.5 text-[10px] hover:opacity-80"
-                              onClick={() => void openDetail('3', row)}>
-                              {row.clibr}
-                            </button>
-                          ) : row.clibr}
+                          <DetailValueButton value={row.clibr} label="Ver detalle de camas disponibles" tone="success" onClick={() => void openDetail('3', row)} />
                         </td>
 
                         {/* Transitorias */}
                         <td className={TD}>
-                          {row.ctran > 0 ? (
-                            <button type="button"
-                              className="h-5 rounded px-1.5 text-[10px] hover:opacity-80"
-                              onClick={() => void openDetail('4', row)}>
-                              {row.ctran}
-                            </button>
-                          ) : row.ctran}
+                          <DetailValueButton value={row.ctran} label="Ver detalle de camas transitorias" onClick={() => void openDetail('4', row)} />
                         </td>
 
                         {/* Inhabilitadas */}
                         <td className={TD} style={{ backgroundColor: inhabilitadasBgColor }}>
-                          {row.cinah > 0 ? (
-                            <button type="button"
-                              className="h-5 rounded px-1.5 text-[10px] hover:opacity-80"
-                              onClick={() => void openDetail('5', row)}>
-                              {row.cinah}
-                            </button>
-                          ) : row.cinah}
+                          <DetailValueButton value={row.cinah} label="Ver detalle de camas inhabilitadas" tone="warning" onClick={() => void openDetail('5', row)} />
                         </td>
 
                         {/* Covid (+) */}
                         <td className={TD}>
-                          {row.pcr > 0 ? (
-                            <button type="button"
-                              className="inline-block rounded bg-green-500 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-green-600"
-                              onClick={() => void openDetail('8', row)}>
-                              {row.pcr}
-                            </button>
-                          ) : row.pcr}
+                          <DetailValueButton value={row.pcr} label="Ver detalle de pacientes Covid positivo" tone="success" onClick={() => void openDetail('8', row)} />
                         </td>
 
                         {/* Resultado Espera */}
-                        {/* Antigena */}
+                        {/* Antígena */}
                         <td className={TD} style={{ backgroundColor: esperaAntBgColor }}>
-                          {row.espera_ant > 0 ? (
-                            <button type="button"
-                              className="inline-block rounded bg-[#d98b27] px-1.5 py-0.5 text-[10px] font-semibold text-white hover:opacity-90"
-                              onClick={() => void openDetail('9', row)}>
-                              {row.espera_ant}
-                            </button>
-                          ) : row.espera_ant}
+                          <DetailValueButton value={row.espera_ant} label="Ver resultados pendientes antígeno" tone="warning" onClick={() => void openDetail('9', row)} />
                         </td>
 
                         {/* Molecular */}
                         <td className={TD} style={{ backgroundColor: esperaMolBgColor }}>
-                          {row.espera_mol > 0 ? (
-                            <button type="button"
-                              className="inline-block rounded bg-[#d98b27] px-1.5 py-0.5 text-[10px] font-semibold text-white hover:opacity-90"
-                              onClick={() => void openDetail('9a', row)}>
-                              {row.espera_mol}
-                            </button>
-                          ) : row.espera_mol}
+                          <DetailValueButton value={row.espera_mol} label="Ver resultados pendientes molecular" tone="warning" onClick={() => void openDetail('9a', row)} />
                         </td>
 
-                        {/* Ventilacion Mecanica */}
+                        {/* Ventilación Mecánica */}
                         {showServicio && (
                           <>
                             <td className={TD} rowSpan={servicioSpan} style={{ backgroundColor: '#B8E6FC' }}>
-                              {metrics.c_vm > 0 ? (
-                                <button type="button"
-                                  className="h-5 rounded px-1.5 text-[10px] hover:opacity-80"
-                                  onClick={() => void openDetail('6', row)}>
-                                  {metrics.c_vm}
-                                </button>
-                              ) : metrics.c_vm}
+                              <DetailValueButton value={metrics.c_vm} label="Ver detalle de ventilación mecánica en uso" tone="support" onClick={() => void openDetail('6', row)} />
                             </td>
                             <td className={TD} rowSpan={servicioSpan}>{numCell(metrics.totalvm)}</td>
                             <td className={TD} rowSpan={servicioSpan}>{numCell(metrics.vmopera)}</td>
@@ -917,17 +1161,11 @@ export function MonitoreoCamasPage() {
                           </>
                         )}
 
-                        {/* Oxigeno Alto Flujo */}
+                        {/* Oxígeno Alto Flujo */}
                         {showServicio && (
                           <>
                             <td className={TD} rowSpan={servicioSpan} style={afInactive ? afMutedStyle : { backgroundColor: '#B8E6FC' }}>
-                              {metrics.c_fl > 0 ? (
-                                <button type="button"
-                                  className="h-5 rounded px-1.5 text-[10px] hover:opacity-80"
-                                  onClick={() => void openDetail('7', row)}>
-                                  {metrics.c_fl}
-                                </button>
-                              ) : metrics.c_fl}
+                              <DetailValueButton value={metrics.c_fl} label="Ver detalle de oxígeno alto flujo en uso" tone="support" onClick={() => void openDetail('7', row)} />
                             </td>
                             <td className={TD} rowSpan={servicioSpan} style={afMutedStyle}>{numCell(metrics.totalaf)}</td>
                             <td className={TD} rowSpan={servicioSpan} style={afMutedStyle}>{numCell(metrics.afopera)}</td>
@@ -936,7 +1174,7 @@ export function MonitoreoCamasPage() {
                               style={afInactive
                                 ? afMutedStyle
                                 : { backgroundColor: metrics.afopera > 0 ? pctBg(metrics.afPct) : undefined }}>
-                              {metrics.totalaf === 0 ? '—' : pctText(metrics.afPct)}
+                              {metrics.totalaf === 0 ? '-' : pctText(metrics.afPct)}
                             </td>
                           </>
                         )}
@@ -947,6 +1185,7 @@ export function MonitoreoCamasPage() {
               </tbody>
             </table>
           </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -955,6 +1194,11 @@ export function MonitoreoCamasPage() {
         <DialogContent className="w-[min(95vw,1300px)] max-w-none">
           <DialogHeader>
             <DialogTitle>{modalSpec.title}</DialogTitle>
+            {detailContext ? (
+              <DialogDescription>
+                {detailContext.servicio} - {detailContext.tipo} - {detailContext.title}
+              </DialogDescription>
+            ) : null}
           </DialogHeader>
           {detailLoading ? (
             <p className="py-6 text-center text-sm text-muted">Cargando detalle...</p>
