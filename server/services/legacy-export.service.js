@@ -2490,9 +2490,9 @@ const MENTAL_HEALTH_TEMPLATE_CONFIG = {
     metaColspan: 12,
     groups: [
       { title: 'PSIQUIATRIA', color: '#FA7985', keys: ['p1','p2','p3','p4'] },
-      { title: 'PSICOTERAPIA INDIVIDUAL', color: '#FEF170', keys: ['x1','x2'] },
-      { title: 'INTERVENCION FAMILIAR', color: '#A8FE91', keys: ['y1','y2','y3','y4'] },
-      { title: 'REDES DE APOYO O VISITA DOMICILIARIA', color: '#96FCF3', keys: ['z1','z2'] },
+      { title: 'ENTREVISTAS MOTIVACIONALES', color: '#FEF170', keys: ['x1','x2'] },
+      { title: 'PSICOTERAPIA INDIVIDUAL', color: '#A8FE91', keys: ['y1','y2','y3','y4'] },
+      { title: 'INTERVENCION FAMILIAR', color: '#96FCF3', keys: ['z1','z2'] },
     ],
   },
 }
