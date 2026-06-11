@@ -16,6 +16,7 @@ function buildPayload() {
     resumenRows: resumenRowsFixture,
     corteTimestamp: new Date('2026-04-19T02:00:00.000Z'),
     includeAudit: true,
+    onlyTipoCama: true,
   })
 }
 
@@ -177,6 +178,95 @@ test('SUSALUD: paridad por bloque con corte validado', () => {
       assert.equal(row.casos, 0)
     }
   }
+})
+
+test('SUSALUD: emergencia ampliada usa demanda de monitoreo si no hay detalle con/sin oxigeno', () => {
+  const payload = buildSusaludExportPayload({
+    resumenRows: [
+      {
+        idservicio: 418,
+        piso: 'Emergencia 1er Piso',
+        servicio: 'OBSERVACION GINECO-OBSTETRICIA',
+        tipo: 'Cama',
+        camas: 10,
+        tocupa: 0,
+        total: 10,
+        cocup: 8,
+      },
+      {
+        idservicio: 418,
+        piso: 'Emergencia 1er Piso',
+        servicio: 'OBSERVACION GINECO-OBSTETRICIA',
+        tipo: 'Silla',
+        camas: 10,
+        tocupa: 0,
+        total: 10,
+        cocup: 7,
+      },
+      {
+        idservicio: 443,
+        piso: 'Emergencia 1er Piso',
+        servicio: 'OBSERVACION MEDICINA 1',
+        tipo: 'Cama',
+        camas: 4,
+        tocupa: 9,
+        total: 4,
+        cocup: 4,
+      },
+      {
+        idservicio: 424,
+        piso: 'Hospitalizacion',
+        servicio: 'HOSPITALIZACION MEDICINA',
+        tipo: 'Cama',
+        camas: 4,
+        tocupa: 20,
+        total: 4,
+        cocup: 4,
+      },
+    ],
+    corteTimestamp: new Date('2026-04-19T02:00:00.000Z'),
+    includeAudit: true,
+    onlyTipoCama: true,
+  })
+
+  assert.deepEqual(
+    [
+      payload.emergenciaAmpliadaRows[0].total,
+      payload.emergenciaAmpliadaRows[0].conOxigeno,
+      payload.emergenciaAmpliadaRows[0].sinOxigeno,
+    ],
+    [5, 0, 5],
+  )
+
+  const auditRow = payload.auditRows.find(
+    (row) => row.audit_tipo === 'RESULTADO_BLOQUE' && row.bloque === 'EMERGENCIA_AMPLIADA',
+  )
+  assert.equal(auditRow.fuente_demanda_ampliada, 'demanda_monitoreo')
+})
+
+test('SUSALUD: filtro Cama excluye otros recursos antes de sumar y auditar', () => {
+  const payload = buildSusaludExportPayload({
+    resumenRows: [
+      { idservicio: 418, piso: 'Emergencia 1er Piso', servicio: 'OBSERVACION GINECO-OBSTETRICIA', tipo: ' Cama ', total: 262, chabi: 262, cocup: 100, clibr: 162 },
+      { idservicio: 418, piso: 'Emergencia 1er Piso', servicio: 'OBSERVACION GINECO-OBSTETRICIA', tipo: 'Silla', total: 58, chabi: 58, cocup: 58, clibr: 0 },
+      { idservicio: 418, piso: 'Emergencia 1er Piso', servicio: 'OBSERVACION GINECO-OBSTETRICIA', tipo: 'Cuna', total: 34, chabi: 34, cocup: 34, clibr: 0 },
+      { idservicio: 418, piso: 'Emergencia 1er Piso', servicio: 'OBSERVACION GINECO-OBSTETRICIA', tipo: 'Chailones', total: 24, chabi: 24, cocup: 24, clibr: 0 },
+      { idservicio: 418, piso: 'Emergencia 1er Piso', servicio: 'OBSERVACION GINECO-OBSTETRICIA', tipo: 'Incubadora', total: 13, chabi: 13, cocup: 13, clibr: 0 },
+      { idservicio: 418, piso: 'Emergencia 1er Piso', servicio: 'OBSERVACION GINECO-OBSTETRICIA', tipo: 'Camillas', total: 1, chabi: 1, cocup: 1, clibr: 0 },
+    ],
+    corteTimestamp: new Date('2026-04-19T02:00:00.000Z'),
+    includeAudit: true,
+    onlyTipoCama: true,
+  })
+
+  const emergenciaAdultos = payload.emergenciaRows.find((row) => row.upssEmergencia === 'EMERGENCIA ADULTOS')
+  assert.equal(emergenciaAdultos.total, 262)
+  assert.equal(payload.normalizedDataset.length, 1)
+  assert.equal(payload.normalizedDataset[0].tipo, 'Cama')
+
+  const auditDatasetRows = payload.auditRows.filter((row) => row.audit_tipo === 'DATASET_NORMALIZADO')
+  assert.equal(auditDatasetRows.length, 1)
+  assert.equal(String(auditDatasetRows[0].tipo).trim().toUpperCase(), 'CAMA')
 })
 
 test('SUSALUD: workbook contiene hoja de auditoria oculta', async () => {

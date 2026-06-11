@@ -11,20 +11,31 @@ import {
 } from './susalud-calculators.js'
 import { buildSusaludAuditRows } from './susalud-audit.js'
 
+function isTipoCama(row) {
+  return String(row?.tipo ?? '').trim().toUpperCase() === 'CAMA'
+}
+
+function filterOnlyTipoCama(rows = []) {
+  return (Array.isArray(rows) ? rows : []).filter(isTipoCama)
+}
+
 export function buildSusaludExportPayload({
   corteRows = [],
   resumenRows = [],
   sourceRows = [],
   corteTimestamp,
   includeAudit = true,
+  onlyTipoCama = false,
 }) {
-  const safeCorteRows = Array.isArray(corteRows) ? corteRows : []
-  const safeResumenRows =
+  const rawCorteRows = Array.isArray(corteRows) ? corteRows : []
+  const rawResumenRows =
     Array.isArray(resumenRows) && resumenRows.length > 0
       ? resumenRows
       : Array.isArray(sourceRows)
         ? sourceRows
         : []
+  const safeCorteRows = onlyTipoCama ? filterOnlyTipoCama(rawCorteRows) : rawCorteRows
+  const safeResumenRows = onlyTipoCama ? filterOnlyTipoCama(rawResumenRows) : rawResumenRows
   const mappingRows = buildLegacyCategoryMappingRows()
 
   const timestamp =

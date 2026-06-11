@@ -813,6 +813,7 @@ export async function exportMonitoreoCamasSusalud() {
     resumenRows,
     corteTimestamp: new Date(),
     includeAudit: true,
+    onlyTipoCama: true,
   })
   const content = await buildMonitoreoCamasSusaludWorkbook({
     title: 'reporte-camas-susalud.xlsx',

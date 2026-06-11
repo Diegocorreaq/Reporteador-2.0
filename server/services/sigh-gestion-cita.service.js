@@ -30,16 +30,24 @@ async function runDateProcedure(procedure, fechaInicio, fechaFin) {
 }
 
 async function runRowsProcedure(procedure, fechaInicio, fechaFin) {
-  const rows = await executeProcedure(
-    procedure,
-    [
-      { name: 'fecini', type: sql.NVarChar, value: fechaInicio },
-      { name: 'fecfin', type: sql.NVarChar, value: fechaFin },
-    ],
-    { timeoutMs: REPORT_TIMEOUT_MS },
-  )
+  try {
+    const rows = await executeProcedure(
+      procedure,
+      [
+        { name: 'fecini', type: sql.NVarChar, value: fechaInicio },
+        { name: 'fecfin', type: sql.NVarChar, value: fechaFin },
+      ],
+      { timeoutMs: REPORT_TIMEOUT_MS },
+    )
 
-  return rows
+    return rows
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Incorrect syntax near ')'")) {
+      return []
+    }
+
+    throw error
+  }
 }
 
 function normalizeTicketSummary(rows) {

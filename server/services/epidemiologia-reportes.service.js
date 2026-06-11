@@ -1383,39 +1383,44 @@ async function exportCirugiaProcedimiento({ startDate, endDate }) {
 }
 
 const DENGUE_CORTE_COLUMNS = [
-  { header: 'IDCUENTA', value: (row) => valueForAny(row, ['IdCuentaAtencion']) },
-  { header: 'Fecha ingreso HEVES', value: (row) => formatDateForDengue(valueForAny(row, ['FechaIngreso'])) },
-  { header: 'Hora ingreso HEVES', value: (row) => formatTimeAmPmForDengue(valueForAny(row, ['HoraIngreso'])) },
-  { header: 'Servicio ingreso HEVES', value: (row) => valueForAny(row, ['SerIngreso']) },
+  { header: 'IdAtencion', value: (row) => valueForAny(row, ['IdAtencion']) },
+  { header: 'IdPaciente', value: (row) => valueForAny(row, ['IdPaciente']) },
+  { header: 'DNI', value: (row) => valueForAny(row, ['DNI']) },
+  { header: 'IdCuentaAtencion', value: (row) => valueForAny(row, ['IdCuentaAtencion']) },
+  { header: 'FechaIngreso', value: (row) => formatDateForDengue(valueForAny(row, ['FechaIngreso'])) },
+  { header: 'HoraIngreso', value: (row) => formatTimeAmPmForDengue(valueForAny(row, ['HoraIngreso'])) },
+  { header: 'SerIngreso', value: (row) => valueForAny(row, ['SerIngreso']) },
   { header: 'Paciente', value: (row) => valueForAny(row, ['Paciente']) },
-  { header: 'Destino Atencion', value: (row) => valueForAny(row, ['DestinoAtencion']) },
-  { header: 'Condicion Alta', value: (row) => valueForAny(row, ['CondicionAlta']) },
-  { header: 'Fecha egreso ultimo servicio', value: (row) => formatDateForDengue(valueForAny(row, ['FechaEgreso'])) },
-  { header: 'Hora egreso ultimo servicio', value: (row) => formatTimeAmPmForDengue(valueForAny(row, ['HoraEgreso'])) },
-  { header: 'Ultimo servicio', value: (row) => valueForAny(row, ['SerEgreso']) },
+  { header: 'DestinoAtencion', value: (row) => valueForAny(row, ['DestinoAtencion']) },
+  { header: 'CondicionAlta', value: (row) => valueForAny(row, ['CondicionAlta']) },
+  { header: 'TipoAlta', value: (row) => valueForAny(row, ['TipoAlta']) },
+  { header: 'FechaEgreso', value: (row) => formatDateForDengue(valueForAny(row, ['FechaEgreso'])) },
+  { header: 'HoraEgreso', value: (row) => formatTimeAmPmForDengue(valueForAny(row, ['HoraEgreso'])) },
+  { header: 'SerEgreso', value: (row) => valueForAny(row, ['SerEgreso']) },
+  { header: 'Tipoedad', value: (row) => valueForAny(row, ['Tipoedad']) },
   { header: 'Edad', value: (row) => valueForAny(row, ['Edad']) },
-  { header: 'Tipo_edad', value: (row) => valueForAny(row, ['Tipoedad']) },
-  { header: 'Genero', value: (row) => valueForAny(row, ['Sexo']) },
-  { header: 'Dx_Cie10_Ingreso', value: (row) => valueForAny(row, ['DX_1']) },
-  { header: 'Dx_Tipo_Ingreso', value: (row) => valueForAny(row, ['TIPO_1']) },
-  { header: 'Dx_Descripcion_Ingreso', value: (row) => valueForAny(row, ['DESDX_1']) },
-  { header: 'Dx_Cie10_Egreso', value: (row) => valueForAny(row, ['DX_EGR_1', 'DX_EGRESO_1']) },
-  { header: 'Dx_Tipo_Egreso', value: (row) => valueForAny(row, ['TIPO_EGR_1', 'TIPO_EGRESO_1']) },
-  { header: 'Dx_Descripcion_Egreso', value: (row) => valueForAny(row, ['DESDX_EGR_1', 'DES_EGRESO_1']) },
-  { header: 'Dx_Cie10_Evolucion', value: (row) => valueForAny(row, ['DX_EVO_1']) },
-  { header: 'Dx_Tipo_Evolucion', value: (row) => valueForAny(row, ['TIPO_DX_EVO_1']) },
-  { header: 'Dx_Descripcion_Evolucion', value: (row) => valueForAny(row, ['DES_DX_EVO_1']) },
-  { header: 'Cie_Inter_Sol', value: (row) => valueForAny(row, ['COD_DXS1']) },
-  { header: 'Tip_Inter_Sol', value: (row) => valueForAny(row, ['TIP_DXS1']) },
-  { header: 'Des_Inter_Sol', value: (row) => valueForAny(row, ['DES_DXS1']) },
-  { header: 'Cie_Inter_Res', value: (row) => valueForAny(row, ['COD_DXR1']) },
-  { header: 'Tip_Inter_Res', value: (row) => valueForAny(row, ['TIP_DXR1']) },
-  { header: 'Ds_Inter_Res', value: (row) => valueForAny(row, ['DES_DXR1']) },
+  { header: 'Sexo', value: (row) => valueForAny(row, ['Sexo']) },
+  { header: 'FechaConsulta', value: (row) => formatDateForDengue(valueForAny(row, ['FechaConsulta'])) },
+  { header: 'DX_1', value: (row) => valueForAny(row, ['DX_1']) },
+  { header: 'TIPO_1', value: (row) => valueForAny(row, ['TIPO_1']) },
+  { header: 'DESDX_1', value: (row) => valueForAny(row, ['DESDX_1']) },
+  { header: 'DX_2', value: (row) => valueForAny(row, ['DX_2']) },
+  { header: 'TIPO_2', value: (row) => valueForAny(row, ['TIPO_2']) },
+  { header: 'DESDX_2', value: (row) => valueForAny(row, ['DESDX_2']) },
+  { header: 'DX_EVO_1', value: (row) => valueForAny(row, ['DX_EVO_1']) },
+  { header: 'TIPO_DX_EVO_1', value: (row) => valueForAny(row, ['TIPO_DX_EVO_1']) },
+  { header: 'DES_DX_EVO_1', value: (row) => valueForAny(row, ['DES_DX_EVO_1']) },
+  { header: 'TIP_DXS1', value: (row) => valueForAny(row, ['TIP_DXS1']) },
+  { header: 'COD_DXS1', value: (row) => valueForAny(row, ['COD_DXS1']) },
+  { header: 'DES_DXS1', value: (row) => valueForAny(row, ['DES_DXS1']) },
+  { header: 'TIP_DXR1', value: (row) => valueForAny(row, ['TIP_DXR1']) },
+  { header: 'COD_DXR1', value: (row) => valueForAny(row, ['COD_DXR1']) },
+  { header: 'DES_DXR1', value: (row) => valueForAny(row, ['DES_DXR1']) },
 ]
 
 const DENGUE_COLUMN_WIDTHS = [
-  11.99, 13.0, 13.0, 27.99, 31.99, 14.99, 11.99, 13.0, 13.0, 39.99, 11.99, 13.0, 13.0, 13.0, 13.0, 39.99, 11.99,
-  13.0, 39.99, 11.99, 13.0, 39.99, 11.99, 13.0, 39.99, 13.99, 11.99, 39.99,
+  13.0, 13.0, 12.0, 17.0, 13.0, 13.0, 27.99, 31.99, 18.0, 15.0, 18.0, 13.0, 13.0, 39.99, 13.0, 11.99, 13.0,
+  18.0, 13.0, 13.0, 39.99, 13.0, 13.0, 39.99, 13.0, 16.0, 39.99, 13.0, 13.0, 39.99, 13.0, 13.0, 39.99,
 ]
 
 function formatDateForDengue(value) {
@@ -1522,7 +1527,7 @@ async function buildDengueCorteWorkbook({ day, rows }) {
   DENGUE_COLUMN_WIDTHS.forEach((width, index) => {
     ws.getColumn(index + 1).width = width
   })
-  for (let col = 29; col <= 52; col += 1) {
+  for (let col = DENGUE_CORTE_COLUMNS.length + 1; col <= 52; col += 1) {
     ws.getColumn(col).width = 13
   }
 
@@ -1589,7 +1594,7 @@ async function buildDengueRangoWorkbook({ start, end, rows }) {
   DENGUE_COLUMN_WIDTHS.forEach((width, index) => {
     ws.getColumn(index + 1).width = width
   })
-  for (let col = 29; col <= 52; col += 1) {
+  for (let col = DENGUE_CORTE_COLUMNS.length + 1; col <= 52; col += 1) {
     ws.getColumn(col).width = 13
   }
 

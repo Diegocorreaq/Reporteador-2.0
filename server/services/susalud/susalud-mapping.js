@@ -76,9 +76,9 @@ export const LEGACY_FORMULAS_BY_BLOCK = {
     RESERVA: '0 (legacy: no suma ctran en camas_susalud)',
   },
   EMERGENCIA_AMPLIADA: {
-    TOTAL: 'SUM(con_oxi + sin_oxi) en TODO el dataset base',
-    C_OXIGENO: 'SUM(con_oxi) en TODO el dataset base',
-    S_OXIGENO: 'SUM(sin_oxi) en TODO el dataset base',
+    TOTAL: 'Sobre Emergencia 1er Piso: si existe con_oxi/sin_oxi: SUM(con_oxi + sin_oxi); si no: SUM(max(max(SUM(cocup por servicio), MAX(tocupa)) - MAX(camas), 0))',
+    C_OXIGENO: 'Sobre Emergencia 1er Piso: si existe con_oxi/sin_oxi: SUM(con_oxi); si no: 0',
+    S_OXIGENO: 'Sobre Emergencia 1er Piso: si existe con_oxi/sin_oxi: SUM(sin_oxi); si no: demanda ampliada calculada como demanda_monitoreo',
   },
   RECURSOS_CRITICOS: {
     VENTILADORES: 'total=SUM(vmopera+vminopera), inop=SUM(vminopera), op=SUM(vmopera), disponibles=SUM(vmopera)-SUM(c_vm), en_uso=SUM(c_vm) en ids [398,669,672,430,670,690]',
@@ -207,9 +207,7 @@ function toNumber(value) {
 }
 
 export function normalizeLegacyTipo(value) {
-  // Legacy compara el tipo tal cual viene (solo con trim), sin normalizar
-  // mayusculas/minusculas ni acentos.
-  return String(value ?? '').trim()
+  return String(value ?? '').trim().toUpperCase()
 }
 
 function extractRuleTypeSet(rule, key) {

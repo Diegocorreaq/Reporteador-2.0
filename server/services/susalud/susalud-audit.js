@@ -50,6 +50,8 @@ export function buildSusaludAuditRows({
     es_no_susalud: row.es_no_susalud,
 
     total: row.total,
+    camas: row.camas,
+    tocupa: row.tocupa,
     chabi: row.chabi,
     cocup: row.cocup,
     clibr: row.clibr,

@@ -21,6 +21,67 @@ function sumFields(rows, fields) {
   return sums
 }
 
+function normalizeText(value) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+function selectEmergenciaAmpliadaRows(sourceRows = []) {
+  const emergenciaPrimerPisoRows = sourceRows.filter((row) => normalizeText(row.piso) === 'emergencia 1er piso')
+  if (emergenciaPrimerPisoRows.length > 0) {
+    return emergenciaPrimerPisoRows
+  }
+
+  const emergenciaRows = sourceRows.filter((row) => (
+    normalizeText(row.piso).includes('emergencia') ||
+    normalizeText(row.bloque_susalud) === 'emergencia'
+  ))
+
+  return emergenciaRows.length > 0 ? emergenciaRows : sourceRows
+}
+
+function calculateDemandaAmpliada(rows = []) {
+  const groups = new Map()
+
+  for (const row of rows) {
+    const key = `${row.source_tag}|${row.piso}|${row.idservicio}|${row.consultorio}`
+    const current = groups.get(key) ?? {
+      rows: [],
+      camas: 0,
+      tocupaSp: 0,
+      cocup: 0,
+      hasDemandBase: false,
+    }
+
+    const camas = toNumber(row.camas)
+    const tocupa = toNumber(row.tocupa)
+
+    current.rows.push(row)
+    current.camas = Math.max(current.camas, camas)
+    current.tocupaSp = Math.max(current.tocupaSp, tocupa)
+    current.cocup += toNumber(row.cocup)
+    current.hasDemandBase = current.hasDemandBase || camas > 0 || tocupa > 0
+
+    groups.set(key, current)
+  }
+
+  let total = 0
+  const sourceRows = []
+  for (const group of groups.values()) {
+    if (!group.hasDemandBase) {
+      continue
+    }
+
+    total += Math.max(Math.max(group.cocup, group.tocupaSp) - group.camas, 0)
+    sourceRows.push(...group.rows)
+  }
+
+  return { total, sourceRows }
+}
+
 function selectRowsBySource(normalizedRows, sourceTag, fallbackSourceTag) {
   const sourceRows = normalizedRows.filter((row) => row.source_tag === sourceTag)
   if (sourceRows.length > 0 || !fallbackSourceTag) {
@@ -222,13 +283,20 @@ export function buildEmergenciaBlock(normalizedRows, options = {}) {
 
 export function buildEmergenciaAmpliadaBlock(normalizedRows, options = {}) {
   const sourceRows = selectRowsBySource(normalizedRows, options.sourceTag ?? 'resumen', options.fallbackSourceTag ?? 'corte')
-  const sums = sumFields(sourceRows, ['con_oxi', 'sin_oxi'])
+  const emergenciaAmpliadaSourceRows = selectEmergenciaAmpliadaRows(sourceRows)
+  const sums = sumFields(emergenciaAmpliadaSourceRows, ['con_oxi', 'sin_oxi'])
+  const hasOxigenoSplit = sums.con_oxi + sums.sin_oxi > 0
+  const demandaAmpliada = calculateDemandaAmpliada(emergenciaAmpliadaSourceRows)
+
+  const total = hasOxigenoSplit ? sums.con_oxi + sums.sin_oxi : demandaAmpliada.total
+  const conOxigeno = hasOxigenoSplit ? sums.con_oxi : 0
+  const sinOxigeno = hasOxigenoSplit ? sums.sin_oxi : demandaAmpliada.total
 
   const row = {
     area: 'Nro de PAcientes en Sillas, Sillas de Ruedas, cAmillas, gradas, etc en espera de cama de Hospitalizacion',
-    total: sums.con_oxi + sums.sin_oxi,
-    conOxigeno: sums.con_oxi,
-    sinOxigeno: sums.sin_oxi,
+    total,
+    conOxigeno,
+    sinOxigeno,
   }
 
   return {
@@ -237,13 +305,14 @@ export function buildEmergenciaAmpliadaBlock(normalizedRows, options = {}) {
       buildAuditRow({
         block: 'EMERGENCIA_AMPLIADA',
         category: 'RESUMEN_UNICO',
-        sourceTag: sourceRows[0]?.source_tag ?? (options.sourceTag ?? 'resumen'),
+        sourceTag: emergenciaAmpliadaSourceRows[0]?.source_tag ?? sourceRows[0]?.source_tag ?? (options.sourceTag ?? 'resumen'),
         formula: JSON.stringify(LEGACY_FORMULAS_BY_BLOCK.EMERGENCIA_AMPLIADA),
-        rows: sourceRows,
+        rows: hasOxigenoSplit ? emergenciaAmpliadaSourceRows : demandaAmpliada.sourceRows,
         payload: {
           total: row.total,
           c_oxigeno: row.conOxigeno,
           s_oxigeno: row.sinOxigeno,
+          fuente_demanda_ampliada: hasOxigenoSplit ? 'con_oxi/sin_oxi' : 'demanda_monitoreo',
         },
       }),
     ],

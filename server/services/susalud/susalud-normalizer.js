@@ -20,6 +20,8 @@ export function normalizeSusaludDataset(rows, {
     })
 
     const total = toNumber(row.total)
+    const camas = toNumber(row.camas)
+    const tocupa = toNumber(row.tocupa)
     const chabi = toNumber(row.chabi)
     const cocup = toNumber(row.cocup)
     const clibr = toNumber(row.clibr)
@@ -66,6 +68,8 @@ export function normalizeSusaludDataset(rows, {
       c_vm,
       c_fl: toNumber(row.c_fl),
       c_oxi,
+      camas,
+      tocupa,
 
       vmopera,
       vminopera,

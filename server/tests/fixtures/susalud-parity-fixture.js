@@ -149,8 +149,8 @@ export const resumenRowsFixture = [
     fvopera: 20,
     fvinopera: 0,
   }),
-  // Emergencia adultos (legacy): incluye tipos "Silla" porque la exclusion
-  // historica es sensible a mayusculas y compara solo con "SILLA".
+  // El exportable SUSALUD actual solo considera tipo "Cama"; otros recursos
+  // quedan en el fixture para verificar que el filtro los excluye.
   makeRow('OBSERVACION GINECO-OBSTETRICIA', {
     idservicio: 418,
     tipo: 'Cama',
@@ -251,7 +251,7 @@ export const expectedParity = {
   ucin: {
     'UCIN ADULTO': [10, 2, 8, 2, 6, 6, 0, 0, 0],
     'UCIN PEDIATRICO': [6, 2, 4, 0, 4, 4, 0, 0, 0],
-    'UCIN NEONATOLOGIA': [24, 4, 20, 8, 12, 12, 0, 0, 0],
+    'UCIN NEONATOLOGIA': [0, 0, 0, 0, 0, 0, 0, 0, 0],
   },
   hospitalizacion: {
     'HOSPITALIZACION ADULTOS': [160, 0, 160, 9, 151, 151, 0, 0],
@@ -259,7 +259,7 @@ export const expectedParity = {
   },
   emergencia: {
     'UNIDAD DE TRAUMA SCHOCK': [8, 0, 8, 7, 1, 1, 0, 0, 0],
-    'EMERGENCIA ADULTOS': [107, 5, 102, 29, 73, 73, 0, 0, 0],
+    'EMERGENCIA ADULTOS': [26, 0, 26, 4, 22, 22, 0, 0, 0],
     'EMERGENCIA PEDIATRICA': [10, 0, 10, 0, 10, 10, 0, 0, 0],
   },
   emergenciaAmpliada: [0, 0, 0],
