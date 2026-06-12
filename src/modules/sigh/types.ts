@@ -135,6 +135,7 @@ export interface ProduccionResumenReport {
     numeroDias: number
   } | null
   rows: SighTableRow[]
+  warnings?: ReportWarning[]
 }
 
 export interface ProduccionDetalleReport {
@@ -142,9 +143,15 @@ export interface ProduccionDetalleReport {
     fechaInicio: string
     fechaFin: string
     empleadoId: number
-    orden: number
+    orden?: number
   }
   rows: SighTableRow[]
+  warnings?: ReportWarning[]
+}
+
+export interface ReportWarning {
+  code: string
+  message: string
 }
 
 export type ProduccionMedicoEmpleado = ProduccionProfesional

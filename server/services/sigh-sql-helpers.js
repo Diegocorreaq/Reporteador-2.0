@@ -40,6 +40,13 @@ export async function executeQuery_Sigh2(query, params = [], options = {}) {
   })
 }
 
+export async function executeProcedure_Cnv(name, params = [], options = {}) {
+  return baseProcedure(name, params, {
+    ...options,
+    connection: 'cnv',
+  })
+}
+
 /**
  * General - Main app modules
  */

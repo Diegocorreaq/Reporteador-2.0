@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Alert } from '@/components/ui/alert'
 import { SighFilterPanel } from '@/modules/sigh/components/sigh-filter-panel'
 import { SighPageShell } from '@/modules/sigh/components/sigh-page-shell'
 import { SighTable, type SighTableColumn } from '@/modules/sigh/components/sigh-table'
@@ -12,6 +13,7 @@ import type {
   ProduccionDetalleReport,
   ProduccionProfesional,
   ProduccionResumenReport,
+  ReportWarning,
   SighTableRow,
 } from '@/modules/sigh/types'
 
@@ -29,9 +31,9 @@ interface ProduccionProfesionalReportProps {
   professionalLabel: string
   searchProfessionals: (term: string) => Promise<ProduccionProfesional[]>
   getSummary: (filters: ProductionFilters) => Promise<ProduccionResumenReport>
-  downloadPdf: (filters: ProductionFilters) => Promise<void>
-  downloadExcel: (filters: ProductionFilters) => Promise<void>
-  getDetail?: (filters: ProductionFilters & { orden: number }) => Promise<ProduccionDetalleReport>
+  downloadPdf: (filters: ProductionFilters) => Promise<ReportWarning[] | void>
+  downloadExcel: (filters: ProductionFilters) => Promise<ReportWarning[] | void>
+  getDetail?: (filters: ProductionFilters & { orden: number; actividad: string }) => Promise<ProduccionDetalleReport>
 }
 
 function validateFilters(
@@ -73,6 +75,7 @@ export function ProduccionProfesionalReport({
   const [searching, setSearching] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [warnings, setWarnings] = useState<ReportWarning[]>([])
   const [openAutocomplete, setOpenAutocomplete] = useState(false)
   const [detailRows, setDetailRows] = useState<SighTableRow[]>([])
   const [detailTitle, setDetailTitle] = useState('')
@@ -86,6 +89,7 @@ export function ProduccionProfesionalReport({
     setHasQueried(false)
     setDetailRows([])
     setIsDetailOpen(false)
+    setWarnings([])
   }
 
   useEffect(() => {
@@ -192,6 +196,7 @@ export function ProduccionProfesionalReport({
     if (!validFilters) return
 
     setError(null)
+    setWarnings([])
     setLoading(true)
     setHasQueried(true)
     setReport(null)
@@ -199,6 +204,7 @@ export function ProduccionProfesionalReport({
       const payload = await getSummary(validFilters)
       if (!payload || !Array.isArray(payload.rows)) throw new Error('El servidor devolvió una respuesta inválida.')
       setReport(payload)
+      setWarnings(payload.warnings ?? [])
     } catch (processError) {
       setError(processError instanceof Error ? processError.message : 'No se pudo procesar el reporte.')
     } finally {
@@ -211,9 +217,11 @@ export function ProduccionProfesionalReport({
     if (!validFilters) return
 
     setError(null)
+    setWarnings([])
     setLoading(true)
     try {
-      await (format === 'pdf' ? downloadPdf(validFilters) : downloadExcel(validFilters))
+      const exportWarnings = await (format === 'pdf' ? downloadPdf(validFilters) : downloadExcel(validFilters))
+      setWarnings(exportWarnings ?? [])
     } catch (exportError) {
       setError(exportError instanceof Error ? exportError.message : `No se pudo exportar en ${format.toUpperCase()}.`)
     } finally {
@@ -225,6 +233,7 @@ export function ProduccionProfesionalReport({
     if (!getDetail) return
     const validFilters = getValidatedFilters()
     const orden = resolveRowNumber(row, 'ORD', ['COD_ACT'])
+    const actividad = resolveRowText(row, 'TIPOACTIVIDAD', ['TIPO_ACTIVIDAD'])
     if (!validFilters || !orden) return
 
     setLoadingDetail(true)
@@ -232,8 +241,9 @@ export function ProduccionProfesionalReport({
     setDetailRows([])
     setDetailTitle(resolveRowText(row, 'TIPOACTIVIDAD', ['TIPO_ACTIVIDAD']))
     try {
-      const payload = await getDetail({ ...validFilters, orden })
+      const payload = await getDetail({ ...validFilters, orden, actividad })
       setDetailRows(Array.isArray(payload?.rows) ? payload.rows : [])
+      setWarnings(payload.warnings ?? [])
     } catch (detailError) {
       setError(detailError instanceof Error ? detailError.message : 'No se pudo consultar el detalle.')
     } finally {
@@ -241,12 +251,24 @@ export function ProduccionProfesionalReport({
     }
   }
 
+  const controlsEnabled = !validateFilters(
+    searchText,
+    selectedProfessional,
+    filters.fechaInicio,
+    filters.fechaFin,
+  )
+
   return (
     <SighPageShell error={error} description={description}>
+      {warnings.map((warning) => (
+        <Alert key={warning.code} variant="warning">
+          El reporte se generó, pero no fue posible cargar la producción CNV.
+        </Alert>
+      ))}
       <SighFilterPanel
         onProcess={() => void handleProcess()}
         processLabel="Consultar"
-        processDisabled={loading}
+        processDisabled={loading || !controlsEnabled}
       >
         <div className="w-full min-w-0 space-y-1 md:min-w-[280px] md:flex-1" ref={autocompleteRef}>
           <label className="text-xs font-semibold text-brand-strong" htmlFor="produccion-profesional-input">
@@ -311,11 +333,11 @@ export function ProduccionProfesionalReport({
         </div>
 
         <div className="flex w-full flex-wrap items-end gap-2 md:w-auto md:pb-2">
-          <Button size="sm" className="h-9 gap-1.5 px-3 font-semibold" onClick={() => void handleExport('pdf')} disabled={loading}>
+          <Button size="sm" className="h-9 gap-1.5 px-3 font-semibold" onClick={() => void handleExport('pdf')} disabled={loading || !controlsEnabled}>
             <FileText className="h-4 w-4" />
             PDF
           </Button>
-          <Button size="sm" className="h-9 gap-1.5 px-3 font-semibold" variant="brand" onClick={() => void handleExport('excel')} disabled={loading}>
+          <Button size="sm" className="h-9 gap-1.5 px-3 font-semibold" variant="brand" onClick={() => void handleExport('excel')} disabled={loading || !controlsEnabled}>
             <Download className="h-4 w-4" />
             Excel
           </Button>

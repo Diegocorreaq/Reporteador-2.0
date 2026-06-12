@@ -5,6 +5,7 @@ const poolPromises = {
   general: null,
   sigh1: null,
   sigh2: null,
+  cnv: null,
 }
 
 function assertCredentials(dbConfig) {
@@ -64,4 +65,3 @@ export async function closeSqlPool(connectionName) {
 }
 
 export { sql }
-

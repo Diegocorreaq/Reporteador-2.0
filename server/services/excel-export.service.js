@@ -2322,24 +2322,14 @@ export async function buildProduccionObstetrasWorkbook({ rows, startDate, endDat
   wb.creator = 'Reporteador-2.0'
   const ws = wb.addWorksheet(getSheetNameFromFileName(title || 'produccion-obstetras'))
   const sourceRows = Array.isArray(rows) ? rows : []
-  const keys = sourceRows.reduce((result, row) => {
-    Object.keys(row ?? {}).forEach((key) => {
-      if (!result.includes(key)) result.push(key)
-    })
-    return result
-  }, [])
-
-  const financingIndex = keys.findIndex((key) =>
-    ['FUENTEFINANCIAMIENTO', 'FUENTEFINANCIERA'].includes(
-      String(key).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase(),
-    ),
-  )
-  if (financingIndex >= 0) {
-    const [financingKey] = keys.splice(financingIndex, 1)
-    keys.push(financingKey)
-  } else {
-    keys.push('FUENTE FINANCIAMIENTO')
-  }
+  const keys = [
+    'COD_ACT', 'TIPO_ACTIVIDAD', 'CANTIDAD', 'NOMBRE_PROFESIONAL', 'DNI', 'TIPO_EMPLEADO',
+    'SERVICIO_ACTIVIDAD', 'CUENTA', 'FECHA', 'HORA', 'NOMBRE_PACIENTE', 'NRO_DOCUMENTO',
+    'NRO_HISTORIA', 'PRIORIDAD', 'TIPO_ATENCION_CE', 'COD_DX1', 'DESCRIPCION_DX1',
+    'CODIGO_CPT', 'DESCRIPCION_CPT', 'IDRECETA', 'PUNTO_CARGA', 'FUNCION', 'COMPLEJIDAD',
+    'FECHA_INI_CIRUGIA', 'FECHA_FIN_CIRUGIA', 'CODCPT1', 'DESCPT1', 'CODCPT2', 'DESCPT2',
+    'CODCPT3', 'DESCPT3', 'CODCPT4', 'DESCPT4', 'FUENTE_FINANCIAMIENTO',
+  ]
 
   const totalCols = Math.max(keys.length, 1)
   ws.mergeCells(1, 1, 1, totalCols)
@@ -2355,8 +2345,7 @@ export async function buildProduccionObstetrasWorkbook({ rows, startDate, endDat
 
   keys.forEach((key, index) => {
     const cell = ws.getCell(4, index + 1)
-    const normalized = String(key).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
-    cell.value = normalized.includes('FUENTEFINANCIAMIENTO') ? 'FUENTE FINANCIAMIENTO' : key
+    cell.value = key
     applyHeaderStyle(cell, '123B63', { horizontal: 'center', wrapText: true, fontColor: 'FFFFFF' })
     ws.getColumn(index + 1).width = Math.min(Math.max(String(cell.value).length + 4, 14), 36)
   })
@@ -2364,7 +2353,7 @@ export async function buildProduccionObstetrasWorkbook({ rows, startDate, endDat
   sourceRows.forEach((row, rowIndex) => {
     keys.forEach((key, columnIndex) => {
       const cell = ws.getCell(rowIndex + 5, columnIndex + 1)
-      const raw = row?.[key] ?? ''
+      const raw = col(row, key)
       const token = String(key).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
       const asText = token.includes('DNI') || token.includes('DOCUMENTO') || token.includes('HISTORIA')
       cell.value = asText && raw !== '' && raw != null ? String(raw) : raw

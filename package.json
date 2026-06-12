@@ -10,6 +10,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint . --max-warnings=0",
     "test": "node --test server/tests/susalud-parity.test.js",
+    "test:obstetras-cnv": "node --test server/tests/sigh-prod-obstetras-cnv.test.js",
     "test:susalud:legacy-file": "node server/tests/susalud-legacy-file-parity.test.js",
     "preview": "vite preview",
     "typecheck": "tsc -b",

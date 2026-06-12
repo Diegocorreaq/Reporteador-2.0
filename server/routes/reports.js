@@ -21,6 +21,7 @@ import {
 import {
   exportProduccionObstetrasExcel,
   exportProduccionObstetrasPdf,
+  getProduccionObstetrasDetalle,
   getProduccionObstetrasResumen,
   searchProduccionObstetras,
 } from '../services/sigh-prod-obstetras.service.js'
@@ -84,6 +85,10 @@ function getClientIp(request) {
 function sendDownload(response, file) {
   response.setHeader('Content-Type', file.mimeType)
   response.setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`)
+  if (file.warnings?.length) {
+    response.setHeader('X-Report-Warnings', encodeURIComponent(JSON.stringify(file.warnings)))
+    response.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, X-Report-Warnings')
+  }
   response.send(file.content)
 }
 
@@ -686,6 +691,26 @@ reportsRouter.get('/sigh/prod-obstetras/resumen', requireAuth, async (request, r
     response.json(payload)
   } catch (error) {
     handleError(response, error, 'No se pudo consultar la producción de obstetras.')
+  }
+})
+
+reportsRouter.get('/sigh/prod-obstetras/detalle', requireAuth, async (request, response) => {
+  try {
+    const payload = await getProduccionObstetrasDetalle({
+      fechaInicio: request.query.fechaInicio,
+      fechaFin: request.query.fechaFin,
+      empleadoId: request.query.empleadoId,
+    })
+    const orden = Number(request.query.orden ?? 0)
+    const actividad = String(request.query.actividad ?? '').trim().toUpperCase()
+    payload.rows = actividad
+      ? payload.rows.filter((row) => String(row.TIPO_ACTIVIDAD ?? '').trim().toUpperCase() === actividad)
+      : orden
+        ? payload.rows.filter((row) => Number(row.COD_ACT ?? 0) === orden)
+        : payload.rows
+    response.json(payload)
+  } catch (error) {
+    handleError(response, error, 'No se pudo consultar el detalle de produccion de obstetras.')
   }
 })
 

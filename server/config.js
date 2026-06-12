@@ -17,10 +17,10 @@ function toBoolean(value, fallback) {
   return ['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase())
 }
 
-function buildDbConfig(prefix = '') {
+function buildDbConfig(prefix = '', overrides = {}) {
   const hostKey = prefix ? `${prefix}_HOST` : 'SQL_HOST'
   const portKey = prefix ? `${prefix}_PORT` : 'SQL_PORT'
-  const dbKey = prefix ? `${prefix}_DATABASE` : 'SQL_DATABASE'
+  const dbKey = overrides.databaseKey ?? (prefix ? `${prefix}_DATABASE` : 'SQL_DATABASE')
   const userKey = prefix ? `${prefix}_USER` : 'SQL_USER'
   const passKey = prefix ? `${prefix}_PASSWORD` : 'SQL_PASSWORD'
   const encKey = prefix ? `${prefix}_ENCRYPT` : 'SQL_ENCRYPT'
@@ -49,9 +49,9 @@ function buildDbConfig(prefix = '') {
   }
 
   return {
-    server: process.env[hostKey] ?? '192.168.32.129',
+    server: process.env[hostKey] ?? overrides.defaultHost ?? '192.168.32.129',
     port: toNumber(process.env[portKey], 1433),
-    database: process.env[dbKey] ?? 'SIGH_DEPURA',
+    database: process.env[dbKey] ?? overrides.defaultDatabase ?? 'SIGH_DEPURA',
     user: process.env[userKey] ?? '',
     password: process.env[passKey] ?? '',
     requestTimeout: Math.max(toNumber(process.env[requestTimeoutKey], 30000), 30000),
@@ -121,6 +121,11 @@ export const serverConfig = {
     general: buildDbConfig(''),
     sigh1: buildDbConfig('SIGH_SQL1'),
     sigh2: buildDbConfig('SIGH_SQL2'),
+    cnv: buildDbConfig('CNV_DB', {
+      databaseKey: 'CNV_DB_NAME',
+      defaultHost: '192.168.32.129',
+      defaultDatabase: 'SIGH_DEPURA',
+    }),
   },
 }
 

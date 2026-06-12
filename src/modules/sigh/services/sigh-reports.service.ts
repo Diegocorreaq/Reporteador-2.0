@@ -29,6 +29,7 @@ import type {
   ProduccionDetalleReport,
   ProduccionProfesional,
   ProduccionResumenReport,
+  ReportWarning,
   SighExportCatalogOption,
   SighOption,
   SighTableRow,
@@ -82,6 +83,14 @@ async function downloadBlob(path: string, params: Record<string, string | number
 
   const fileName = parseFileName(response.headers['content-disposition'])
   triggerBrowserDownload(response.data, fileName)
+  const rawWarnings = response.headers['x-report-warnings']
+  if (!rawWarnings) return []
+
+  try {
+    return JSON.parse(decodeURIComponent(rawWarnings)) as ReportWarning[]
+  } catch {
+    return []
+  }
 }
 
 export async function validateSisgalenUser(username: string, password: string) {
@@ -170,11 +179,11 @@ export async function getProduccionMedicosDetalle(filters: ProduccionProfesional
 }
 
 export async function downloadProduccionMedicosExcel(filters: ProduccionProfesionalFilters) {
-  await downloadBlob('/sigh/prod-medicos/export/excel', filters as unknown as Record<string, string | number | undefined>)
+  return downloadBlob('/sigh/prod-medicos/export/excel', filters as unknown as Record<string, string | number | undefined>)
 }
 
 export async function downloadProduccionMedicosPdf(filters: ProduccionProfesionalFilters) {
-  await downloadBlob('/sigh/prod-medicos/export/pdf', filters as unknown as Record<string, string | number | undefined>)
+  return downloadBlob('/sigh/prod-medicos/export/pdf', filters as unknown as Record<string, string | number | undefined>)
 }
 
 export async function searchProduccionObstetras(term: string) {
@@ -195,11 +204,21 @@ export async function getProduccionObstetrasResumen(filters: ProduccionProfesion
 }
 
 export async function downloadProduccionObstetrasExcel(filters: ProduccionProfesionalFilters) {
-  await downloadBlob('/sigh/prod-obstetras/export/excel', filters as unknown as Record<string, string | number | undefined>)
+  return downloadBlob('/sigh/prod-obstetras/export/excel', filters as unknown as Record<string, string | number | undefined>)
 }
 
 export async function downloadProduccionObstetrasPdf(filters: ProduccionProfesionalFilters) {
-  await downloadBlob('/sigh/prod-obstetras/export/pdf', filters as unknown as Record<string, string | number | undefined>)
+  return downloadBlob('/sigh/prod-obstetras/export/pdf', filters as unknown as Record<string, string | number | undefined>)
+}
+
+export async function getProduccionObstetrasDetalle(
+  filters: ProduccionProfesionalFilters & { orden: number; actividad: string },
+) {
+  const response = await httpClient.get<ProduccionDetalleReport>('/sigh/prod-obstetras/detalle', {
+    params: filters,
+    timeout: 180000,
+  })
+  return response.data
 }
 
 export async function listCamasServicios() {
