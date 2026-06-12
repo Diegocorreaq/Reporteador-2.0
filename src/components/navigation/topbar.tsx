@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { LogOut, Menu, MoreHorizontal, User } from 'lucide-react'
+import { OrientationGlobalSearch } from '@/components/navigation/orientation-global-search'
 import { menuService } from '@/services/menu/menu.service'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
 import { clearCentroOrientacionOnboardingSession } from '@/modules/onboarding/hooks/use-centro-orientacion-onboarding'
@@ -174,12 +175,14 @@ function UserMenu({
 }
 
 export function Topbar({ workspace, onOpenMobile }: TopbarProps) {
+  const location = useLocation()
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const signOut = useAuthStore((state) => state.signOut)
   const quickLinks = menuService.getQuickLinks(workspace, user)
   const compactQuickLinks = quickLinks.slice(0, 2)
   const overflowQuickLinks = quickLinks.slice(2)
+  const isWorkspaceHome = location.pathname === '/app' || location.pathname === '/sigh'
 
   const handleLogout = () => {
     // Clear the server-side session cookie before wiping local state
@@ -212,8 +215,14 @@ export function Topbar({ workspace, onOpenMobile }: TopbarProps) {
           <WorkspaceSwitchButton active={workspace === 'sigh'} label="Datos en Linea" to="/sigh" />
         </div>
 
+        {!isWorkspaceHome ? (
+          <OrientationGlobalSearch className="mx-auto max-w-[560px]" key={location.pathname} />
+        ) : (
+          <div className="hidden flex-1 sm:block" />
+        )}
+
         {/* Right side actions */}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {/* Quick links - desktop */}
           <div className="hidden items-center gap-1.5 lg:flex xl:hidden">
             {compactQuickLinks.map((link) => (

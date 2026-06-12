@@ -71,6 +71,9 @@ function filterEntry(entry: NavigationEntry, user: AuthUser | null | undefined) 
 }
 
 export const menuService = {
+  canAccessPermission(user: AuthUser | null | undefined, permission?: string) {
+    return !permission || hasAccess(user, { permissions: [permission] })
+  },
   getSections(workspace: WorkspaceKey, user?: AuthUser | null) {
     return getNavigationSections(workspace)
       .map((section) => ({

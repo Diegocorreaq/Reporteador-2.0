@@ -2317,6 +2317,69 @@ export async function buildProduccionMedicosWorkbook({ rows, startDate, endDate,
   return wb.xlsx.writeBuffer()
 }
 
+export async function buildProduccionObstetrasWorkbook({ rows, startDate, endDate, title }) {
+  const wb = new ExcelJS.Workbook()
+  wb.creator = 'Reporteador-2.0'
+  const ws = wb.addWorksheet(getSheetNameFromFileName(title || 'produccion-obstetras'))
+  const sourceRows = Array.isArray(rows) ? rows : []
+  const keys = sourceRows.reduce((result, row) => {
+    Object.keys(row ?? {}).forEach((key) => {
+      if (!result.includes(key)) result.push(key)
+    })
+    return result
+  }, [])
+
+  const financingIndex = keys.findIndex((key) =>
+    ['FUENTEFINANCIAMIENTO', 'FUENTEFINANCIERA'].includes(
+      String(key).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase(),
+    ),
+  )
+  if (financingIndex >= 0) {
+    const [financingKey] = keys.splice(financingIndex, 1)
+    keys.push(financingKey)
+  } else {
+    keys.push('FUENTE FINANCIAMIENTO')
+  }
+
+  const totalCols = Math.max(keys.length, 1)
+  ws.mergeCells(1, 1, 1, totalCols)
+  const titleCell = ws.getCell(1, 1)
+  titleCell.value = 'DETALLE DE PRODUCCIÓN OBSTETRA'
+  titleCell.font = { bold: true, size: 14 }
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
+  ws.getRow(1).height = 24
+
+  ws.mergeCells(2, 1, 2, totalCols)
+  ws.getCell(2, 1).value = `Desde: ${startDate} | Hasta: ${endDate} | Fecha y hora: ${formatDateTime()}`
+  ws.getCell(2, 1).alignment = { horizontal: 'left', vertical: 'middle' }
+
+  keys.forEach((key, index) => {
+    const cell = ws.getCell(4, index + 1)
+    const normalized = String(key).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+    cell.value = normalized.includes('FUENTEFINANCIAMIENTO') ? 'FUENTE FINANCIAMIENTO' : key
+    applyHeaderStyle(cell, '123B63', { horizontal: 'center', wrapText: true, fontColor: 'FFFFFF' })
+    ws.getColumn(index + 1).width = Math.min(Math.max(String(cell.value).length + 4, 14), 36)
+  })
+
+  sourceRows.forEach((row, rowIndex) => {
+    keys.forEach((key, columnIndex) => {
+      const cell = ws.getCell(rowIndex + 5, columnIndex + 1)
+      const raw = row?.[key] ?? ''
+      const token = String(key).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+      const asText = token.includes('DNI') || token.includes('DOCUMENTO') || token.includes('HISTORIA')
+      cell.value = asText && raw !== '' && raw != null ? String(raw) : raw
+      if (asText) cell.numFmt = '@'
+      applyDataStyle(cell, { horizontal: asText ? 'left' : 'center', wrapText: true })
+    })
+  })
+
+  ws.views = [{ state: 'frozen', ySplit: 4 }]
+  if (keys.length > 0) {
+    ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: keys.length } }
+  }
+  return wb.xlsx.writeBuffer()
+}
+
 // ---------------------------------------------------------------------------
 // Re-export MIME type so callers do not hardcode the string
 // ---------------------------------------------------------------------------

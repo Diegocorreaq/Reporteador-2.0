@@ -189,6 +189,11 @@ const explicitMainRoutePaths = new Set(
       'epidemiologia/seguimiento-dengue',
     ]),
 )
+const ProduccionObstetrasPage = lazy(() =>
+  import('@/modules/sigh/pages/produccion-obstetras-page').then((module) => ({
+    default: module.ProduccionObstetrasPage,
+  })),
+)
 
 const explicitSighRoutePaths = new Set(
   legacySighEmbedRoutes
@@ -198,6 +203,7 @@ const explicitSighRoutePaths = new Set(
       'exportar-registros/registros-nominales',
       'exportar-registros/registros-produccion',
       'produccion-actividades/produccion-medicos',
+      'produccion-actividades/produccion-obstetras',
       'gestion-camas/monitoreo-de-camas',
       'gestion-camas/resumen-de-camas',
       'gestion-camas/porcentaje-de-ocupacion-cama',
@@ -288,6 +294,10 @@ const sighImplementedRoutes = [
   {
     path: 'produccion-actividades/produccion-medicos',
     element: lazyElement(<ProduccionMedicosPage />),
+  },
+  {
+    path: 'produccion-actividades/produccion-obstetras',
+    element: lazyElement(<ProduccionObstetrasPage />),
   },
   {
     path: 'gestion-camas/monitoreo-de-camas',

@@ -881,6 +881,22 @@ const navigationCatalogBase: CatalogResource[] = [
     permissionKey: 'menu.sigh.produccion-actividades.produccion-medicos',
     featured: true,
   },
+  {
+    id: 'sigh-produccion-obstetras',
+    title: 'Producción Obstetras',
+    description: 'Producción de actividades de obstetras con exportación en PDF y Excel.',
+    workspace: 'datos-en-linea',
+    workspaceLabel: 'Datos en Línea',
+    type: 'exportable',
+    category: 'Producción de Actividades',
+    route: '/sigh/produccion-actividades/produccion-obstetras',
+    breadcrumb: 'Datos en Línea → Producción de Actividades',
+    legacyName: 'Producción Obstetras — PDF / Excel',
+    aliases: ['produccion obstetras', 'produccion obstetrica', 'obstetras pdf', 'obstetras excel'],
+    keywords: ['produccion', 'obstetra', 'actividad', 'pdf', 'excel', 'exportar'],
+    permissionKey: 'menu.sigh.produccion-actividades.produccion-obstetras',
+    featured: false,
+  },
 
   // Gestión Camas
   {
@@ -1748,6 +1764,9 @@ const dashboardEnhancements: Record<string, CatalogResourceEnhancement> = {
     featured: false,
   },
   'sigh-produccion-medicos': {
+    featured: false,
+  },
+  'sigh-produccion-obstetras': {
     featured: false,
   },
   'sigh-monitoreo-camas': {

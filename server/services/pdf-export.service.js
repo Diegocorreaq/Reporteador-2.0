@@ -131,9 +131,18 @@ function createPdf(pages) {
   return Buffer.from(chunks.join(''), 'binary')
 }
 
-function buildPageContent({ employee, startDate, endDate, rows, days, pageRows, pageIndex, pageCount }) {
+function buildPageContent({
+  employee,
+  startDate,
+  endDate,
+  days,
+  pageRows,
+  pageIndex,
+  pageCount,
+  reportTitle,
+}) {
   const commands = ['0.000 0.000 0.000 rg']
-  commands.push(pdfText('REPORTE DE PRODUCCION DE MEDICOS ', 344.062, 543.963, { font: 'F1' }))
+  commands.push(pdfText(reportTitle, 300.000, 543.963, { font: 'F1' }))
 
   const headerY1 = 519.624
   const headerY2 = 507.467
@@ -143,17 +152,17 @@ function buildPageContent({ employee, startDate, endDate, rows, days, pageRows, 
   cellBox(commands, headerColumns[0], headerY1, headerColumns[1] - headerColumns[0], headerH)
   cellText(commands, 'N° de DNI:', headerColumns[0], headerY1, headerColumns[1] - headerColumns[0], headerH, { bold: true, align: 'center' })
   cellBox(commands, headerColumns[1], headerY1, headerColumns[2] - headerColumns[1], headerH, { fill: 0.898 })
-  cellText(commands, employee.idEmpleado, headerColumns[1], headerY1, headerColumns[2] - headerColumns[1], headerH, { align: 'center' })
+  cellText(commands, employee.dni, headerColumns[1], headerY1, headerColumns[2] - headerColumns[1], headerH, { align: 'center' })
 
   cellBox(commands, headerColumns[2], headerY1, headerColumns[3] - headerColumns[2], headerH)
   cellText(commands, 'Nombre de Profesional:', headerColumns[2], headerY1, headerColumns[3] - headerColumns[2], headerH, { bold: true, align: 'center' })
   cellBox(commands, headerColumns[3], headerY1, headerColumns[4] - headerColumns[3], headerH, { fill: 0.898 })
-  cellText(commands, employee.empleado, headerColumns[3], headerY1, headerColumns[4] - headerColumns[3], headerH, { align: 'center' })
+  cellText(commands, employee.nombre, headerColumns[3], headerY1, headerColumns[4] - headerColumns[3], headerH, { align: 'center' })
 
   cellBox(commands, headerColumns[4], headerY1, headerColumns[5] - headerColumns[4], headerH)
   cellText(commands, 'Tipo de Empleado:', headerColumns[4], headerY1, headerColumns[5] - headerColumns[4], headerH, { bold: true, align: 'center' })
   cellBox(commands, headerColumns[5], headerY1, headerColumns[6] - headerColumns[5], headerH, { fill: 0.898 })
-  cellText(commands, employee.especialidad, headerColumns[5], headerY1, headerColumns[6] - headerColumns[5], headerH, { align: 'center' })
+  cellText(commands, employee.tipoEmpleado, headerColumns[5], headerY1, headerColumns[6] - headerColumns[5], headerH, { align: 'center' })
 
   cellBox(commands, headerColumns[0], headerY2, headerColumns[1] - headerColumns[0], headerH)
   cellText(commands, 'Fecha Desde:', headerColumns[0], headerY2, headerColumns[1] - headerColumns[0], headerH, { bold: true, align: 'center' })
@@ -223,7 +232,14 @@ function buildPageContent({ employee, startDate, endDate, rows, days, pageRows, 
   return commands.join('\n')
 }
 
-export function buildProduccionMedicosPdf({ employee, rows, dayRange, startDate, endDate }) {
+function buildProduccionProfesionalPdf({
+  employee,
+  rows,
+  dayRange,
+  startDate,
+  endDate,
+  reportTitle,
+}) {
   const days = []
   if (dayRange) {
     for (let day = Number(dayRange.diaInicio); day <= Number(dayRange.diaFin); day += 1) {
@@ -247,8 +263,23 @@ export function buildProduccionMedicosPdf({ employee, rows, dayRange, startDate,
       pageRows: sourceRows.slice(pageIndex * rowsPerPage, (pageIndex + 1) * rowsPerPage),
       pageIndex,
       pageCount,
+      reportTitle,
     }))
   }
 
   return createPdf(pages)
+}
+
+export function buildProduccionMedicosPdf(options) {
+  return buildProduccionProfesionalPdf({
+    ...options,
+    reportTitle: 'REPORTE DE PRODUCCION DE MEDICOS',
+  })
+}
+
+export function buildProduccionObstetrasPdf(options) {
+  return buildProduccionProfesionalPdf({
+    ...options,
+    reportTitle: 'REPORTE DE PRODUCCION DE OBSTETRAS',
+  })
 }

@@ -19,6 +19,12 @@ import {
   searchProduccionMedicos,
 } from '../services/sigh-prod-medicos.service.js'
 import {
+  exportProduccionObstetrasExcel,
+  exportProduccionObstetrasPdf,
+  getProduccionObstetrasResumen,
+  searchProduccionObstetras,
+} from '../services/sigh-prod-obstetras.service.js'
+import {
   exportMonitoreoCamasResumen,
   exportMonitoreoCamasSusalud,
   getCamasDetalle,
@@ -658,6 +664,54 @@ reportsRouter.get('/epidemiologia/lavado/export', requireAuth, exportLimiter, as
     sendDownload(response, file)
   } catch (error) {
     handleError(response, error, 'No se pudo exportar el listado de lavado de manos.')
+  }
+})
+
+reportsRouter.get('/sigh/prod-obstetras/empleados', requireAuth, async (request, response) => {
+  try {
+    const rows = await searchProduccionObstetras(request.query.term)
+    response.json({ rows })
+  } catch (error) {
+    handleError(response, error, 'No se pudo buscar obstetras.')
+  }
+})
+
+reportsRouter.get('/sigh/prod-obstetras/resumen', requireAuth, async (request, response) => {
+  try {
+    const payload = await getProduccionObstetrasResumen({
+      fechaInicio: request.query.fechaInicio,
+      fechaFin: request.query.fechaFin,
+      empleadoId: request.query.empleadoId,
+    })
+    response.json(payload)
+  } catch (error) {
+    handleError(response, error, 'No se pudo consultar la producción de obstetras.')
+  }
+})
+
+reportsRouter.get('/sigh/prod-obstetras/export/excel', requireAuth, exportLimiter, async (request, response) => {
+  try {
+    const file = await exportProduccionObstetrasExcel({
+      fechaInicio: request.query.fechaInicio,
+      fechaFin: request.query.fechaFin,
+      empleadoId: request.query.empleadoId,
+    })
+    sendDownload(response, file)
+  } catch (error) {
+    handleError(response, error, 'No se pudo exportar la producción de obstetras en Excel.')
+  }
+})
+
+reportsRouter.get('/sigh/prod-obstetras/export/pdf', requireAuth, exportLimiter, async (request, response) => {
+  try {
+    const file = await exportProduccionObstetrasPdf({
+      fechaInicio: request.query.fechaInicio,
+      fechaFin: request.query.fechaFin,
+      empleadoId: request.query.empleadoId,
+    })
+    sendDownload(response, file)
+  } catch (error) {
+    handleError(response, error, 'No se pudo generar el PDF de producción de obstetras.')
   }
 })
 

@@ -125,6 +125,16 @@ export const sighSections: NavigationSection[] = [
             featured: true,
             access: { permissions: ['menu.sigh.produccion-actividades.produccion-medicos'] },
           }),
+          item({
+            key: 'sigh-produccion-obstetras',
+            legacyKey: 'obstetra',
+            legacyRoute: '/sigh/prodprofesional/obstetra',
+            label: 'Producción Obstetras',
+            to: '/sigh/produccion-actividades/produccion-obstetras',
+            description: 'Consulta de producción de actividades de obstetras.',
+            icon: UsersRound,
+            access: { permissions: ['menu.sigh.produccion-actividades.produccion-obstetras'] },
+          }),
         ],
       }),
       group({

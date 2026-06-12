@@ -116,14 +116,14 @@ export interface FamiliaPendienteReport {
   }
 }
 
-export interface ProduccionMedicoEmpleado {
+export interface ProduccionProfesional {
   idEmpleado: number
   dni: string
-  empleado: string
-  especialidad: string
+  nombre: string
+  tipoEmpleado: string
 }
 
-export interface ProduccionMedicosResumenReport {
+export interface ProduccionResumenReport {
   filters: {
     fechaInicio: string
     fechaFin: string
@@ -137,7 +137,7 @@ export interface ProduccionMedicosResumenReport {
   rows: SighTableRow[]
 }
 
-export interface ProduccionMedicosDetalleReport {
+export interface ProduccionDetalleReport {
   filters: {
     fechaInicio: string
     fechaFin: string
@@ -146,6 +146,10 @@ export interface ProduccionMedicosDetalleReport {
   }
   rows: SighTableRow[]
 }
+
+export type ProduccionMedicoEmpleado = ProduccionProfesional
+export type ProduccionMedicosResumenReport = ProduccionResumenReport
+export type ProduccionMedicosDetalleReport = ProduccionDetalleReport
 
 export interface GestionCitasBlockReport {
   id: string

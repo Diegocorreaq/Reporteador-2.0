@@ -526,6 +526,13 @@ export const legacyOperationalModules: LegacyModuleMapping[] = [
   },
   {
     workspace: 'sigh',
+    path: 'produccion-actividades/produccion-obstetras',
+    legacyRoute: '/prodprofesional/prodobstetras',
+    moduleType: 'tabla',
+    title: 'Produccion Obstetras',
+  },
+  {
+    workspace: 'sigh',
     path: 'gestion-camas/monitoreo-de-camas',
     legacyRoute: '/covid/detallecama',
     moduleType: 'tabla',

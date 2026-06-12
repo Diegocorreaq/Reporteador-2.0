@@ -8,6 +8,8 @@ const SERVICE_TO_CONNECTION_MAP = {
   // SIGH modules that use connection 1
   'sigh.prod-medicos': 'sigh1',
   'prod-medicos': 'sigh1',
+  'sigh.prod-obstetras': 'sigh1',
+  'prod-obstetras': 'sigh1',
   'sigh.monitoreo': 'sigh1',
   'sigh.familia-pendiente': 'sigh1',
   'sigh.gestion-cita': 'sigh1',
@@ -44,7 +46,7 @@ export function resolveConnection({ service, path } = {}) {
 
   // Heuristic: check request path for SIGH indicators
   if (path) {
-    if (path.includes('/sigh/prod-medicos')) {
+    if (path.includes('/sigh/prod-medicos') || path.includes('/sigh/prod-obstetras')) {
       return 'sigh1'
     }
 
@@ -78,7 +80,9 @@ export function connectionResolverMiddleware() {
     // Infer service from path patterns
     let service = null
 
-    if (path.includes('/sigh/prod-medicos')) {
+    if (path.includes('/sigh/prod-obstetras')) {
+      service = 'sigh.prod-obstetras'
+    } else if (path.includes('/sigh/prod-medicos')) {
       service = 'sigh.prod-medicos'
     } else if (path.includes('/sigh/')) {
       service = 'sigh'

@@ -8,6 +8,7 @@ interface SighFilterPanelProps {
   children: ReactNode
   onProcess?: () => void
   processLabel?: string
+  processDisabled?: boolean
   className?: string
   rightSlot?: ReactNode
 }
@@ -16,6 +17,7 @@ export function SighFilterPanel({
   children,
   onProcess,
   processLabel = 'Procesar',
+  processDisabled = false,
   className,
   rightSlot,
 }: SighFilterPanelProps) {
@@ -30,7 +32,7 @@ export function SighFilterPanel({
           <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">{rightSlot}</div>
             {onProcess ? (
-              <Button className="w-full sm:w-auto" size="sm" variant="brand" onClick={onProcess}>
+              <Button className="w-full sm:w-auto" size="sm" variant="brand" onClick={onProcess} disabled={processDisabled}>
                 <Search className="h-4 w-4" />
                 {processLabel}
               </Button>

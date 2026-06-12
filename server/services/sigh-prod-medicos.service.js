@@ -61,8 +61,8 @@ async function getProduccionMedicoEmpleado(empleadoId) {
   return {
     idEmpleado: Number(row.idEmpleado ?? empleadoId ?? 0),
     dni: String(row.dni ?? '').trim(),
-    empleado: String(row.empleado ?? '').trim(),
-    especialidad: String(row.tipoEmpleado ?? '').trim(),
+    nombre: String(row.empleado ?? '').trim(),
+    tipoEmpleado: String(row.tipoEmpleado ?? '').trim(),
   }
 }
 
@@ -92,8 +92,8 @@ export async function searchProduccionMedicos(term) {
   return rows.map((row) => ({
     idEmpleado: Number(row.idEmpleado ?? 0),
     dni: String(row.dni ?? '').trim(),
-    empleado: String(row.empleado ?? '').trim(),
-    especialidad: String(row.tipoEmpleado ?? '').trim(),
+    nombre: String(row.empleado ?? '').trim(),
+    tipoEmpleado: String(row.tipoEmpleado ?? '').trim(),
   }))
 }
 
@@ -202,7 +202,7 @@ export async function exportProduccionMedicosExcel(filters) {
     startDate: fechaInicio,
     endDate: fechaFin,
     title: buildExportFileName({
-      employeeName: employee.empleado,
+      employeeName: employee.nombre,
       fechaInicio,
       fechaFin,
       extension: 'xlsx',
@@ -211,7 +211,7 @@ export async function exportProduccionMedicosExcel(filters) {
 
   return {
     fileName: buildExportFileName({
-      employeeName: employee.empleado,
+      employeeName: employee.nombre,
       fechaInicio,
       fechaFin,
       extension: 'xlsx',
@@ -237,7 +237,7 @@ export async function exportProduccionMedicosPdf(filters) {
 
   return {
     fileName: buildExportFileName({
-      employeeName: employee.empleado,
+      employeeName: employee.nombre,
       fechaInicio: report.filters.fechaInicio,
       fechaFin: report.filters.fechaFin,
       extension: 'pdf',

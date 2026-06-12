@@ -26,9 +26,9 @@ import type {
   MovimientoTransferenciaRow,
   MonitoreoTicketsReport,
   MonitoreoVentanillaReport,
-  ProduccionMedicoEmpleado,
-  ProduccionMedicosDetalleReport,
-  ProduccionMedicosResumenReport,
+  ProduccionDetalleReport,
+  ProduccionProfesional,
+  ProduccionResumenReport,
   SighExportCatalogOption,
   SighOption,
   SighTableRow,
@@ -44,7 +44,7 @@ interface DateRangeFilters {
   fechaFin: string
 }
 
-interface ProduccionMedicosFilters extends DateRangeFilters {
+interface ProduccionProfesionalFilters extends DateRangeFilters {
   empleadoId: number
 }
 
@@ -144,15 +144,15 @@ export async function downloadFamiliaPendienteNominal(params: {
 }
 
 export async function searchProduccionMedicos(term: string) {
-  const response = await httpClient.get<{ rows: ProduccionMedicoEmpleado[] }>('/sigh/prod-medicos/empleados', {
+  const response = await httpClient.get<{ rows: ProduccionProfesional[] }>('/sigh/prod-medicos/empleados', {
     params: { term },
   })
 
   return response.data.rows
 }
 
-export async function getProduccionMedicosResumen(filters: ProduccionMedicosFilters) {
-  const response = await httpClient.get<ProduccionMedicosResumenReport>('/sigh/prod-medicos/resumen', {
+export async function getProduccionMedicosResumen(filters: ProduccionProfesionalFilters) {
+  const response = await httpClient.get<ProduccionResumenReport>('/sigh/prod-medicos/resumen', {
     params: filters,
     timeout: 180000,
   })
@@ -160,8 +160,8 @@ export async function getProduccionMedicosResumen(filters: ProduccionMedicosFilt
   return response.data
 }
 
-export async function getProduccionMedicosDetalle(filters: ProduccionMedicosFilters & { orden: number }) {
-  const response = await httpClient.get<ProduccionMedicosDetalleReport>('/sigh/prod-medicos/detalle', {
+export async function getProduccionMedicosDetalle(filters: ProduccionProfesionalFilters & { orden: number }) {
+  const response = await httpClient.get<ProduccionDetalleReport>('/sigh/prod-medicos/detalle', {
     params: filters,
     timeout: 180000,
   })
@@ -169,12 +169,37 @@ export async function getProduccionMedicosDetalle(filters: ProduccionMedicosFilt
   return response.data
 }
 
-export async function downloadProduccionMedicosExcel(filters: ProduccionMedicosFilters) {
+export async function downloadProduccionMedicosExcel(filters: ProduccionProfesionalFilters) {
   await downloadBlob('/sigh/prod-medicos/export/excel', filters as unknown as Record<string, string | number | undefined>)
 }
 
-export async function downloadProduccionMedicosPdf(filters: ProduccionMedicosFilters) {
+export async function downloadProduccionMedicosPdf(filters: ProduccionProfesionalFilters) {
   await downloadBlob('/sigh/prod-medicos/export/pdf', filters as unknown as Record<string, string | number | undefined>)
+}
+
+export async function searchProduccionObstetras(term: string) {
+  const response = await httpClient.get<{ rows: ProduccionProfesional[] }>('/sigh/prod-obstetras/empleados', {
+    params: { term },
+  })
+
+  return response.data.rows
+}
+
+export async function getProduccionObstetrasResumen(filters: ProduccionProfesionalFilters) {
+  const response = await httpClient.get<ProduccionResumenReport>('/sigh/prod-obstetras/resumen', {
+    params: filters,
+    timeout: 180000,
+  })
+
+  return response.data
+}
+
+export async function downloadProduccionObstetrasExcel(filters: ProduccionProfesionalFilters) {
+  await downloadBlob('/sigh/prod-obstetras/export/excel', filters as unknown as Record<string, string | number | undefined>)
+}
+
+export async function downloadProduccionObstetrasPdf(filters: ProduccionProfesionalFilters) {
+  await downloadBlob('/sigh/prod-obstetras/export/pdf', filters as unknown as Record<string, string | number | undefined>)
 }
 
 export async function listCamasServicios() {
