@@ -6,6 +6,7 @@ import {
   getWorkspaceQuickLinks,
   getWorkspaceSupportItems,
 } from '@/config/navigation'
+import { userMatchesAllowedDnis } from '@/config/access-control'
 import type { AuthUser, WorkspaceKey } from '@/types/auth'
 import type { NavigationAccessRule, NavigationEntry, NavigationGroup } from '@/types/navigation'
 
@@ -35,10 +36,11 @@ function hasAccess(user: AuthUser | null | undefined, access?: NavigationAccessR
   }
 
   if (!user) {
-    return true
+    return !access.allowedDnis?.length
   }
 
   const grantedPermissions = new Set(user.permissions)
+  const dniMatch = userMatchesAllowedDnis(user, access.allowedDnis)
   const roleMatch = !access.roles?.length || access.roles.includes(user.role)
   const permissionMatch =
     !access.permissions?.length ||
@@ -47,7 +49,7 @@ function hasAccess(user: AuthUser | null | undefined, access?: NavigationAccessR
     !access.pprRoles?.length ||
     (user.pprRole !== null && user.pprRole !== undefined && access.pprRoles.includes(user.pprRole))
 
-  return roleMatch && permissionMatch && pprRoleMatch
+  return dniMatch && roleMatch && permissionMatch && pprRoleMatch
 }
 
 function filterEntry(entry: NavigationEntry, user: AuthUser | null | undefined) {
@@ -73,6 +75,9 @@ function filterEntry(entry: NavigationEntry, user: AuthUser | null | undefined) 
 export const menuService = {
   canAccessPermission(user: AuthUser | null | undefined, permission?: string) {
     return !permission || hasAccess(user, { permissions: [permission] })
+  },
+  canAccess(user: AuthUser | null | undefined, access?: NavigationAccessRule) {
+    return hasAccess(user, access)
   },
   getSections(workspace: WorkspaceKey, user?: AuthUser | null) {
     return getNavigationSections(workspace)

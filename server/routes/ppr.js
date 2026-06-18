@@ -9,7 +9,6 @@ import {
   getActividadesPrograma,
   guardarValor,
   validarValor,
-  firmarPeriodo,
   getPeriodosUsuario,
   getResumenValidacion,
   getResumenAnual,
@@ -27,6 +26,12 @@ import {
   getPprImportSources,
   runPprImport,
 } from '../services/ppr-data.service.js'
+import {
+  getPprDraftDocumentFile,
+  getPprSignedDocumentFile,
+  getPprSignedDocumentInfo,
+  signPprPeriodWithMockDocument,
+} from '../services/ppr-signature-document.service.js'
 import { logger } from '../utils/logger.js'
 
 export const pprRouter = Router()
@@ -229,30 +234,36 @@ pprRouter.get('/ppr/resumen', requireAuth, async (request, response) => {
 
 // POST /ppr/firmar — sign the active period
 pprRouter.post('/ppr/firmar', requireAuth, async (request, response) => {
-  const { periodId, employeeId, forceForTesting } = request.body ?? {}
-  if (periodId == null || employeeId == null) {
-    return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere periodId y employeeId.' })
+  const { periodId, employeeId, programId, forceForTesting } = request.body ?? {}
+  if (periodId == null || employeeId == null || programId == null) {
+    return response.status(400).json({
+      code: 'MISSING_PARAMS',
+      message: 'Se requiere periodId, employeeId y programId.',
+    })
   }
   try {
+    if (Number(request.user?.employeeId) !== Number(employeeId)) {
+      return response.status(403).json({
+        code: 'FORBIDDEN',
+        message: 'Solo puede firmar periodos correspondientes a su propia sesion.',
+      })
+    }
     const isForcedTestSign = Boolean(forceForTesting)
     if (isForcedTestSign) {
-      if (Number(request.user?.employeeId) !== Number(employeeId)) {
-        return response.status(403).json({
-          code: 'FORBIDDEN',
-          message: 'La firma de prueba solo puede usarse sobre el usuario autenticado.',
-        })
-      }
       const isAdmin = await verificarAdmin(Number(employeeId))
       if (!isAdmin) {
         return response.status(403).json({
           code: 'FORBIDDEN',
-          message: 'Solo un administrador PPR puede usar la firma de prueba.',
+          message: 'Solo un administrador PPR puede firmar con actividades pendientes.',
         })
       }
     }
-    const signedAt = await firmarPeriodo({
+    const result = await signPprPeriodWithMockDocument({
       employeeId: Number(employeeId),
       periodId: Number(periodId),
+      programId: Number(programId),
+      signerDni: String(request.user?.username ?? '').trim(),
+      signerName: String(request.user?.name ?? '').trim(),
       forceForTesting: isForcedTestSign,
     })
     logger.info({
@@ -260,9 +271,11 @@ pprRouter.post('/ppr/firmar', requireAuth, async (request, response) => {
       event: 'ppr:firmar',
       employeeId,
       periodId,
+      programId: programId ?? null,
       forceForTesting: isForcedTestSign,
+      documentCode: result.document.code,
     })
-    response.json({ ok: true, signedAt })
+    response.json({ ok: true, ...result })
   } catch (error) {
     logger.error({ correlationId: request.correlationId, event: 'ppr:firmar:error', message: String(error) })
     if (error?.code === 'PPR_VALIDATION_PENDING') {
@@ -272,11 +285,123 @@ pprRouter.post('/ppr/firmar', requireAuth, async (request, response) => {
         resumen: error.summary,
       })
     }
+    if (error?.code === 'PPR_PERIOD_NOT_FOUND') {
+      return response.status(404).json({ code: error.code, message: error.message })
+    }
+    if (['PPR_PERIOD_CLOSED', 'PPR_PERIOD_ALREADY_SIGNED'].includes(error?.code)) {
+      return response.status(409).json({ code: error.code, message: error.message })
+    }
     response.status(500).json({ code: 'PPR_ERROR', message: 'Error al firmar período.' })
   }
 })
 
-// GET /ppr/programa-detalle?programId=&year=&employeeId= — activity×month matrix for a program
+// GET /ppr/documentos/:periodId/borrador/pdf — unsigned document for the selected program
+pprRouter.get('/ppr/documentos/:periodId/borrador/pdf', requireAuth, async (request, response) => {
+  const periodId = Number(request.params.periodId)
+  const employeeId = Number(request.query.employeeId)
+  const programId = Number(request.query.programId)
+  if (!periodId || !employeeId || !programId) {
+    return response.status(400).json({
+      code: 'MISSING_PARAMS',
+      message: 'Se requiere periodId, employeeId y programId.',
+    })
+  }
+  if (Number(request.user?.employeeId) !== employeeId) {
+    return response.status(403).json({ code: 'FORBIDDEN', message: 'No puede generar documentos de otro usuario.' })
+  }
+  try {
+    const file = await getPprDraftDocumentFile({
+      employeeId,
+      periodId,
+      programId,
+      signerDni: String(request.user?.username ?? '').trim(),
+      signerName: String(request.user?.name ?? '').trim(),
+    })
+    response.setHeader('Content-Type', file.mimeType)
+    response.setHeader('Content-Length', file.buffer.length)
+    response.setHeader('Content-Disposition', `inline; filename="${file.fileName}"`)
+    response.setHeader('Cache-Control', 'private, no-store')
+    response.setHeader('Access-Control-Expose-Headers', 'Content-Disposition')
+    response.send(file.buffer)
+  } catch (error) {
+    logger.error({
+      correlationId: request.correlationId,
+      event: 'ppr:borrador:error',
+      message: String(error),
+    })
+    if (error?.code === 'PPR_PERIOD_NOT_FOUND') {
+      return response.status(404).json({ code: error.code, message: error.message })
+    }
+    if (['PPR_PERIOD_CLOSED', 'PPR_PERIOD_ALREADY_SIGNED'].includes(error?.code)) {
+      return response.status(409).json({ code: error.code, message: error.message })
+    }
+    response.status(500).json({ code: 'PPR_ERROR', message: 'Error al generar el borrador del documento.' })
+  }
+})
+
+pprRouter.get('/ppr/firmas/:periodId', requireAuth, async (request, response) => {
+  const periodId = Number(request.params.periodId)
+  const employeeId = Number(request.query.employeeId)
+  const programId = Number(request.query.programId)
+  if (!periodId || !employeeId || !programId) {
+    return response.status(400).json({
+      code: 'MISSING_PARAMS',
+      message: 'Se requiere periodId, employeeId y programId.',
+    })
+  }
+  if (Number(request.user?.employeeId) !== employeeId) {
+    return response.status(403).json({ code: 'FORBIDDEN', message: 'No puede consultar documentos de otro usuario.' })
+  }
+  try {
+    const document = await getPprSignedDocumentInfo({ employeeId, periodId, programId })
+    response.json({ exists: Boolean(document), document })
+  } catch (error) {
+    logger.error({
+      correlationId: request.correlationId,
+      event: 'ppr:firma:metadata:error',
+      message: String(error),
+    })
+    response.status(500).json({ code: 'PPR_ERROR', message: 'Error al consultar el documento firmado.' })
+  }
+})
+
+pprRouter.get('/ppr/firmas/:periodId/pdf', requireAuth, async (request, response) => {
+  const periodId = Number(request.params.periodId)
+  const employeeId = Number(request.query.employeeId)
+  const programId = Number(request.query.programId)
+  if (!periodId || !employeeId || !programId) {
+    return response.status(400).json({
+      code: 'MISSING_PARAMS',
+      message: 'Se requiere periodId, employeeId y programId.',
+    })
+  }
+  if (Number(request.user?.employeeId) !== employeeId) {
+    return response.status(403).json({ code: 'FORBIDDEN', message: 'No puede descargar documentos de otro usuario.' })
+  }
+  try {
+    const file = await getPprSignedDocumentFile({ employeeId, periodId, programId })
+    if (!file) {
+      return response.status(404).json({
+        code: 'PPR_SIGNED_DOCUMENT_NOT_FOUND',
+        message: 'El periodo no tiene un PDF firmado almacenado.',
+      })
+    }
+    response.setHeader('Content-Type', file.mimeType)
+    response.setHeader('Content-Length', file.buffer.length)
+    response.setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`)
+    response.setHeader('Cache-Control', 'private, no-store')
+    response.setHeader('Access-Control-Expose-Headers', 'Content-Disposition')
+    response.send(file.buffer)
+  } catch (error) {
+    logger.error({
+      correlationId: request.correlationId,
+      event: 'ppr:firma:download:error',
+      message: String(error),
+    })
+    response.status(500).json({ code: 'PPR_ERROR', message: 'Error al descargar el documento firmado.' })
+  }
+})
+
 pprRouter.get('/ppr/programa-detalle', requireAuth, async (request, response) => {
   const programId = Number(request.query.programId)
   const employeeId = Number(request.query.employeeId)

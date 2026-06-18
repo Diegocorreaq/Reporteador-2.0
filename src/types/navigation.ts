@@ -10,6 +10,7 @@ export type ScreenPattern =
   | 'modal-detail'
 
 export interface NavigationAccessRule {
+  allowedDnis?: readonly string[]
   permissions?: string[]
   roles?: string[]
   pprRoles?: PprRole[]

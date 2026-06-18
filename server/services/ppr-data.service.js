@@ -3,6 +3,7 @@ import {
   executeQuery_General as executeQuery,
   sql,
 } from './sigh-sql-helpers.js'
+import { ensurePprSignedDocumentInfrastructure } from './ppr-signature-document.service.js'
 
 const MONTHS_ES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -194,11 +195,26 @@ export async function getProgramasUsuario(employeeId) {
 }
 
 export async function getActividadesPrograma({ programaId, periodoId, employeeId }) {
+  await ensurePprSignedDocumentInfrastructure()
   const rows = await executeProcedure('SP_PPR_ACTIVIDADES_PROGRAMA', [
     { name: 'program_id', type: sql.Int, value: Number(programaId) },
     { name: 'period_id', type: sql.Int, value: Number(periodoId) },
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
   ])
+  const signatureRows = await executeQuery(`
+    SELECT TOP 1 signed_at
+    FROM dbo.ppr_signatures
+    WHERE employee_id = @employee_id
+      AND period_id = @period_id
+      AND is_valid = 1
+      AND (program_id = @program_id OR program_id IS NULL)
+    ORDER BY CASE WHEN program_id = @program_id THEN 0 ELSE 1 END, signed_at DESC;
+  `, [
+    { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
+    { name: 'period_id', type: sql.Int, value: Number(periodoId) },
+    { name: 'program_id', type: sql.Int, value: Number(programaId) },
+  ])
+  const signedAt = signatureRows[0]?.signed_at ?? null
   return rows.map((r) => ({
     id: Number(r.id),
     code: String(r.code ?? ''),
@@ -208,7 +224,7 @@ export async function getActividadesPrograma({ programaId, periodoId, employeeId
     sortOrder: Number(r.sort_order ?? 0),
     value: r.value != null ? Number(r.value) : null,
     notes: String(r.notes ?? ''),
-    signed: Boolean(r.signed_at),
+    signed: Boolean(signedAt),
     valueSource: String(r.value_source ?? (r.value != null ? 'manual' : 'manual')),
     sourceKey: r.source_key != null ? String(r.source_key) : null,
     sourceValue: r.source_value != null ? Number(r.source_value) : null,
@@ -677,9 +693,38 @@ export async function runPprImport({ programId, sourceId, adminId }) {
 // SP_PPR_PERIODOS_USUARIO(@employee_id INT)
 // Returns: id, year, month, is_open, deadline, signed_at, completadas, total_actividades
 export async function getPeriodosUsuario(employeeId) {
+  await ensurePprSignedDocumentInfrastructure()
   const rows = await executeProcedure('SP_PPR_PERIODOS_USUARIO', [
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
   ])
+  const signatureRows = await executeQuery(`
+    SELECT
+      per.id AS period_id,
+      COUNT(DISTINCT up.program_id) AS total_programs,
+      COUNT(DISTINCT CASE WHEN sig.id IS NOT NULL THEN up.program_id END) AS signed_programs,
+      MAX(sig.signed_at) AS signed_at
+    FROM dbo.ppr_periods per
+    INNER JOIN dbo.ppr_user_programs up
+      ON up.employee_id = @employee_id
+      AND up.is_active = 1
+    LEFT JOIN dbo.ppr_signatures sig
+      ON sig.employee_id = up.employee_id
+      AND sig.period_id = per.id
+      AND sig.is_valid = 1
+      AND (sig.program_id = up.program_id OR sig.program_id IS NULL)
+    GROUP BY per.id;
+  `, [
+    { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
+  ])
+  const signatureMap = new Map(signatureRows.map((row) => {
+    const totalPrograms = Number(row.total_programs ?? 0)
+    const signedPrograms = Number(row.signed_programs ?? 0)
+    const isSigned = totalPrograms > 0 && totalPrograms === signedPrograms
+    return [Number(row.period_id), {
+      isSigned,
+      signedAt: isSigned ? (row.signed_at ?? null) : null,
+    }]
+  }))
   return rows.map((r) => ({
     id: Number(r.id),
     year: Number(r.year),
@@ -687,8 +732,8 @@ export async function getPeriodosUsuario(employeeId) {
     label: periodLabel(r.year, r.month),
     isOpen: Boolean(r.is_open),
     deadline: r.deadline ?? null,
-    isSigned: r.signed_at != null,
-    signedAt: r.signed_at ?? null,
+    isSigned: signatureMap.get(Number(r.id))?.isSigned ?? false,
+    signedAt: signatureMap.get(Number(r.id))?.signedAt ?? null,
     completadas: Number(r.completadas ?? 0),
     totalActividades: Number(r.total_actividades ?? 0),
   }))
@@ -902,10 +947,35 @@ export async function getMatrizExportData(year) {
 // Returns: program_id, program_code, program_name, period_id, month,
 //          completadas, total_actividades, signed_at
 export async function getResumenAnual(employeeId, year) {
+  await ensurePprSignedDocumentInfrastructure()
   const rows = await executeProcedure('SP_PPR_RESUMEN_ANUAL', [
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
     { name: 'year', type: sql.Int, value: Number(year) },
   ])
+  const signatureRows = await executeQuery(`
+    SELECT
+      up.program_id,
+      per.id AS period_id,
+      MAX(sig.signed_at) AS signed_at
+    FROM dbo.ppr_user_programs up
+    INNER JOIN dbo.ppr_periods per
+      ON per.year = @year
+    LEFT JOIN dbo.ppr_signatures sig
+      ON sig.employee_id = up.employee_id
+      AND sig.period_id = per.id
+      AND sig.is_valid = 1
+      AND (sig.program_id = up.program_id OR sig.program_id IS NULL)
+    WHERE up.employee_id = @employee_id
+      AND up.is_active = 1
+    GROUP BY up.program_id, per.id;
+  `, [
+    { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
+    { name: 'year', type: sql.Int, value: Number(year) },
+  ])
+  const signatureMap = new Map(signatureRows.map((row) => [
+    `${Number(row.program_id)}:${Number(row.period_id)}`,
+    row.signed_at ?? null,
+  ]))
   const programaMap = new Map()
   for (const r of rows) {
     const pid = Number(r.program_id)
@@ -917,13 +987,14 @@ export async function getResumenAnual(employeeId, year) {
         meses: [],
       })
     }
+    const signatureKey = `${pid}:${r.period_id != null ? Number(r.period_id) : 0}`
     programaMap.get(pid).meses.push({
       periodoId: r.period_id != null ? Number(r.period_id) : null,
       month: Number(r.month),
       label: periodLabel(year, r.month),
       completadas: Number(r.completadas ?? 0),
       totalActividades: Number(r.total_actividades ?? 0),
-      isSigned: r.signed_at != null,
+      isSigned: r.period_id != null && signatureMap.get(signatureKey) != null,
     })
   }
   return Array.from(programaMap.values())

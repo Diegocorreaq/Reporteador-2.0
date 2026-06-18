@@ -23,6 +23,43 @@ export interface PprValidationResult {
   message: string
 }
 
+export interface PprSignedDocumentInfo {
+  id: number
+  code: string
+  fileName: string
+  documentHash: string
+  contentHash: string
+  signatureType: string
+  signatureLabel?: string
+  signerDni?: string
+  signerName?: string
+  signedAt?: string
+}
+
+export interface PprPdfFile {
+  blob: Blob
+  fileName: string
+}
+
+function parseFileName(contentDisposition: string | undefined, fallback: string) {
+  if (!contentDisposition) return fallback
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf8Match?.[1]) return decodeURIComponent(utf8Match[1])
+  const simpleMatch = contentDisposition.match(/filename="?([^";]+)"?/i)
+  return simpleMatch?.[1] ?? fallback
+}
+
+export function triggerPprPdfDownload(file: PprPdfFile) {
+  const url = URL.createObjectURL(file.blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = file.fileName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000)
+}
+
 export async function validatePprUser(username: string, password: string): Promise<PprValidationResult> {
   const res = await httpClient.post<PprValidationResult>('/ppr/validate', { username, password })
   return res.data
@@ -83,14 +120,69 @@ export async function fetchValidationSummary(
 export async function firmarPeriodo(
   periodId: number,
   employeeId: number,
+  programId: number,
   forceForTesting = false,
-): Promise<{ signedAt: string }> {
-  const res = await httpClient.post<{ ok: boolean; signedAt: string }>('/ppr/firmar', {
+): Promise<{ signedAt: string; document: PprSignedDocumentInfo }> {
+  const res = await httpClient.post<{
+    ok: boolean
+    signedAt: string
+    document: PprSignedDocumentInfo
+  }>('/ppr/firmar', {
     periodId,
     employeeId,
+    programId,
     forceForTesting,
   })
-  return { signedAt: res.data.signedAt }
+  return { signedAt: res.data.signedAt, document: res.data.document }
+}
+
+export async function fetchSignedDocumentInfo(
+  periodId: number,
+  employeeId: number,
+  programId: number,
+): Promise<PprSignedDocumentInfo | null> {
+  const res = await httpClient.get<{
+    exists: boolean
+    document: PprSignedDocumentInfo | null
+  }>(`/ppr/firmas/${periodId}`, {
+    params: { employeeId, programId },
+  })
+  return res.data.document
+}
+
+export async function fetchPprDraftPdf(
+  periodId: number,
+  employeeId: number,
+  programId: number,
+): Promise<PprPdfFile> {
+  const fallback = `PPR_periodo_${periodId}_borrador.pdf`
+  const res = await httpClient.get<Blob>(`/ppr/documentos/${periodId}/borrador/pdf`, {
+    params: { employeeId, programId },
+    responseType: 'blob',
+    timeout: 120000,
+  })
+  return {
+    blob: res.data,
+    fileName: parseFileName(res.headers['content-disposition'], fallback),
+  }
+}
+
+export async function downloadSignedPeriodPdf(
+  periodId: number,
+  employeeId: number,
+  programId: number,
+  fileName?: string,
+): Promise<void> {
+  const fallback = fileName || `PPR_periodo_${periodId}_firmado.pdf`
+  const res = await httpClient.get<Blob>(`/ppr/firmas/${periodId}/pdf`, {
+    params: { employeeId, programId },
+    responseType: 'blob',
+    timeout: 120000,
+  })
+  triggerPprPdfDownload({
+    blob: res.data,
+    fileName: parseFileName(res.headers['content-disposition'], fallback),
+  })
 }
 
 export async function fetchPeriodos(employeeId: number): Promise<PprPeriodoItem[]> {

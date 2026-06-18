@@ -281,10 +281,10 @@ export function PprPage() {
   }
 
   async function handleFirmar() {
-    if (!periodo || !authorizedUser) return
+    if (!periodo || !authorizedUser || !programaId) return
     setSigning(true)
     try {
-      const result = await firmarPeriodo(periodo.id, authorizedUser.employeeId)
+      const result = await firmarPeriodo(periodo.id, authorizedUser.employeeId, programaId)
       setSigned(true)
       setSignedAt(result.signedAt)
       setActividades((prev) => prev.map((a) => ({ ...a, signed: true })))

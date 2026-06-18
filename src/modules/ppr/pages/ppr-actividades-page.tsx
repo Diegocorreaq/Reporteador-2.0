@@ -4,6 +4,8 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Database,
+  FileDown,
+  FileText,
   Loader2,
   PenLine,
   Save,
@@ -13,12 +15,18 @@ import { Link, useLocation } from 'react-router-dom'
 import { usePprContext } from '@/modules/ppr/context/ppr-context'
 import {
   fetchActividades,
+  fetchPprDraftPdf,
   fetchPeriodoActivo,
   fetchProgramas,
+  fetchSignedDocumentInfo,
   fetchValidationSummary,
   firmarPeriodo,
+  downloadSignedPeriodPdf,
   saveValor,
+  triggerPprPdfDownload,
   validarValor,
+  type PprPdfFile,
+  type PprSignedDocumentInfo,
 } from '@/modules/ppr/services/ppr.service'
 import type { PprActividad, PprPeriodo, PprPeriodoItem, PprPrograma, PprValidationSummary } from '@/modules/ppr/types'
 import {
@@ -30,6 +38,15 @@ import {
   PprSkeleton,
   pctTextColor,
 } from '@/modules/ppr/components/ui-primitives'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
 // ─── Activity row (desktop table) ─────────────────────────────────────────────
@@ -305,6 +322,13 @@ export function PprActividadesPage() {
   const [signing, setSigning] = useState(false)
   const [signed, setSigned] = useState(false)
   const [signedAt, setSignedAt] = useState<string | null>(null)
+  const [signedDocument, setSignedDocument] = useState<PprSignedDocumentInfo | null>(null)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [loadingDraft, setLoadingDraft] = useState(false)
+  const [draftPdf, setDraftPdf] = useState<PprPdfFile | null>(null)
+  const [draftPdfUrl, setDraftPdfUrl] = useState<string | null>(null)
+  const [documentDialogOpen, setDocumentDialogOpen] = useState(false)
+  const [confirmSignOpen, setConfirmSignOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function refreshValidationSummary(periodId = periodo?.id) {
@@ -345,6 +369,7 @@ export function PprActividadesPage() {
     setLoadingActs(true)
     setSigned(false)
     setSignedAt(null)
+    setSignedDocument(null)
     fetchActividades(programaId, periodo.id, pprUser.employeeId)
       .then((acts) => {
         setActividades(acts)
@@ -353,6 +378,29 @@ export function PprActividadesPage() {
       .catch(() => setError('No se pudo cargar las actividades.'))
       .finally(() => setLoadingActs(false))
   }, [programaId, periodo, pprUser.employeeId])
+
+  useEffect(() => {
+    if (!signed || !periodo || !programaId) return
+    let active = true
+    fetchSignedDocumentInfo(periodo.id, pprUser.employeeId, programaId)
+      .then((document) => {
+        if (!active) return
+        setSignedDocument(document)
+        if (document?.signedAt) setSignedAt(document.signedAt)
+      })
+      .catch(() => {
+        if (active) setSignedDocument(null)
+      })
+    return () => {
+      active = false
+    }
+  }, [signed, periodo, programaId, pprUser.employeeId])
+
+  useEffect(() => {
+    return () => {
+      if (draftPdfUrl) URL.revokeObjectURL(draftPdfUrl)
+    }
+  }, [draftPdfUrl])
 
   async function handleValorChange(activityId: number, rawValue: string, notes: string) {
     if (!periodo) return
@@ -413,18 +461,75 @@ export function PprActividadesPage() {
   }
 
   async function handleFirmar(forceForTesting = false) {
-    if (!periodo) return
+    if (!periodo || !programaId) return
     setSigning(true)
+    setError(null)
     try {
-      const result = await firmarPeriodo(periodo.id, pprUser.employeeId, forceForTesting)
+      const result = await firmarPeriodo(
+        periodo.id,
+        pprUser.employeeId,
+        programaId,
+        forceForTesting,
+      )
       setSigned(true)
       setSignedAt(result.signedAt)
+      setSignedDocument(result.document)
       setActividades((prev) => prev.map((a) => ({ ...a, signed: true })))
       await refreshValidationSummary(periodo.id)
+      setConfirmSignOpen(false)
+      setDocumentDialogOpen(false)
+      setDraftPdf(null)
+      setDraftPdfUrl(null)
+      try {
+        await downloadSignedPeriodPdf(periodo.id, pprUser.employeeId, programaId, result.document.fileName)
+      } catch (downloadError) {
+        setError(resolveErrorMessage(
+          downloadError,
+          'El periodo fue firmado, pero no se pudo descargar el PDF. Puede intentarlo nuevamente.',
+        ))
+      }
     } catch (signError) {
       setError(resolveErrorMessage(signError, 'Error al firmar el período.'))
     } finally {
       setSigning(false)
+    }
+  }
+
+  async function handleOpenDocument() {
+    if (!periodo || !programaId) return
+    setLoadingDraft(true)
+    setError(null)
+    try {
+      const file = await fetchPprDraftPdf(periodo.id, pprUser.employeeId, programaId)
+      setDraftPdf(file)
+      setDraftPdfUrl(URL.createObjectURL(file.blob))
+      setDocumentDialogOpen(true)
+    } catch (draftError) {
+      setError(resolveErrorMessage(draftError, 'No se pudo generar el borrador del documento.'))
+    } finally {
+      setLoadingDraft(false)
+    }
+  }
+
+  function handleDownloadDraft() {
+    if (draftPdf) triggerPprPdfDownload(draftPdf)
+  }
+
+  function handleDocumentDialogChange(open: boolean) {
+    setDocumentDialogOpen(open)
+    if (!open) setConfirmSignOpen(false)
+  }
+
+  async function handleDownloadSignedPdf() {
+    if (!periodo || !programaId || !signedDocument) return
+    setDownloadingPdf(true)
+    setError(null)
+    try {
+      await downloadSignedPeriodPdf(periodo.id, pprUser.employeeId, programaId, signedDocument.fileName)
+    } catch (downloadError) {
+      setError(resolveErrorMessage(downloadError, 'No se pudo descargar el PDF firmado.'))
+    } finally {
+      setDownloadingPdf(false)
     }
   }
 
@@ -435,7 +540,10 @@ export function PprActividadesPage() {
   const conValor = validationSummary?.withValue ?? conValorActuales
   const pctTotal = total > 0 ? Math.round((completadas / total) * 100) : 0
   const canSign = !signed && (validationSummary?.canSign ?? false) && (periodo?.isOpen ?? false)
-  const canForceTestSign = pprUser.role === 'admin' && !signed && !canSign && (periodo?.isOpen ?? false)
+  const canForceTestSign = pprUser.role === 'admin'
+    && !signed
+    && !canSign
+    && (periodo?.isOpen ?? false)
   const signEnabled = canSign || canForceTestSign
   const programaActual = programas.find((p) => p.id === programaId)
 
@@ -473,19 +581,33 @@ export function PprActividadesPage() {
         }
         right={
           signed ? (
-            <PprPill tone="emerald" icon={CheckCircle2} size="md">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <PprPill tone="emerald" icon={CheckCircle2} size="md">
               Período firmado
               {signedAt && (
                 <span className="ml-1 font-normal opacity-80">
                   {new Date(signedAt).toLocaleDateString('es-PE')}
                 </span>
               )}
-            </PprPill>
+              </PprPill>
+              {signedDocument && (
+                <button
+                  onClick={handleDownloadSignedPdf}
+                  disabled={downloadingPdf}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {downloadingPdf
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <FileDown className="h-3.5 w-3.5" />}
+                  Descargar PDF
+                </button>
+              )}
+            </div>
           ) : (
             <button
-              onClick={() => handleFirmar(canForceTestSign)}
-              disabled={!signEnabled || signing}
-              title={!canSign ? 'Valide todas las actividades para poder firmar' : 'Firmar período'}
+              onClick={handleOpenDocument}
+              disabled={!signEnabled || signing || loadingDraft}
+              title={!signEnabled ? 'Valide todas las actividades para preparar el documento' : 'Revisar documento'}
               className={cn(
                 'group flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-md transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none',
                 canForceTestSign
@@ -493,8 +615,10 @@ export function PprActividadesPage() {
                   : 'bg-gradient-to-r from-indigo-500 to-indigo-700 shadow-indigo-500/30 hover:shadow-indigo-500/40',
               )}
             >
-              {signing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PenLine className="h-3.5 w-3.5 transition-transform group-hover:rotate-12" />}
-              {canForceTestSign ? 'Firma de prueba' : 'Firmar mes'}
+              {loadingDraft
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <FileText className="h-3.5 w-3.5" />}
+              Revisar documento
             </button>
           )
         }
@@ -658,6 +782,71 @@ export function PprActividadesPage() {
           )}
         </>
       )}
+
+      <Dialog open={documentDialogOpen} onOpenChange={handleDocumentDialogChange}>
+        <DialogContent className="flex max-h-[94vh] w-[min(96vw,1180px)] max-w-none flex-col">
+          <DialogHeader>
+            <DialogTitle>Documento mensual sin firma</DialogTitle>
+            <DialogDescription>
+              Revise el contenido antes de descargar el borrador o confirmar la firma.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+            {draftPdfUrl ? (
+              <iframe
+                src={draftPdfUrl}
+                title="Vista previa del documento mensual PPR"
+                className="h-[68vh] w-full bg-white"
+              />
+            ) : (
+              <div className="flex h-[68vh] items-center justify-center text-sm text-slate-500">
+                No se pudo cargar la vista previa.
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleDownloadDraft} disabled={!draftPdf}>
+              <FileDown className="h-4 w-4" />
+              Descargar borrador
+            </Button>
+            <Button
+              variant={canForceTestSign ? 'danger' : 'brand'}
+              onClick={() => setConfirmSignOpen(true)}
+              disabled={signing}
+            >
+              <PenLine className="h-4 w-4" />
+              Firmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmSignOpen} onOpenChange={setConfirmSignOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar firma del período</DialogTitle>
+            <DialogDescription>
+              ¿Está seguro de firmar este documento? Después de confirmar, el período quedará bloqueado
+              y se descargará una copia con la firma incluida.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmSignOpen(false)} disabled={signing}>
+              Cancelar
+            </Button>
+            <Button
+              variant={canForceTestSign ? 'danger' : 'brand'}
+              onClick={() => handleFirmar(canForceTestSign)}
+              disabled={signing}
+            >
+              {signing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
+              {canForceTestSign ? 'Sí, firmar con pendientes' : 'Sí, firmar y descargar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

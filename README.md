@@ -75,6 +75,120 @@ npm run dev
 
 En desarrollo, Vite redirige `/legacy-api` hacia `http://localhost:8787`, por lo que el frontend sigue usando la misma base URL.
 
+## Despliegue Windows Server + Apache HTTPS
+
+Para despliegue con Apache en Windows como servidor web y reverse proxy, usar la guia [docs/deploy-apache-windows.md](docs/deploy-apache-windows.md).
+
+Ese despliegue sirve `dist/`, redirige HTTP a HTTPS, reenvia `/legacy-api` a Node.js interno en `http://127.0.0.1:8787`, usa certificados SSL configurados en Apache y permite refrescar rutas de React Router como `/app`, `/sigh` y `/ppr`.
+
+No subir certificados, `private.key`, passwords ni credenciales reales al repositorio. Node.js debe mantenerse interno con `SERVER_PORT=8787`; Apache maneja los puertos `80`/`443`.
+
+## Despliegue Windows Server + Apache HTTP puerto 80
+
+Este despliegue es para uso local/intranet por HTTP. Apache expone la aplicacion en el puerto 80, sirve el frontend compilado desde `dist/` y reenvia `/legacy-api` hacia Node.js en `http://127.0.0.1:8787`.
+
+No configurar HTTPS/SSL ni puerto 443 en esta etapa. No usar Vite dev server ni `npm run dev:full` para el despliegue final.
+
+### Arquitectura
+
+- Usuario externo: `http://reporteador.heves.gob.pe`
+- Apache externo: puerto `80`
+- Frontend: archivos estaticos en `dist/`
+- Backend Node.js interno: `SERVER_PORT=8787`
+- API publica por Apache: `/legacy-api`
+- Node.js no debe exponerse directamente al usuario
+
+El frontend debe usar la API de forma relativa:
+
+```env
+VITE_API_BASE_URL=/legacy-api
+```
+
+La configuracion actual en `src/config/app-config.ts` mantiene:
+
+```ts
+apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? '/legacy-api'
+```
+
+No deben agregarse llamadas hardcodeadas desde el frontend a `localhost:8787`, `localhost:5173` ni `http://IP:8787`.
+
+### .env recomendado para intranet HTTP
+
+Crear el `.env` en el servidor sin subir credenciales reales al repositorio:
+
+```env
+NODE_ENV=development
+SERVER_PORT=8787
+COOKIE_SECURE=false
+VITE_API_BASE_URL=/legacy-api
+```
+
+Agregar tambien las variables reales necesarias para SQL Server, JWT u otros secretos del ambiente. No versionar `.env` con credenciales.
+
+`COOKIE_SECURE=false` permite que la cookie de sesion funcione en HTTP. Si `COOKIE_SECURE` no esta definido, el backend usa cookies `secure=true` solo cuando `NODE_ENV=production`.
+
+### Comandos de despliegue
+
+Ejecutar en el servidor:
+
+```powershell
+npm ci
+npm run build
+npm run server
+```
+
+`npm run build` genera `dist/`. Apache debe apuntar su `DocumentRoot` a esa carpeta. Para mantener Node.js corriendo como servicio en Windows, usar el mecanismo operativo que definan para el servidor (por ejemplo NSSM, PM2 o el programador de tareas), siempre ejecutando `npm run server`.
+
+### Modulos Apache requeridos
+
+Habilitar estos modulos:
+
+```apache
+mod_rewrite
+mod_proxy
+mod_proxy_http
+mod_headers
+```
+
+### VirtualHost HTTP puerto 80
+
+Ejemplo para `C:/Apps/Reporteador-2.0/dist`:
+
+```apache
+<VirtualHost *:80>
+    ServerName reporteador.heves.gob.pe
+
+    DocumentRoot "C:/Apps/Reporteador-2.0/dist"
+
+    <Directory "C:/Apps/Reporteador-2.0/dist">
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+
+        RewriteEngine On
+        RewriteBase /
+        RewriteRule ^index\.html$ - [L]
+        RewriteCond %{REQUEST_FILENAME} !-f
+        RewriteCond %{REQUEST_FILENAME} !-d
+        RewriteRule . /index.html [L]
+    </Directory>
+
+    ProxyPreserveHost On
+
+    ProxyPass "/legacy-api/" "http://127.0.0.1:8787/legacy-api/"
+    ProxyPassReverse "/legacy-api/" "http://127.0.0.1:8787/legacy-api/"
+
+    ProxyPass "/legacy-api" "http://127.0.0.1:8787/legacy-api"
+    ProxyPassReverse "/legacy-api" "http://127.0.0.1:8787/legacy-api"
+</VirtualHost>
+```
+
+### Pruebas finales
+
+- Frontend: `http://reporteador.heves.gob.pe`
+- API por Apache: `http://reporteador.heves.gob.pe/legacy-api/health`
+- Node interno: `http://localhost:8787/legacy-api/health`
+
 ## Validacion tecnica
 
 ```bash
