@@ -52,10 +52,10 @@ export function WorkspaceShellFrame({ workspace }: WorkspaceShellFrameProps) {
         <main className="flex-1">
           <div
             className={cn(
-              'mx-auto flex w-full flex-col',
+              'flex w-full flex-col',
               isPowerBiEmbed
                 ? 'max-w-none gap-3 px-3 py-3 sm:px-4 lg:px-5'
-                : 'max-w-[1680px] gap-5 px-4 py-5 sm:px-6 lg:px-8',
+                : 'gap-5 px-4 py-5 sm:px-6 lg:px-8',
             )}
           >
             <Outlet />

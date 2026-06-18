@@ -198,7 +198,7 @@ export function Topbar({ workspace, onOpenMobile }: TopbarProps) {
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-white">
-      <div className="mx-auto flex h-14 max-w-[1680px] items-center gap-3 px-4 sm:px-5 lg:px-6">
+      <div className="flex h-14 w-full min-w-0 items-center gap-3 px-4 sm:px-5 lg:px-6">
         {/* Mobile menu button */}
         <Button
           className="h-8 w-8 rounded-lg lg:hidden"
@@ -210,7 +210,7 @@ export function Topbar({ workspace, onOpenMobile }: TopbarProps) {
         </Button>
 
         {/* Workspace switcher */}
-        <div className="flex items-center rounded-lg border border-border bg-canvas p-0.5">
+        <div className="flex shrink-0 items-center rounded-lg border border-border bg-canvas p-0.5">
           <WorkspaceSwitchButton active={workspace === 'main'} label="Principal" to="/app" />
           <WorkspaceSwitchButton active={workspace === 'sigh'} label="Datos en Linea" to="/sigh" />
         </div>
@@ -224,7 +224,7 @@ export function Topbar({ workspace, onOpenMobile }: TopbarProps) {
         {/* Right side actions */}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {/* Quick links - desktop */}
-          <div className="hidden items-center gap-1.5 lg:flex xl:hidden">
+          <div className="hidden items-center gap-1.5 xl:flex 2xl:hidden">
             {compactQuickLinks.map((link) => (
               <WorkspaceQuickLinkAction key={link.key} link={link} />
             ))}
@@ -232,14 +232,14 @@ export function Topbar({ workspace, onOpenMobile }: TopbarProps) {
           </div>
 
           {/* Quick links - large desktop */}
-          <div className="hidden items-center gap-1.5 xl:flex">
+          <div className="hidden items-center gap-1.5 2xl:flex">
             {quickLinks.map((link) => (
               <WorkspaceQuickLinkAction key={link.key} link={link} />
             ))}
           </div>
 
           {/* Quick links - mobile */}
-          <div className="lg:hidden">
+          <div className="xl:hidden">
             <QuickLinksOverflow links={quickLinks} />
           </div>
 

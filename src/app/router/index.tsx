@@ -4,8 +4,9 @@ import { AuthShell } from '@/app/layouts/auth-shell/auth-shell'
 import { MainShell } from '@/app/layouts/main-shell/main-shell'
 import { SighShell } from '@/app/layouts/sigh-shell/sigh-shell'
 import { PprShell } from '@/app/layouts/ppr-shell/ppr-shell'
-import { RequireAuth } from '@/app/router/guards'
+import { RequireAccess, RequireAuth } from '@/app/router/guards'
 import { LoadingState } from '@/components/feedback/loading-state'
+import { MAPA_MICROBIOLOGICO_ALLOWED_DNIS } from '@/config/access-control'
 import { getModulesByWorkspace } from '@/config/module-registry'
 import { getWorkspaceLegacyPowerBiModules } from '@/config/legacy-functional-map'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
@@ -169,7 +170,20 @@ const legacyMainEmbedRoutes = getWorkspaceLegacyPowerBiModules('main').map((modu
 
 const legacySighEmbedRoutes = getWorkspaceLegacyPowerBiModules('sigh').map((module) => ({
   path: module.path,
-  element: lazyElement(<LegacyEmbedPage />),
+  element: lazyElement(
+    module.path === 'laboratorio-cultivos/mapa-microbiologico' ? (
+      <RequireAccess
+        access={{
+          allowedDnis: MAPA_MICROBIOLOGICO_ALLOWED_DNIS,
+          permissions: ['menu.sigh.laboratorio-cultivos.mapa-microbiologico'],
+        }}
+      >
+        <LegacyEmbedPage />
+      </RequireAccess>
+    ) : (
+      <LegacyEmbedPage />
+    ),
+  ),
 }))
 
 const explicitMainRoutePaths = new Set(

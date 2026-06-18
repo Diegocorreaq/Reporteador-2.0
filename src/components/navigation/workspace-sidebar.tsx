@@ -20,19 +20,53 @@ interface WorkspaceSidebarProps {
 interface FlyoutState {
   entry: NavigationEntry
   left: number
+  maxHeight: number
   top: number
 }
+
+const FLYOUT_VIEWPORT_MARGIN = 12
+const FLYOUT_MIN_HEIGHT = 96
+const FLYOUT_CARD_PADDING_Y = 16
+const FLYOUT_GROUP_GAP = 8
+const FLYOUT_HEADER_HEIGHT = 54
+const FLYOUT_ITEM_HEIGHT = 43
+const FLYOUT_ITEM_GAP = 4
+const FLYOUT_SINGLE_ITEM_HEIGHT = 56
 
 function groupHasActiveItem(group: NavigationGroup, pathname: string) {
   return group.items.some((item) => item.to === pathname)
 }
 
-function getFlyoutTop(top: number) {
-  if (typeof window === 'undefined') {
-    return top
+function getEstimatedFlyoutHeight(entry: NavigationEntry) {
+  if (!isNavigationGroup(entry)) {
+    return FLYOUT_SINGLE_ITEM_HEIGHT
   }
 
-  return Math.max(12, Math.min(top, window.innerHeight - 180))
+  return (
+    FLYOUT_CARD_PADDING_Y +
+    FLYOUT_HEADER_HEIGHT +
+    FLYOUT_GROUP_GAP +
+    entry.items.length * FLYOUT_ITEM_HEIGHT +
+    Math.max(0, entry.items.length - 1) * FLYOUT_ITEM_GAP
+  )
+}
+
+function getFlyoutMetrics(entry: NavigationEntry, top: number) {
+  if (typeof window === 'undefined') {
+    return {
+      maxHeight: 320,
+      top,
+    }
+  }
+
+  const maxHeight = Math.max(FLYOUT_MIN_HEIGHT, window.innerHeight - FLYOUT_VIEWPORT_MARGIN * 2)
+  const estimatedHeight = Math.min(getEstimatedFlyoutHeight(entry), maxHeight)
+  const highestTop = window.innerHeight - estimatedHeight - FLYOUT_VIEWPORT_MARGIN
+
+  return {
+    maxHeight,
+    top: Math.max(FLYOUT_VIEWPORT_MARGIN, Math.min(top, highestTop)),
+  }
 }
 
 function SidebarFlyoutLinks({
@@ -183,10 +217,12 @@ export function WorkspaceSidebar({
     }
 
     const rect = target.getBoundingClientRect()
+    const flyoutMetrics = getFlyoutMetrics(entry, rect.top)
+
     setFlyout({
       entry,
       left: rect.right + 12,
-      top: getFlyoutTop(rect.top),
+      ...flyoutMetrics,
     })
   }
 
@@ -395,7 +431,10 @@ export function WorkspaceSidebar({
           onMouseEnter={clearFlyoutClose}
           onMouseLeave={scheduleFlyoutClose}
         >
-          <div className="min-w-[220px] max-w-[280px] overflow-hidden rounded-xl border border-border bg-white p-2 shadow-lg">
+          <div
+            className="sidebar-scroll min-w-[220px] max-w-[280px] overflow-y-auto rounded-xl border border-border bg-white p-2 shadow-lg"
+            style={{ maxHeight: flyout.maxHeight }}
+          >
             {isNavigationGroup(flyout.entry) ? (
               <div className="space-y-2">
                 <div className="border-b border-border px-3 pb-2">

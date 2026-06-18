@@ -283,3 +283,211 @@ export function buildProduccionObstetrasPdf(options) {
     reportTitle: 'REPORTE DE PRODUCCION DE OBSTETRAS',
   })
 }
+
+const PPR_MONTHS = [
+  'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
+  'JULIO', 'AGOSTO', 'SETIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE',
+]
+
+function truncateText(value, maxLength) {
+  const text = String(value ?? '').trim()
+  if (text.length <= maxLength) return text
+  return `${text.slice(0, Math.max(0, maxLength - 3))}...`
+}
+
+function formatPprNumber(value) {
+  if (value == null || value === '') return '-'
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return '-'
+  return numeric.toLocaleString('en-US', { maximumFractionDigits: 2 })
+}
+
+function formatPprSignedAt(value) {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value ?? '')
+  return new Intl.DateTimeFormat('es-PE', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(date)
+}
+
+function buildPprSignaturePage({
+  document,
+  rows,
+  pageIndex,
+  pageCount,
+  isLastPage,
+}) {
+  const isSigned = Boolean(document.isSigned ?? document.signedAt)
+  const commands = ['0.000 0.000 0.000 rg']
+  const left = 24
+  const right = 817
+  const pageWidth = right - left
+
+  commands.push(pdfText('REPORTE MENSUAL DE ACTIVIDADES PPR', 272, 563, { font: 'F1', size: 11 }))
+  commands.push(pdfText(
+    `Periodo: ${PPR_MONTHS[Number(document.month) - 1] ?? document.month} ${document.year}`,
+    341,
+    547,
+    { font: 'F1', size: 8 },
+  ))
+
+  const metaTop = 522
+  const metaHeight = 17
+  const metaWidths = [100, 250, 80, 128, 95, 140]
+  const metaLabels = [
+    ['Responsable', document.signerName],
+    ['DNI', document.signerDni],
+    ['Fecha de firma', isSigned ? formatPprSignedAt(document.signedAt) : 'Pendiente de firma'],
+  ]
+  let metaX = left
+  metaLabels.forEach(([label, value], index) => {
+    const labelWidth = metaWidths[index * 2]
+    const valueWidth = metaWidths[index * 2 + 1]
+    cellBox(commands, metaX, metaTop, labelWidth, metaHeight, { fill: 0.914 })
+    cellText(commands, label, metaX, metaTop, labelWidth, metaHeight, { bold: true, align: 'center', size: 7 })
+    metaX += labelWidth
+    cellBox(commands, metaX, metaTop, valueWidth, metaHeight)
+    cellText(commands, truncateText(value, index === 0 ? 42 : 26), metaX, metaTop, valueWidth, metaHeight, {
+      align: 'center',
+      size: 7,
+    })
+    metaX += valueWidth
+  })
+
+  const codeY = 502
+  cellBox(commands, left, codeY, 115, 16, { fill: 0.914 })
+  cellText(commands, 'Codigo de documento', left, codeY, 115, 16, { bold: true, align: 'center', size: 7 })
+  cellBox(commands, left + 115, codeY, pageWidth - 115, 16)
+  cellText(commands, document.documentCode, left + 115, codeY, pageWidth - 115, 16, { size: 7 })
+
+  const tableTop = 493
+  const headerHeight = 18
+  const rowHeight = 17
+  const columns = [
+    { key: 'programCode', label: 'PP', width: 50, align: 'center', max: 9 },
+    { key: 'activityCode', label: 'Codigo actividad', width: 92, align: 'center', max: 20 },
+    { key: 'activityName', label: 'Actividad operativa', width: 302, align: 'left', max: 71 },
+    { key: 'unit', label: 'Unidad', width: 78, align: 'center', max: 17 },
+    { key: 'annualGoal', label: 'Meta anual', width: 66, align: 'right', max: 14, numeric: true },
+    { key: 'monthValue', label: 'Valor mes', width: 66, align: 'right', max: 14, numeric: true },
+    { key: 'accumulatedValue', label: 'Acumulado', width: 72, align: 'right', max: 14, numeric: true },
+    { key: 'annualProgress', label: '% anual', width: 67, align: 'right', max: 14, percent: true },
+  ]
+
+  let x = left
+  columns.forEach((column) => {
+    cellBox(commands, x, tableTop - headerHeight, column.width, headerHeight, { fill: 0.875 })
+    cellText(commands, column.label, x, tableTop - headerHeight, column.width, headerHeight, {
+      bold: true,
+      align: 'center',
+      size: 6.5,
+    })
+    x += column.width
+  })
+
+  rows.forEach((row, rowIndex) => {
+    const y = tableTop - headerHeight - rowHeight * (rowIndex + 1)
+    let rowX = left
+    columns.forEach((column) => {
+      cellBox(commands, rowX, y, column.width, rowHeight, {
+        fill: rowIndex % 2 === 1 ? 0.975 : null,
+      })
+      let value = row[column.key]
+      if (column.numeric) value = formatPprNumber(value)
+      if (column.percent) value = value == null ? '-' : `${formatPprNumber(value)}%`
+      cellText(commands, truncateText(value, column.max), rowX, y, column.width, rowHeight, {
+        align: column.align,
+        size: 6.2,
+      })
+      rowX += column.width
+    })
+  })
+
+  if (isLastPage) {
+    const signatureY = 43
+    const signatureHeight = 69
+    cellBox(commands, left, signatureY, pageWidth, signatureHeight, { fill: 0.945 })
+    if (isSigned) {
+      commands.push(pdfText(document.signatureLabel, 265, signatureY + 51, { font: 'F1', size: 9 }))
+      commands.push(pdfText(
+        `Firmado por: ${truncateText(document.signerName, 75)} | DNI: ${document.signerDni}`,
+        left + 12,
+        signatureY + 35,
+        { font: 'F1', size: 7.2 },
+      ))
+      commands.push(pdfText(
+        `Fecha: ${formatPprSignedAt(document.signedAt)} | Actividades: ${document.totalActivities}`,
+        left + 12,
+        signatureY + 22,
+        { size: 6.8 },
+      ))
+      commands.push(pdfText(
+        `Huella de contenido SHA-256: ${document.contentHash.slice(0, 32)}`,
+        left + 12,
+        signatureY + 10,
+        { size: 6.2 },
+      ))
+      commands.push(pdfText(document.contentHash.slice(32), left + 170, signatureY + 10, { size: 6.2 }))
+    } else {
+      commands.push(pdfText('DOCUMENTO BORRADOR - SIN FIRMA', 309, signatureY + 43, {
+        font: 'F1',
+        size: 10,
+      }))
+      commands.push(pdfText(
+        'Revise la informacion antes de confirmar la firma del periodo.',
+        275,
+        signatureY + 25,
+        { size: 7.2 },
+      ))
+      commands.push(pdfText(
+        `Actividades incluidas: ${document.totalActivities}`,
+        left + 12,
+        signatureY + 10,
+        { size: 6.8 },
+      ))
+    }
+  }
+
+  commands.push(pdfText(
+    `Documento generado por Reporteador 2.0 - Pagina ${pageIndex + 1} de ${pageCount}`,
+    left,
+    19,
+    { size: 6.2 },
+  ))
+  commands.push(pdfText(
+    isSigned
+      ? 'La firma mostrada es ficticia y no corresponde a RENIEC.'
+      : 'Borrador sin firma y sin validez como constancia.',
+    isSigned ? 592 : 615,
+    19,
+    { font: 'F1', size: 6.2 },
+  ))
+
+  return commands.join('\n')
+}
+
+export function buildPprMonthlySignaturePdf({ document, rows }) {
+  const sourceRows = Array.isArray(rows) ? rows : []
+  const rowsPerPage = 20
+  const pageCount = Math.max(1, Math.ceil(sourceRows.length / rowsPerPage))
+  const pages = []
+
+  for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+    pages.push(buildPprSignaturePage({
+      document,
+      rows: sourceRows.slice(pageIndex * rowsPerPage, (pageIndex + 1) * rowsPerPage),
+      pageIndex,
+      pageCount,
+      isLastPage: pageIndex === pageCount - 1,
+    }))
+  }
+
+  return createPdf(pages)
+}

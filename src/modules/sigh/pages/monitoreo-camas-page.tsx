@@ -735,7 +735,7 @@ function SubtotalRow({ sums, bg }: { sums: Sums; bg: string }) {
     <tr style={{ backgroundColor: subtotalBg }}>
       <td
         colSpan={3}
-        className={`${tdSubtotal} sticky z-20 text-right tracking-wide text-[#1f3650] ${STICKY_SHADOW}`}
+        className={`${tdSubtotal} sticky z-10 text-right tracking-wide text-[#1f3650] ${STICKY_SHADOW}`}
         style={{ left: 0, minWidth: STICKY_PISO_WIDTH + STICKY_SERVICIO_WIDTH + STICKY_TIPO_WIDTH, backgroundColor: subtotalBg }}
       >
         Sub Total
@@ -779,7 +779,7 @@ function TotalGeneralRow({ sums }: { sums: Sums }) {
     <tr>
       <td
         colSpan={3}
-        className={`${tdTotal} sticky z-20 text-right text-[11px] tracking-wide ${STICKY_SHADOW}`}
+        className={`${tdTotal} sticky z-10 text-right text-[11px] tracking-wide ${STICKY_SHADOW}`}
         style={{ left: 0, minWidth: STICKY_PISO_WIDTH + STICKY_SERVICIO_WIDTH + STICKY_TIPO_WIDTH }}
       >
         Total General
@@ -981,44 +981,44 @@ export function MonitoreoCamasPage() {
               <thead className="bg-[#eef5fb] text-[#123B63]">
                 {/* Row 1 - group headers */}
                 <tr>
-                  <th className={`${TH_GROUP} sticky top-0 z-50`} style={{ ...stickyPisoStyle, backgroundColor: '#dbeaf6' }} rowSpan={2}>Piso</th>
-                  <th className={`${TH_GROUP} sticky top-0 z-50`} style={{ ...stickyServicioStyle, backgroundColor: '#dbeaf6' }} rowSpan={2}>Servicio</th>
-                  <th className={`${TH_GROUP} sticky top-0 z-50 ${STICKY_SHADOW}`} style={{ ...stickyTipoStyle, backgroundColor: '#dbeaf6' }} rowSpan={2}>Tipo</th>
-                  <th className={`${TH_GROUP} sticky top-0 z-40`} colSpan={4}>Escenario (1)</th>
-                  <th className={`${TH_GROUP} sticky top-0 z-40`} colSpan={7}>Camas según condición</th>
-                  <th className={`${TH_GROUP} sticky top-0 z-40`} colSpan={2}>Resultados Pendientes</th>
-                  <th className={`${TH_GROUP} sticky top-0 z-40`} colSpan={5}>Ventilación Mecánica (VM)</th>
-                  <th className={`${TH_GROUP} sticky top-0 z-40`} colSpan={5}>Oxígeno Alto Flujo (AF)</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-30`} style={{ ...stickyPisoStyle, backgroundColor: '#dbeaf6' }} rowSpan={2}>Piso</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-30`} style={{ ...stickyServicioStyle, backgroundColor: '#dbeaf6' }} rowSpan={2}>Servicio</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-30 ${STICKY_SHADOW}`} style={{ ...stickyTipoStyle, backgroundColor: '#dbeaf6' }} rowSpan={2}>Tipo</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-20`} colSpan={4}>Escenario (1)</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-20`} colSpan={7}>Camas según condición</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-20`} colSpan={2}>Resultados Pendientes</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-20`} colSpan={5}>Ventilación Mecánica (VM)</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-20`} colSpan={5}>Oxígeno Alto Flujo (AF)</th>
                 </tr>
                 {/* Row 2 - subcolumns */}
                 <tr>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Camas Aprobadas (A)</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Brecha (B-A)</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>% Ocupación (C/A)</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Demanda Adicional</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Camas Aprobadas (A)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Brecha (B-A)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>% Ocupación (C/A)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Demanda Adicional</th>
 
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Totales (B)</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Operativas</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Ocupadas (C)</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Disponibles</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Transitorias</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Inhabilitadas</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Covid (+)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Totales (B)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Operativas</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Ocupadas (C)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Disponibles</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Transitorias</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Inhabilitadas</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Covid (+)</th>
 
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Antígena</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Molecular</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Antígena</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Molecular</th>
 
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>VM en uso (D)</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Total</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Operativas (E)</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Inoperativas</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>% uso VM (D/E)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>VM en uso (D)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Total</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Operativas (E)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Inoperativas</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>% uso VM (D/E)</th>
 
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>AF en uso (F)</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Total</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Operativas (G)</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>Inoperativas</th>
-                  <th className={`${TH_SUB} sticky top-[33px] z-30`}>% uso AF (F/G)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>AF en uso (F)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Total</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Operativas (G)</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Inoperativas</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>% uso AF (F/G)</th>
                 </tr>
               </thead>
               <tbody>
@@ -1055,7 +1055,7 @@ export function MonitoreoCamasPage() {
                         {/* Piso */}
                         {showPiso && (
                           <td
-                            className={`${TD_PISO} sticky z-20`}
+                            className={`${TD_PISO} sticky z-10`}
                             style={{ ...stickyPisoStyle, backgroundColor: '#f8fbff' }}
                             rowSpan={pisoSpan}
                           >
@@ -1065,7 +1065,7 @@ export function MonitoreoCamasPage() {
                         {/* Servicio */}
                         {showServicio && (
                           <td
-                            className={`${TD_SERVICIO} sticky z-20`}
+                            className={`${TD_SERVICIO} sticky z-10`}
                             style={{ ...stickyServicioStyle, backgroundColor: '#f4f9fd' }}
                             rowSpan={servicioSpan}
                           >
@@ -1074,7 +1074,7 @@ export function MonitoreoCamasPage() {
                         )}
                         {/* Tipo */}
                         <td
-                          className={`${TD_TIPO} sticky z-20 ${STICKY_SHADOW}`}
+                          className={`${TD_TIPO} sticky z-10 ${STICKY_SHADOW}`}
                           style={{ ...stickyTipoStyle, backgroundColor: '#fff' }}
                         >
                           <span className="inline-flex items-center gap-1">
