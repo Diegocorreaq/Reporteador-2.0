@@ -3,6 +3,7 @@ import { getCentroObstetricoReport } from '../services/centro-obstetrico-report.
 import { getUccaReport, getUccpReport } from '../services/critical-care-report.service.js'
 import {
   executeConfiguredExport,
+  hasLegacyAuthScope,
   listCatalogExports,
   validateLegacyUser,
 } from '../services/legacy-export.service.js'
@@ -94,10 +95,10 @@ function sendDownload(response, file) {
 
 function normalizeLegacyValidationScope(scope) {
   const value = String(scope ?? '').trim()
-  if (value === 'lavado' || value === 'zona-descarga/morbilidad-materna') {
-    return value
+  if (!value) {
+    return 'general'
   }
-  return 'general'
+  return hasLegacyAuthScope(value) ? value : null
 }
 
 // Safe error handler: logs internally, never exposes error details to client
@@ -136,6 +137,15 @@ reportsRouter.post('/exports/validate', authLimiter, async (request, response) =
     const ip = getClientIp(request)
 
     const normalizedScope = normalizeLegacyValidationScope(scope)
+    if (!normalizedScope) {
+      return response.status(400).json({
+        ok: false,
+        employeeId: null,
+        employeeName: '',
+        message: 'El permiso solicitado no existe.',
+      })
+    }
+
     const validation = await validateLegacyUser({
       dni: String(username ?? '').trim(),
       password: String(password ?? '').trim(),

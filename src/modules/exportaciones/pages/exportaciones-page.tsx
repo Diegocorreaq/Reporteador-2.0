@@ -23,7 +23,14 @@ interface LegacyVisibleReportRow {
   ord: number
   key: string
   label: string
+  description?: string
   fallbackMaxDays: number
+  validationScope: string
+}
+
+interface AuthorizedExportUser {
+  employeeId: number
+  employeeName: string
 }
 
 const VISIBLE_REPORT_ROWS: LegacyVisibleReportRow[] = [
@@ -32,6 +39,14 @@ const VISIBLE_REPORT_ROWS: LegacyVisibleReportRow[] = [
     key: 'exporta_d_xls_11',
     label: 'BAI - MORBILIDAD MATERNA EXTREMA',
     fallbackMaxDays: 92,
+    validationScope: 'zona-descarga/morbilidad-materna',
+  },
+  {
+    ord: 2,
+    key: 'exporta_d_xls_21',
+    label: 'PACIENTES CON DIAGNOSTICO A97.0 - DENGUE SIN SIGNOS DE ALARMA',
+    fallbackMaxDays: 92,
+    validationScope: 'zona-descarga/dengue-sin-signos-alarma',
   },
 ]
 
@@ -58,11 +73,13 @@ export function ExportacionesPage() {
   const [error, setError] = useState<string | null>(null)
   const [isAuthorizing, setIsAuthorizing] = useState(false)
   const [isDownloadingKey, setIsDownloadingKey] = useState<string | null>(null)
-  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(true)
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false)
   const [maxDaysByKey, setMaxDaysByKey] = useState<Record<string, number>>({})
-  const [authorizedUser, setAuthorizedUser] = useState<{ employeeId: number; employeeName: string } | null>(null)
+  const [authorizedByScope, setAuthorizedByScope] = useState<Record<string, AuthorizedExportUser>>({})
+  const [pendingReport, setPendingReport] = useState<LegacyVisibleReportRow | null>(null)
 
   const isRangeValid = useMemo(() => filters.fechaInicio <= filters.fechaFin, [filters.fechaInicio, filters.fechaFin])
+  const authorizedScopeCount = Object.keys(authorizedByScope).length
 
   useEffect(() => {
     void (async () => {
@@ -81,21 +98,53 @@ export function ExportacionesPage() {
     })()
   }, [])
 
+  const downloadReport = async (report: LegacyVisibleReportRow, employeeId: number) => {
+    setError(null)
+    setIsDownloadingKey(report.key)
+    try {
+      await downloadLegacyExport({
+        catalog: 'range',
+        key: report.key,
+        fechaInicio: filters.fechaInicio,
+        fechaFin: filters.fechaFin,
+        employeeId,
+      })
+    } catch (downloadError) {
+      const message = downloadError instanceof Error ? downloadError.message : 'No se pudo descargar el archivo.'
+      setError(message)
+    } finally {
+      setIsDownloadingKey(null)
+    }
+  }
+
   const handleAuthorize = async () => {
+    if (!pendingReport) {
+      setAuthError('Seleccione un reporte para validar el acceso.')
+      return
+    }
+
     setAuthError(null)
     setIsAuthorizing(true)
     try {
-      const validation = await validateLegacyExportUser(username, password, 'zona-descarga/morbilidad-materna')
+      const report = pendingReport
+      const validation = await validateLegacyExportUser(username, password, report.validationScope)
       if (!validation.ok || !validation.employeeId) {
         setAuthError(validation.message || 'No se pudo validar el usuario.')
         return
       }
 
-      setAuthorizedUser({
+      const authorizedUser = {
         employeeId: validation.employeeId,
         employeeName: validation.employeeName,
-      })
+      }
+
+      setAuthorizedByScope((current) => ({
+        ...current,
+        [report.validationScope]: authorizedUser,
+      }))
       setIsAuthDialogOpen(false)
+      setPendingReport(null)
+      await downloadReport(report, authorizedUser.employeeId)
     } catch (authRequestError) {
       const message = authRequestError instanceof Error ? authRequestError.message : 'No se pudo validar el usuario.'
       setAuthError(message)
@@ -105,11 +154,6 @@ export function ExportacionesPage() {
   }
 
   const handleDownload = async (report: LegacyVisibleReportRow) => {
-    if (!authorizedUser) {
-      setError('Debe autorizar un usuario antes de exportar.')
-      return
-    }
-
     if (!isRangeValid) {
       setError('El rango de fechas no es valido.')
       return
@@ -122,21 +166,23 @@ export function ExportacionesPage() {
       return
     }
 
-    setError(null)
-    setIsDownloadingKey(report.key)
-    try {
-      await downloadLegacyExport({
-        catalog: 'range',
-        key: report.key,
-        fechaInicio: filters.fechaInicio,
-        fechaFin: filters.fechaFin,
-        employeeId: authorizedUser.employeeId,
-      })
-    } catch (downloadError) {
-      const message = downloadError instanceof Error ? downloadError.message : 'No se pudo descargar el archivo.'
-      setError(message)
-    } finally {
-      setIsDownloadingKey(null)
+    const authorizedUser = authorizedByScope[report.validationScope]
+    if (!authorizedUser) {
+      setPendingReport(report)
+      setAuthError(null)
+      setError(null)
+      setIsAuthDialogOpen(true)
+      return
+    }
+
+    await downloadReport(report, authorizedUser.employeeId)
+  }
+
+  const handleAuthDialogOpenChange = (open: boolean) => {
+    setIsAuthDialogOpen(open)
+    if (!open && !isAuthorizing) {
+      setPendingReport(null)
+      setAuthError(null)
     }
   }
 
@@ -181,8 +227,10 @@ export function ExportacionesPage() {
             />
           </div>
           <div className="min-w-0 rounded-md bg-white/70 px-2 py-1.5 text-[12px] text-text xl:text-right">
-            <span className="font-semibold">Usuario:</span>{' '}
-            <span className="font-medium">{authorizedUser ? authorizedUser.employeeName : 'Pendiente de validacion'}</span>
+            <span className="font-semibold">Validacion:</span>{' '}
+            <span className="font-medium">
+              {authorizedScopeCount > 0 ? `${authorizedScopeCount} acceso(s) validado(s)` : 'Por reporte al exportar'}
+            </span>
           </div>
         </div>
       </div>
@@ -210,14 +258,19 @@ export function ExportacionesPage() {
             {VISIBLE_REPORT_ROWS.map((report) => (
               <tr key={report.key} className="bg-white hover:bg-[#f6fbff]">
                 <td className="hidden border-b border-border/70 px-2 py-1.5 text-[11px] text-right font-medium align-middle sm:table-cell">{report.ord}</td>
-                <td className="border-b border-border/70 px-2 py-1.5 text-[11px] align-middle font-medium text-[#123B63] whitespace-normal">{report.label}</td>
+                <td className="border-b border-border/70 px-2 py-1.5 text-[11px] align-middle text-[#123B63] whitespace-normal">
+                  <div className="font-medium">{report.label}</div>
+                  {report.description ? (
+                    <div className="mt-0.5 text-[10px] font-normal leading-snug text-muted">{report.description}</div>
+                  ) : null}
+                </td>
                 <td className="border-b border-border/70 px-2 py-1.5 text-[11px] text-center align-middle">
                   <Button
                     size="sm"
                     className="h-7 w-full gap-1.5 px-2 text-[11px] font-semibold sm:w-auto sm:px-3"
-                    style={authorizedUser && isRangeValid ? { backgroundColor: '#005F8F', color: '#fff' } : undefined}
-                    variant={authorizedUser && isRangeValid ? 'default' : 'outline'}
-                    disabled={!authorizedUser || !isRangeValid || isDownloadingKey === report.key}
+                    style={isRangeValid ? { backgroundColor: '#005F8F', color: '#fff' } : undefined}
+                    variant={isRangeValid ? 'default' : 'outline'}
+                    disabled={!isRangeValid || isDownloadingKey === report.key}
                     onClick={() => void handleDownload(report)}
                   >
                     <Download className="h-3.5 w-3.5" />
@@ -230,11 +283,15 @@ export function ExportacionesPage() {
         </table>
       </div>
 
-      <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
+      <Dialog open={isAuthDialogOpen} onOpenChange={handleAuthDialogOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Permisos para acceder a Reportes Nominales</DialogTitle>
-            <DialogDescription>Ingrese numero de DNI y contrasena SISGALEN.</DialogDescription>
+            <DialogTitle>Permisos para exportar</DialogTitle>
+            <DialogDescription>
+              {pendingReport
+                ? `Ingrese numero de DNI y contrasena SISGALEN para ${pendingReport.label}.`
+                : 'Ingrese numero de DNI y contrasena SISGALEN.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -262,7 +319,7 @@ export function ExportacionesPage() {
             ) : null}
           </div>
           <DialogFooter>
-            <Button onClick={() => void handleAuthorize()} disabled={isAuthorizing}>
+            <Button onClick={() => void handleAuthorize()} disabled={isAuthorizing || !pendingReport}>
               {isAuthorizing ? 'Validando...' : 'Aceptar'}
             </Button>
           </DialogFooter>

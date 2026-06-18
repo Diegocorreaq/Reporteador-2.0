@@ -20,7 +20,7 @@ function assertDeepEqual<T>(actual: T, expected: T, message: string): void {
 const indicatorResults = searchCatalog('indicadores hospitalarios')
 assertDeepEqual(
   CATALOG_STATS,
-  { principal: 48, datosEnLinea: 15, total: 63 },
+  { principal: 46, datosEnLinea: 16, total: 62 },
   'el centro de orientacion debe mostrar las cantidades actualizadas de recursos navegables',
 )
 
@@ -31,7 +31,7 @@ assertDeepEqual(
 )
 
 const camasTitles = titlesFor('camas')
-assert(camasTitles.includes('Monitoreo de Camas'), 'camas debe incluir Monitoreo de Camas')
+assert(camasTitles.includes('Gestión de Camas'), 'camas debe incluir Gestión de Camas')
 assert(camasTitles.includes('Resumen de Camas'), 'camas debe incluir Resumen de Camas')
 assert(camasTitles.includes('Porcentaje de Ocupación Cama'), 'camas debe incluir Porcentaje de Ocupación Cama')
 assert(camasTitles.includes('Gestión Estancia Cama'), 'camas debe incluir Gestión Estancia Cama')
@@ -42,7 +42,7 @@ assert(ceTitles.some((title) => title.includes('Consulta Externa')), 'ce debe in
 
 assertDeepEqual(
   titlesFor('dengue'),
-  ['Seguimiento Dengue', 'Monitoreo'],
+  ['Seguimiento Dengue', 'Monitoreo', 'Exportar Datos — Registros Procesados'],
   'dengue debe devolver solo los modulos relacionados a dengue',
 )
 

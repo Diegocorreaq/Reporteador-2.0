@@ -49,7 +49,7 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
 export async function validateLegacyExportUser(
   username: string,
   password: string,
-  scope: 'general' | 'lavado' | 'zona-descarga/morbilidad-materna' = 'general',
+  scope: string = 'general',
 ) {
   const response = await httpClient.post<LegacyUserValidationPayload>('/exports/validate', {
     username,

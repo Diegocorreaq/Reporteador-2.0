@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { validateLegacyUser } from '../services/legacy-export.service.js'
+import { hasLegacyAuthScope, validateLegacyUser } from '../services/legacy-export.service.js'
 import { createSession, verifySession } from '../services/auth-session.service.js'
 import { requireAuth } from '../middleware/require-auth.js'
 import { authLimiter } from '../middleware/rate-limit.js'
@@ -37,10 +37,10 @@ function buildUserResponse(sessionPayload) {
 
 function normalizeLegacyValidationScope(scope) {
   const value = String(scope ?? '').trim()
-  if (value === 'lavado' || value === 'zona-descarga/morbilidad-materna') {
-    return value
+  if (!value) {
+    return 'general'
   }
-  return 'general'
+  return hasLegacyAuthScope(value) ? value : null
 }
 
 // POST /auth/login — validate credentials, issue session cookie
@@ -51,6 +51,14 @@ authRouter.post('/auth/login', authLimiter, async (request, response) => {
     const ip = getClientIp(request)
 
     const normalizedScope = normalizeLegacyValidationScope(scope)
+    if (!normalizedScope) {
+      return response.status(400).json({
+        code: 'UNKNOWN_ACCESS_SCOPE',
+        message: 'El permiso solicitado no existe.',
+        correlationId,
+      })
+    }
+
     const validation = await validateLegacyUser({
       dni: String(username ?? '').trim(),
       password: String(password ?? '').trim(),

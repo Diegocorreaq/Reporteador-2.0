@@ -2188,6 +2188,12 @@ const RANGE_EXPORTS = {
     template: SIN_FIRMA_RANGE_TEMPLATE,
     rowsMapper: mapRangeSinFirmaRows,
   },
+  exporta_d_xls_21: {
+    procedure: 'SP_REPORTE_D_EXCEL21_DENGUE_SIN_SIGNOS_ALARMA',
+    fileName: 'pacientes-dengue-sin-signos-alarma.xlsx',
+    maxDays: 92,
+    template: createDengueSinSignosAlarmaTemplate(),
+  },
 }
 
 // File names corrected to match legacy exactly
@@ -2251,6 +2257,56 @@ const LAVADO_EXPORTS = {
     fileName: 'registro-lavado-de-manos.xlsx',
     template: LAVADO_REPORTE_TEMPLATE,
   },
+}
+
+function createDengueSinSignosAlarmaTemplate() {
+  return {
+    sheetName: 'Dengue sin signos',
+    spacerRows: 1,
+    headerRowHeight: 28,
+    dataRowHeight: 18,
+    autoFilter: true,
+    metadata: [
+      { label: 'Reporte', value: 'Pacientes con diagnostico A97.0 - Dengue sin signos de alarma' },
+      { label: 'Intervalo de fechas', value: '{{dateRange}}' },
+      { label: 'Diagnostico', value: 'CIE-10 A97.0 - Dengue sin signos de alarma' },
+      { label: 'Fuente', value: 'SisGalenPlus' },
+    ],
+    metadataLayout: {
+      labelStartCol: 1,
+      labelEndCol: 3,
+      valueStartCol: 4,
+      valueEndCol: 8,
+      labelColor: 'D9EAF7',
+    },
+    columns: [
+    { key: 'IDATENCION', label: 'IDATENCION', width: 12, headerColor: 'E7F5FE', align: 'center' },
+    { key: 'CUENTA', label: 'CUENTA', width: 12, headerColor: 'E7F5FE', align: 'center' },
+    { key: 'UPSS', label: 'UPSS', width: 24, headerColor: 'D9EAF7' },
+    { key: 'SERVICIO_EGRESO', label: 'SERVICIO EGRESO', width: 28, headerColor: 'D9EAF7' },
+    { key: 'FECHA_EGRESO', label: 'FECHA EGRESO', width: 15, headerColor: 'D9EAF7', format: 'excel-date', numFmt: 'dd/mm/yyyy', align: 'center' },
+    { key: 'CONDICION_ALTA', label: 'CONDICION ALTA', width: 16, headerColor: 'D9EAF7', align: 'center' },
+    { key: 'PACIENTE', label: 'PACIENTE', width: 42, headerColor: 'E2F6E8' },
+    { key: 'EDAD', label: 'EDAD', width: 8, headerColor: 'E2F6E8', align: 'center' },
+    { key: 'TIPO_EDAD', label: 'TIPO EDAD', width: 12, headerColor: 'E2F6E8', align: 'center' },
+    { key: 'SEXO', label: 'SEXO', width: 12, headerColor: 'E2F6E8', align: 'center' },
+    { key: 'TELEFONO', label: 'TELEFONO', width: 16, headerColor: 'E2F6E8', asText: true },
+    { key: 'TELEFONO_2', label: 'TELEFONO 2', width: 16, headerColor: 'E2F6E8', asText: true },
+    { key: 'FECHA_INGRESO', label: 'FECHA INGRESO', width: 15, headerColor: 'FFF2CC', format: 'excel-date', numFmt: 'dd/mm/yyyy', align: 'center' },
+    { key: 'FECHA_HORA_INGRESO', label: 'FECHA Y HORA INGRESO', width: 21, headerColor: 'FFF2CC', format: 'excel-datetime', numFmt: 'dd/mm/yyyy hh:mm', align: 'center' },
+    { key: 'FECHA_INICIO_SINTOMAS', label: 'FECHA INICIO SINTOMAS', width: 21, headerColor: 'FFF2CC', format: 'excel-date', numFmt: 'dd/mm/yyyy', align: 'center' },
+    { key: 'DISTRITO_FICHA', label: 'DISTRITO FICHA', width: 22, headerColor: 'EADCF8' },
+    { key: 'DISTRITO_PROCEDENCIA_ARBO', label: 'DISTRITO PROCEDENCIA ARBO', width: 28, headerColor: 'EADCF8' },
+    { key: 'DISTRITO_DOMICILIO', label: 'DISTRITO DOMICILIO', width: 24, headerColor: 'EADCF8' },
+    { key: 'SERVICIO_INGRESO', label: 'SERVICIO INGRESO', width: 28, headerColor: 'D9EAF7' },
+    { key: 'ORIGEN_ATENCION', label: 'ORIGEN ATENCION', width: 24, headerColor: 'D9EAF7' },
+    { key: 'MES_INGRESO', label: 'MES INGRESO', width: 12, headerColor: 'FFF2CC', align: 'center' },
+    { key: 'GRUPO_EDAD', label: 'GRUPO EDAD', width: 15, headerColor: 'E2F6E8', align: 'center' },
+    { key: 'DISTRITO_PACIENTE', label: 'DISTRITO PACIENTE', width: 24, headerColor: 'EADCF8' },
+    { key: 'FECHA_REGISTRO_ARBO', label: 'FECHA REGISTRO ARBO', width: 21, headerColor: 'FFF2CC', format: 'excel-datetime', numFmt: 'dd/mm/yyyy hh:mm', align: 'center' },
+    { key: 'ORDEN_GRUPO_EDAD', label: 'ORDEN GRUPO EDAD', width: 16, headerColor: 'E2F6E8', align: 'center' },
+    ],
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2657,6 +2713,11 @@ const LEGACY_AUTH_PROCEDURES = {
   'epidemiologia/cirugia-procedimiento': { procedure: 'SP_USUARIO_VALIDA_EPI_CIRUGIA_PROCEDIMIENTO', paramStyle: 'legacy' },
   'epidemiologia/seguimiento-dengue': { procedure: 'SP_USUARIO_VALIDA_EPI_SEGUIMIENTO_DENGUE', paramStyle: 'legacy' },
   'zona-descarga/morbilidad-materna': { procedure: 'SP_USUARIO_VALIDA_MORBILIDAD_MATERNA', paramStyle: 'legacy' },
+  'zona-descarga/dengue-sin-signos-alarma': { procedure: 'SP_USUARIO_VALIDA_DENGUE_SIN_SIGNOS_ALARMA', paramStyle: 'legacy' },
+}
+
+export function hasLegacyAuthScope(scope) {
+  return Object.prototype.hasOwnProperty.call(LEGACY_AUTH_PROCEDURES, scope)
 }
 
 function buildAuthParams({ dni, password, ip, paramStyle }) {

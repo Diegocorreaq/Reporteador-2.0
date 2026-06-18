@@ -233,8 +233,29 @@ function formatDateTimeSqlLegacy(value) {
 function resolveTabulatedMetadataValue(value, { startDate, endDate, reportDateTime }) {
   if (value === '{{startDate}}') return formatMetadataDateValue(startDate)
   if (value === '{{endDate}}') return formatMetadataDateValue(endDate)
+  if (value === '{{dateRange}}') {
+    return `${formatMetadataDateDisplayValue(startDate)} al ${formatMetadataDateDisplayValue(endDate)}`
+  }
   if (value === '{{reportDateTime}}') return reportDateTime
   return value ?? ''
+}
+
+function formatMetadataDateDisplayValue(value) {
+  if (value == null || value === '') return ''
+
+  const raw = String(value).trim()
+  const dateMatch = raw.match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/)
+  if (dateMatch) {
+    return `${dateMatch[3]}/${dateMatch[2]}/${dateMatch[1]}`
+  }
+
+  const parsed = parseExcelDateValue(raw)
+  if (!parsed) return raw
+
+  const yyyy = String(parsed.getFullYear())
+  const mm = String(parsed.getMonth() + 1).padStart(2, '0')
+  const dd = String(parsed.getDate()).padStart(2, '0')
+  return `${dd}/${mm}/${yyyy}`
 }
 
 function formatMetadataDateValue(value) {
