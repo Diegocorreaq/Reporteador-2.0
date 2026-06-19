@@ -235,19 +235,19 @@ test('SUSALUD: emergencia ampliada usa demanda de monitoreo si no hay detalle co
       payload.emergenciaAmpliadaRows[0].conOxigeno,
       payload.emergenciaAmpliadaRows[0].sinOxigeno,
     ],
-    [5, 0, 5],
+    [10, 0, 10],
   )
 
   const auditRow = payload.auditRows.find(
     (row) => row.audit_tipo === 'RESULTADO_BLOQUE' && row.bloque === 'EMERGENCIA_AMPLIADA',
   )
-  assert.equal(auditRow.fuente_demanda_ampliada, 'demanda_monitoreo')
+  assert.equal(auditRow.fuente_demanda_ampliada, 'demanda_monitoreo_primer_piso')
 })
 
 test('SUSALUD: filtro Cama excluye otros recursos antes de sumar y auditar', () => {
   const payload = buildSusaludExportPayload({
     resumenRows: [
-      { idservicio: 418, piso: 'Emergencia 1er Piso', servicio: 'OBSERVACION GINECO-OBSTETRICIA', tipo: ' Cama ', total: 262, chabi: 262, cocup: 100, clibr: 162 },
+      { idservicio: 418, piso: 'Emergencia 1er Piso', servicio: 'OBSERVACION GINECO-OBSTETRICIA', tipo: ' Cama ', camas: 262, total: 262, chabi: 262, cocup: 100, clibr: 162 },
       { idservicio: 418, piso: 'Emergencia 1er Piso', servicio: 'OBSERVACION GINECO-OBSTETRICIA', tipo: 'Silla', total: 58, chabi: 58, cocup: 58, clibr: 0 },
       { idservicio: 418, piso: 'Emergencia 1er Piso', servicio: 'OBSERVACION GINECO-OBSTETRICIA', tipo: 'Cuna', total: 34, chabi: 34, cocup: 34, clibr: 0 },
       { idservicio: 418, piso: 'Emergencia 1er Piso', servicio: 'OBSERVACION GINECO-OBSTETRICIA', tipo: 'Chailones', total: 24, chabi: 24, cocup: 24, clibr: 0 },
@@ -267,6 +267,54 @@ test('SUSALUD: filtro Cama excluye otros recursos antes de sumar y auditar', () 
   const auditDatasetRows = payload.auditRows.filter((row) => row.audit_tipo === 'DATASET_NORMALIZADO')
   assert.equal(auditDatasetRows.length, 1)
   assert.equal(String(auditDatasetRows[0].tipo).trim().toUpperCase(), 'CAMA')
+})
+
+test('SUSALUD: incluye cunas de hospitalizacion pediatrica', () => {
+  const payload = buildSusaludExportPayload({
+    resumenRows: [
+      { idservicio: 650, piso: 'Hospitalizacion 4to Piso', servicio: 'HOSPITALIZACION PEDIATRIA', tipo: 'Cama', camas: 30, total: 20, chabi: 19, cocup: 18, clibr: 1, cinah: 1 },
+      { idservicio: 650, piso: 'Hospitalizacion 4to Piso', servicio: 'HOSPITALIZACION PEDIATRIA', tipo: 'Cuna', camas: 30, total: 12, chabi: 12, cocup: 12, clibr: 0, cinah: 0 },
+      { idservicio: 418, piso: 'Emergencia 1er Piso', servicio: 'OBSERVACION GINECO-OBSTETRICIA', tipo: 'Cuna', total: 34, chabi: 34, cocup: 34, clibr: 0 },
+    ],
+    corteTimestamp: new Date('2026-04-19T02:00:00.000Z'),
+    includeAudit: true,
+    onlyTipoCama: true,
+  })
+
+  const hospitalizacionPediatrica = payload.hospitalizacionRows.find(
+    (row) => row.upssHospitalizacion === 'HOSPITALIZACION PEDIATRICA',
+  )
+
+  assert.deepEqual(toHospitalizacionTuple(hospitalizacionPediatrica), [30, 0, 30, 0, 30, 30, 0, 0])
+  assert.equal(payload.normalizedDataset.length, 2)
+  assert.ok(payload.normalizedDataset.some((row) => row.idservicio === 650 && row.tipo === 'Cuna'))
+  assert.equal(payload.normalizedDataset.some((row) => row.idservicio === 418 && row.tipo === 'Cuna'), false)
+})
+
+test('SUSALUD: capacidad oficial usa camas arq por servicio', () => {
+  const payload = buildSusaludExportPayload({
+    resumenRows: [
+      { idservicio: 669, piso: 'Hospitalizacion 2do Piso', servicio: 'UCIN ADULTOS C', tipo: 'Cama', camas: 8, total: 10, chabi: 8, cocup: 8, clibr: 0, cinah: 2, tocupa: 8 },
+    ],
+    corteTimestamp: new Date('2026-04-19T02:00:00.000Z'),
+    includeAudit: true,
+    onlyTipoCama: true,
+  })
+
+  const ucinAdultos = payload.ucinRows.find((row) => row.upssUcin === 'UCIN ADULTO')
+  assert.deepEqual(toUcinTuple(ucinAdultos), [8, 0, 8, 0, 8, 8, 0, 0, 0])
+})
+
+test('SUSALUD: areas que componen solo lista servicios presentes en el tablero', () => {
+  const payload = buildPayload()
+  const emergenciaAdultos = payload.emergenciaRows.find((row) => row.upssEmergencia === 'EMERGENCIA ADULTOS')
+
+  assert.ok(emergenciaAdultos)
+  assert.match(emergenciaAdultos.areas, /OBSERVACION GINECO-OBSTETRICIA/)
+  assert.match(emergenciaAdultos.areas, /OBSERVACION MEDICINA 1/)
+  assert.match(emergenciaAdultos.areas, /OBSERVACION QUIRURGICA/)
+  assert.doesNotMatch(emergenciaAdultos.areas, /OBSERVACION MEDICINA 2/)
+  assert.doesNotMatch(emergenciaAdultos.areas, /OBSERVACION MEDICINA 4/)
 })
 
 test('SUSALUD: workbook contiene hoja de auditoria oculta', async () => {

@@ -83,7 +83,12 @@ function getClientIp(request) {
   return request.ip || request.socket?.remoteAddress || '0.0.0.0'
 }
 
-function sendDownload(response, file) {
+function sendDownload(response, file, options = {}) {
+  if (options.noStore) {
+    response.setHeader('Cache-Control', 'private, no-store, max-age=0')
+    response.setHeader('Pragma', 'no-cache')
+    response.setHeader('Expires', '0')
+  }
   response.setHeader('Content-Type', file.mimeType)
   response.setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`)
   if (file.warnings?.length) {
@@ -581,7 +586,7 @@ reportsRouter.get('/sigh/camas/detalle', requireAuth, async (request, response) 
 reportsRouter.get('/sigh/camas/export/resumen', requireAuth, exportLimiter, async (_request, response) => {
   try {
     const file = await exportMonitoreoCamasResumen()
-    sendDownload(response, file)
+    sendDownload(response, file, { noStore: true })
   } catch (error) {
     handleError(response, error, 'No se pudo exportar el resumen de camas.')
   }
@@ -590,7 +595,7 @@ reportsRouter.get('/sigh/camas/export/resumen', requireAuth, exportLimiter, asyn
 reportsRouter.get('/sigh/camas/export/susalud', requireAuth, exportLimiter, async (_request, response) => {
   try {
     const file = await exportMonitoreoCamasSusalud()
-    sendDownload(response, file)
+    sendDownload(response, file, { noStore: true })
   } catch (error) {
     handleError(response, error, 'No se pudo exportar el reporte SUSALUD de camas.')
   }

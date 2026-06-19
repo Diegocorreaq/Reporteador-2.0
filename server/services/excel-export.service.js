@@ -1317,6 +1317,21 @@ export async function buildCamasResumenWorkbook({ summary = {}, rows = [], title
 //   Row  7+  : detalle + subtotales por piso + total general
 // ---------------------------------------------------------------------------
 
+const MONITOREO_NOT_APPLICABLE_FILL = argbFill('E2E8F0')
+const MONITOREO_NOT_APPLICABLE_FONT = { ...DATA_FONT, bold: true, color: { argb: 'FF475569' } }
+
+function hasApprovedBedsValue(camas) {
+  return toFiniteNumber(camas) > 0
+}
+
+function resolveOcupacionDisplay(camas, pct) {
+  return hasApprovedBedsValue(camas) ? Math.round(clamp(toFiniteNumber(pct), 0, 100)) : 'N/A'
+}
+
+function semaforoOcupacionFill(camas, pct) {
+  return hasApprovedBedsValue(camas) ? semaforoPorcentajeFill(pct) : MONITOREO_NOT_APPLICABLE_FILL
+}
+
 function semaforoPorcentajeFill(pct) {
   const value = clamp(toFiniteNumber(pct), 0, 100)
   if (value <= 60) return argbFill('9DDE58')
@@ -1361,12 +1376,13 @@ function makeMonitoreoCamasSummary(values) {
   const camas = toFiniteNumber(values.camas)
   const tocupa = toFiniteNumber(values.tocupa)
   const ocupacionBase = Math.min(tocupa, camas)
+  const pctOcupacion = clamp(safePercentValue(ocupacionBase, camas), 0, 100)
   const afPctDisplay = resolveAfPercentDisplay(values.c_fl, values.afopera, values.totalaf)
 
   return {
     camas,
     demanda: toFiniteNumber(values.demanda),
-    pctOcupacion: Math.round(clamp(safePercentValue(ocupacionBase, camas), 0, 100)),
+    pctOcupacion: resolveOcupacionDisplay(camas, pctOcupacion),
     total: toFiniteNumber(values.total),
     chabi: toFiniteNumber(values.chabi),
     cocup: toFiniteNumber(values.cocup),
@@ -1570,7 +1586,7 @@ export async function buildMonitoreoCamasWorkbook({ title, sheetName, generatedA
         tipo: String(item.tipo ?? ''),
         camas_aprobadas: toFiniteNumber(metrics.camas),
         demanda_adicional: toFiniteNumber(metrics.demanda),
-        pct_ocupacion: Math.round(toFiniteNumber(metrics.porcentaje)),
+        pct_ocupacion: resolveOcupacionDisplay(metrics.camas, metrics.porcentaje),
         camas_totales: toFiniteNumber(detail.camasTotales),
         camas_operativas: toFiniteNumber(detail.camasOperativas),
         camas_ocupadas: toFiniteNumber(detail.camasOcupadas),
@@ -1615,7 +1631,10 @@ export async function buildMonitoreoCamasWorkbook({ title, sheetName, generatedA
       }
 
       const pctOcupCell = dataRow.getCell(6)
-      pctOcupCell.fill = semaforoPorcentajeFill(valuesByKey.pct_ocupacion)
+      pctOcupCell.fill = semaforoOcupacionFill(valuesByKey.camas_aprobadas, valuesByKey.pct_ocupacion)
+      if (!hasApprovedBedsValue(valuesByKey.camas_aprobadas)) {
+        pctOcupCell.font = MONITOREO_NOT_APPLICABLE_FONT
+      }
 
       const demandaCell = dataRow.getCell(5)
       const demandaFill = semaforoPresionFill(valuesByKey.demanda_adicional)

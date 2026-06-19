@@ -63,7 +63,7 @@ function calculateDemandaAmpliada(rows = []) {
     current.camas = Math.max(current.camas, camas)
     current.tocupaSp = Math.max(current.tocupaSp, tocupa)
     current.cocup += toNumber(row.cocup)
-    current.hasDemandBase = current.hasDemandBase || camas > 0 || tocupa > 0
+    current.hasDemandBase = current.hasDemandBase || camas > 0 || tocupa > 0 || toNumber(row.cocup) > 0
 
     groups.set(key, current)
   }
@@ -108,24 +108,108 @@ function rowsForCategory(sourceRows, categorySpec) {
   return sourceRows.filter((row) => matchLegacyCategory(row, categorySpec))
 }
 
+function buildAreasQueComponen(rows = []) {
+  const seen = new Set()
+  const areas = []
+
+  for (const row of rows) {
+    const area = String(row.consultorio ?? row.area_fuente ?? row.area_equivalente_legacy ?? '').trim()
+    const key = normalizeText(area)
+    if (!area || seen.has(key)) {
+      continue
+    }
+
+    seen.add(key)
+    areas.push(area)
+  }
+
+  return areas
+    .sort((left, right) => normalizeText(left).localeCompare(normalizeText(right)))
+    .join(', ')
+}
+
+function summarizeOfficialCapacityRows(rows = []) {
+  const groups = new Map()
+
+  for (const row of rows) {
+    const key = `${row.source_tag}|${row.piso}|${row.idservicio}|${row.consultorio}`
+    const current = groups.get(key) ?? {
+      camas: 0,
+      chabi: 0,
+      cocup: 0,
+      clibr: 0,
+      tocupaSp: 0,
+      c_vm: 0,
+      c_oxi: 0,
+    }
+
+    current.camas = Math.max(current.camas, toNumber(row.camas))
+    current.chabi += toNumber(row.chabi)
+    current.cocup += toNumber(row.cocup)
+    current.clibr += toNumber(row.clibr)
+    current.tocupaSp = Math.max(current.tocupaSp, toNumber(row.tocupa))
+    current.c_vm += toNumber(row.c_vm)
+    current.c_oxi += toNumber(row.c_oxi)
+
+    groups.set(key, current)
+  }
+
+  const totals = {
+    total: 0,
+    inoperativos: 0,
+    operativos: 0,
+    libres: 0,
+    ocupados: 0,
+    c_vm: 0,
+    c_oxi: 0,
+    demanda_adicional: 0,
+  }
+
+  for (const group of groups.values()) {
+    const capacidad = group.camas
+    const operativos = Math.min(group.chabi, capacidad)
+    const ocupacionReal = Math.max(group.cocup, group.tocupaSp)
+    const ocupados = Math.min(ocupacionReal, operativos)
+    const libres = Math.min(group.clibr, Math.max(operativos - ocupados, 0))
+    const inoperativos = Math.max(capacidad - operativos, 0)
+    const cVm = Math.min(group.c_vm, ocupados)
+    const cOxi = Math.min(group.c_oxi, Math.max(ocupados - cVm, 0))
+
+    totals.total += capacidad
+    totals.inoperativos += inoperativos
+    totals.operativos += operativos
+    totals.libres += libres
+    totals.ocupados += ocupados
+    totals.c_vm += cVm
+    totals.c_oxi += cOxi
+    totals.demanda_adicional += Math.max(ocupacionReal - capacidad, 0)
+  }
+
+  return totals
+}
+
 function calculateCapacityRows(normalizedRows, blockName, projectFn, {
   sourceTag,
   fallbackSourceTag,
+  areaSourceRows,
 } = {}) {
   const selectedSourceTag = sourceTag ?? 'corte'
   const sourceRows = selectRowsBySource(normalizedRows, selectedSourceTag, fallbackSourceTag)
+  const areaRows = Array.isArray(areaSourceRows) && areaSourceRows.length > 0 ? areaSourceRows : sourceRows
   const categorySpecs = getLegacyCategorySpecsByBlock(blockName)
   const rows = []
   const audit = []
 
   for (const categorySpec of categorySpecs) {
     const categoryRows = rowsForCategory(sourceRows, categorySpec)
-    const sums = sumFields(categoryRows, ['total', 'cinah', 'chabi', 'clibr', 'cocup', 'c_vm', 'c_oxi', 'ctran'])
+    const categoryAreaRows = rowsForCategory(areaRows, categorySpec)
+    const areas = buildAreasQueComponen(categoryAreaRows)
+    const sums = summarizeOfficialCapacityRows(categoryRows)
     const projected = projectFn(sums)
 
     rows.push({
       category: categorySpec.categoria_legacy,
-      areas: categorySpec.areas_que_componen,
+      areas,
       ...projected,
       _esNoSusalud: Boolean(categorySpec.es_no_susalud),
     })
@@ -138,11 +222,13 @@ function calculateCapacityRows(normalizedRows, blockName, projectFn, {
         formula: JSON.stringify(LEGACY_FORMULAS_BY_BLOCK[blockName] ?? {}),
         rows: categoryRows,
         payload: {
+          areas_que_componen: areas,
           total: projected.total,
           inoperativos: projected.inoperativos,
           operativos: projected.operativos,
           libres: projected.libres,
           ocupados: projected.ocupados,
+          demanda_adicional: sums.demanda_adicional,
           s_oxigeno: projected.sinOxigeno ?? null,
           c_oxigeno: projected.conOxigeno ?? null,
           sin_vm: projected.sinVm ?? null,
@@ -159,11 +245,11 @@ function calculateCapacityRows(normalizedRows, blockName, projectFn, {
 export function buildUciBlock(normalizedRows, options = {}) {
   const { rows, audit } = calculateCapacityRows(normalizedRows, 'UCI', (sums) => ({
     total: sums.total,
-    inoperativos: sums.cinah,
-    operativos: sums.chabi,
-    libres: sums.clibr,
-    ocupados: sums.cocup,
-    sinVm: sums.cocup - sums.c_vm,
+    inoperativos: sums.inoperativos,
+    operativos: sums.operativos,
+    libres: sums.libres,
+    ocupados: sums.ocupados,
+    sinVm: sums.ocupados - sums.c_vm,
     conVm: sums.c_vm,
     reserva: 0,
   }), { sourceTag: 'resumen', fallbackSourceTag: 'corte', ...options })
@@ -189,11 +275,11 @@ export function buildUciBlock(normalizedRows, options = {}) {
 export function buildUcinBlock(normalizedRows, options = {}) {
   const { rows, audit } = calculateCapacityRows(normalizedRows, 'UCIN', (sums) => ({
     total: sums.total,
-    inoperativos: sums.cinah,
-    operativos: sums.chabi,
-    libres: sums.clibr,
-    ocupados: sums.cocup,
-    sinOxigeno: sums.cocup - (sums.c_vm + sums.c_oxi),
+    inoperativos: sums.inoperativos,
+    operativos: sums.operativos,
+    libres: sums.libres,
+    ocupados: sums.ocupados,
+    sinOxigeno: sums.ocupados - (sums.c_vm + sums.c_oxi),
     conOxigeno: sums.c_oxi,
     conVm: sums.c_vm,
     reserva: 0,
@@ -221,11 +307,11 @@ export function buildUcinBlock(normalizedRows, options = {}) {
 export function buildHospitalizacionBlock(normalizedRows, options = {}) {
   const { rows, audit } = calculateCapacityRows(normalizedRows, 'HOSPITALIZACION', (sums) => ({
     total: sums.total,
-    inoperativos: sums.cinah,
-    operativos: sums.chabi,
-    libres: sums.clibr,
-    ocupados: sums.cocup,
-    sinOxigeno: sums.cocup - sums.c_oxi,
+    inoperativos: sums.inoperativos,
+    operativos: sums.operativos,
+    libres: sums.libres,
+    ocupados: sums.ocupados,
+    sinOxigeno: sums.ocupados - sums.c_oxi,
     conOxigeno: sums.c_oxi,
     reserva: 0,
   }), { sourceTag: 'resumen', fallbackSourceTag: 'corte', ...options })
@@ -251,12 +337,11 @@ export function buildHospitalizacionBlock(normalizedRows, options = {}) {
 export function buildEmergenciaBlock(normalizedRows, options = {}) {
   const { rows, audit } = calculateCapacityRows(normalizedRows, 'EMERGENCIA', (sums) => ({
     total: sums.total,
-    inoperativos: sums.cinah,
-    operativos: sums.chabi,
-    libres: sums.clibr,
-    ocupados: sums.cocup,
-    // Legacy parity del controlador: resta cocup - c_vm (usa $sim7 en vez de $sum7).
-    sinOxigeno: sums.cocup - sums.c_vm,
+    inoperativos: sums.inoperativos,
+    operativos: sums.operativos,
+    libres: sums.libres,
+    ocupados: sums.ocupados,
+    sinOxigeno: sums.ocupados - sums.c_vm,
     conOxigeno: sums.c_oxi,
     conVm: sums.c_vm,
     reserva: 0,
@@ -284,13 +369,11 @@ export function buildEmergenciaBlock(normalizedRows, options = {}) {
 export function buildEmergenciaAmpliadaBlock(normalizedRows, options = {}) {
   const sourceRows = selectRowsBySource(normalizedRows, options.sourceTag ?? 'resumen', options.fallbackSourceTag ?? 'corte')
   const emergenciaAmpliadaSourceRows = selectEmergenciaAmpliadaRows(sourceRows)
-  const sums = sumFields(emergenciaAmpliadaSourceRows, ['con_oxi', 'sin_oxi'])
-  const hasOxigenoSplit = sums.con_oxi + sums.sin_oxi > 0
   const demandaAmpliada = calculateDemandaAmpliada(emergenciaAmpliadaSourceRows)
 
-  const total = hasOxigenoSplit ? sums.con_oxi + sums.sin_oxi : demandaAmpliada.total
-  const conOxigeno = hasOxigenoSplit ? sums.con_oxi : 0
-  const sinOxigeno = hasOxigenoSplit ? sums.sin_oxi : demandaAmpliada.total
+  const total = demandaAmpliada.total
+  const conOxigeno = 0
+  const sinOxigeno = demandaAmpliada.total
 
   const row = {
     area: 'Nro de PAcientes en Sillas, Sillas de Ruedas, cAmillas, gradas, etc en espera de cama de Hospitalizacion',
@@ -307,12 +390,12 @@ export function buildEmergenciaAmpliadaBlock(normalizedRows, options = {}) {
         category: 'RESUMEN_UNICO',
         sourceTag: emergenciaAmpliadaSourceRows[0]?.source_tag ?? sourceRows[0]?.source_tag ?? (options.sourceTag ?? 'resumen'),
         formula: JSON.stringify(LEGACY_FORMULAS_BY_BLOCK.EMERGENCIA_AMPLIADA),
-        rows: hasOxigenoSplit ? emergenciaAmpliadaSourceRows : demandaAmpliada.sourceRows,
+        rows: demandaAmpliada.sourceRows,
         payload: {
           total: row.total,
           c_oxigeno: row.conOxigeno,
           s_oxigeno: row.sinOxigeno,
-          fuente_demanda_ampliada: hasOxigenoSplit ? 'con_oxi/sin_oxi' : 'demanda_monitoreo',
+          fuente_demanda_ampliada: 'demanda_monitoreo_primer_piso',
         },
       }),
     ],

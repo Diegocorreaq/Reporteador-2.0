@@ -9,6 +9,7 @@ function makeRow(servicio, overrides = {}) {
     piso: overrides.piso ?? '',
     servicio,
     tipo: overrides.tipo ?? 'CAMA',
+    camas: overrides.camas ?? total,
 
     total,
     cinah,
@@ -262,7 +263,7 @@ export const expectedParity = {
     'EMERGENCIA ADULTOS': [26, 0, 26, 4, 22, 22, 0, 0, 0],
     'EMERGENCIA PEDIATRICA': [10, 0, 10, 0, 10, 10, 0, 0, 0],
   },
-  emergenciaAmpliada: [0, 0, 0],
+  emergenciaAmpliada: [2, 0, 2],
   recursos: {
     VENTILADORES: [57, 22, 35, 35, 0],
     'MONITOREO DE FUNCIONES VITALES': [90, 1, 89, 48, 41],

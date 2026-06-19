@@ -11,8 +11,21 @@ import {
 } from './susalud-calculators.js'
 import { buildSusaludAuditRows } from './susalud-audit.js'
 
+function toNumber(value) {
+  const numeric = Number(value ?? 0)
+  return Number.isFinite(numeric) ? numeric : 0
+}
+
+function normalizeTipo(value) {
+  return String(value ?? '').trim().toUpperCase()
+}
+
+function isHospitalizacionPediatricaCuna(row) {
+  return toNumber(row?.idservicio) === 650 && normalizeTipo(row?.tipo) === 'CUNA'
+}
+
 function isTipoCama(row) {
-  return String(row?.tipo ?? '').trim().toUpperCase() === 'CAMA'
+  return normalizeTipo(row?.tipo) === 'CAMA' || isHospitalizacionPediatricaCuna(row)
 }
 
 function filterOnlyTipoCama(rows = []) {
@@ -52,13 +65,18 @@ export function buildSusaludExportPayload({
     sourceTag: 'resumen',
     corteTimestamp: timestamp,
   })
+  const normalizedAreaRows = normalizeSusaludDataset(rawResumenRows, {
+    sourceTag: 'areas_tablero',
+    corteTimestamp: timestamp,
+  })
   const normalizedRows = [...normalizedCorteRows, ...normalizedResumenRows]
+  const areaOptions = { areaSourceRows: normalizedAreaRows }
 
-  const uci = calculateUciBlock(normalizedRows)
-  const ucin = calculateUcinBlock(normalizedRows)
-  const hospitalizacion = calculateHospitalizacionBlock(normalizedRows)
-  const emergencia = calculateEmergenciaBlock(normalizedRows)
-  const emergenciaAmpliada = calculateEmergenciaAmpliadaBlock(normalizedRows)
+  const uci = calculateUciBlock(normalizedRows, areaOptions)
+  const ucin = calculateUcinBlock(normalizedRows, areaOptions)
+  const hospitalizacion = calculateHospitalizacionBlock(normalizedRows, areaOptions)
+  const emergencia = calculateEmergenciaBlock(normalizedRows, areaOptions)
+  const emergenciaAmpliada = calculateEmergenciaAmpliadaBlock(normalizedAreaRows, { sourceTag: 'areas_tablero' })
   const recursosCriticos = calculateVentiladoresMonitoresBlock(normalizedRows)
   const dengue = calculateDengueBlock(normalizedRows)
 

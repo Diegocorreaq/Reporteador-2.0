@@ -309,11 +309,11 @@ export async function getMonitoreoCamasReport() {
 }
 
 export async function downloadMonitoreoCamasResumen() {
-  await downloadBlob('/sigh/camas/export/resumen', {})
+  await downloadBlob('/sigh/camas/export/resumen', { _ts: Date.now() })
 }
 
 export async function downloadMonitoreoCamasSusalud() {
-  await downloadBlob('/sigh/camas/export/susalud', {})
+  await downloadBlob('/sigh/camas/export/susalud', { _ts: Date.now() })
 }
 
 export async function listTiposCama() {

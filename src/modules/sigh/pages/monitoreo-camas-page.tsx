@@ -447,6 +447,13 @@ function filterCamasRows(rawRows: SighTableRow[], filters: FilterState): SighTab
 
 // ─── Color helpers ────────────────────────────────────────────────────────────
 
+const NOT_APPLICABLE_BG = '#E2E8F0'
+const NOT_APPLICABLE_TEXT = '#475569'
+
+function hasApprovedBeds(camas: number): boolean {
+  return Number.isFinite(camas) && camas > 0
+}
+
 function pctBg(pct: number): string {
   const pctCapped = clampPercent(pct)
   if (pctCapped <= 60) return '#9DDE58'
@@ -457,6 +464,16 @@ function pctBg(pct: number): string {
 
 function pctText(pct: number): string {
   return String(Math.round(clampPercent(pct)))
+}
+
+function occupancyText(camas: number, pct: number): string {
+  return hasApprovedBeds(camas) ? pctText(pct) : 'N/A'
+}
+
+function occupancyStyle(camas: number, pct: number): CSSProperties {
+  return hasApprovedBeds(camas)
+    ? { backgroundColor: pctBg(pct) }
+    : { backgroundColor: NOT_APPLICABLE_BG, color: NOT_APPLICABLE_TEXT, fontWeight: 700 }
 }
 
 function difBg(dif: number): string {
@@ -652,7 +669,7 @@ function ColorLegend() {
     { label: 'Alerta', color: '#F2C27A' },
     { label: 'Crítico', color: '#F2A6A6' },
     { label: 'Soporte VM/AF', color: '#B8E6FC' },
-    { label: 'No aplica / sin datos', color: '#F1F5F9' },
+    { label: 'N/A / sin camas aprobadas', color: NOT_APPLICABLE_BG },
   ]
 
   return (
@@ -727,6 +744,10 @@ function safePct(num: number, den: number): string {
   return String(Math.round(clampPercent(safePercentValue(num, den))))
 }
 
+function occupancyPctText(num: number, den: number): string {
+  return hasApprovedBeds(den) ? safePct(num, den) : 'N/A'
+}
+
 function SubtotalRow({ sums, bg }: { sums: Sums; bg: string }) {
   const tdSubtotal = `${TD_SUBTOTAL} border-t-2 border-t-[#c9d7e6]`
   const subtotalBg = bg === '#D7D7D7' ? '#e8edf3' : '#f2f5f9'
@@ -743,7 +764,7 @@ function SubtotalRow({ sums, bg }: { sums: Sums; bg: string }) {
       {/* Escenario (1) */}
       <td className={tdSubtotal}>{sums.camas}</td>
       <td className={tdSubtotal}>{sums.totcamas - sums.camas}</td>
-      <td className={tdSubtotal}>{safePct(Math.min(sums.tocupa, sums.camas), sums.camas)}</td>
+      <td className={tdSubtotal}>{occupancyPctText(Math.min(sums.tocupa, sums.camas), sums.camas)}</td>
       <td className={tdSubtotal}>{sums.demanda}</td>
       {/* Camas según condición */}
       <td className={tdSubtotal}>{sums.total}</td>
@@ -786,7 +807,7 @@ function TotalGeneralRow({ sums }: { sums: Sums }) {
       </td>
       <td className={tdTotal}>{sums.camas}</td>
       <td className={tdTotal}>{sums.totcamas - sums.camas}</td>
-      <td className={tdTotal}>{safePct(Math.min(sums.tocupa, sums.camas), sums.camas)}</td>
+      <td className={tdTotal}>{occupancyPctText(Math.min(sums.tocupa, sums.camas), sums.camas)}</td>
       <td className={tdTotal}>{sums.demanda}</td>
       <td className={tdTotal}>{sums.total}</td>
       <td className={tdTotal}>{sums.chabi}</td>
@@ -1039,7 +1060,6 @@ export function MonitoreoCamasPage() {
 
                     const { row, metrics, showPiso, pisoSpan, showServicio, servicioSpan } = item
 
-                    const pctBgColor = pctBg(metrics.porcentaje)
                     const difBgColor = difBg(metrics.diferencia)
                     const demBgColor = demandBg(metrics.demanda)
                     const disponiblesBgColor = availableBg(row.clibr, row.total)
@@ -1091,8 +1111,8 @@ export function MonitoreoCamasPage() {
                               style={{ backgroundColor: difBgColor || undefined }}>
                               {metrics.diferencia}
                             </td>
-                            <td className={TD} rowSpan={servicioSpan} style={{ backgroundColor: pctBgColor }}>
-                              {pctText(metrics.porcentaje)}
+                            <td className={TD} rowSpan={servicioSpan} style={occupancyStyle(metrics.camas, metrics.porcentaje)}>
+                              {occupancyText(metrics.camas, metrics.porcentaje)}
                             </td>
                             <td className={`${TD} ${metrics.demanda > 0 ? 'font-semibold text-[#8a3d00]' : ''}`} rowSpan={servicioSpan}
                               style={{ backgroundColor: demBgColor || undefined }}>
