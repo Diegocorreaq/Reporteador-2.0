@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { Database, LayoutGrid, Search, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { resourceTypeLabels } from '@/config/navigation-catalog'
@@ -17,6 +18,7 @@ export function OrientationGlobalSearch({ className }: OrientationGlobalSearchPr
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const panelRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -34,7 +36,9 @@ export function OrientationGlobalSearch({ className }: OrientationGlobalSearchPr
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node
+
+      if (!containerRef.current?.contains(target) && !panelRef.current?.contains(target)) {
         setOpen(false)
       }
     }
@@ -125,8 +129,11 @@ export function OrientationGlobalSearch({ className }: OrientationGlobalSearchPr
         </kbd>
       </button>
 
-      {open ? (
-        <div className="fixed inset-x-4 top-16 z-50 rounded-2xl border border-border bg-white p-3 shadow-2xl sm:absolute sm:inset-x-0 sm:top-full sm:mt-2 sm:w-full sm:min-w-[420px] sm:max-w-[620px]">
+      {open ? createPortal(
+        <div
+          className="fixed left-1/2 top-16 z-[9999] w-[calc(100vw-2rem)] max-w-[620px] -translate-x-1/2 rounded-2xl border border-border bg-white p-3 shadow-2xl sm:w-[min(620px,calc(100vw-2rem))]"
+          ref={panelRef}
+        >
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand" />
             <input
@@ -203,7 +210,8 @@ export function OrientationGlobalSearch({ className }: OrientationGlobalSearchPr
               })
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   )
