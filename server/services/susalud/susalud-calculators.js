@@ -29,6 +29,18 @@ function normalizeText(value) {
     .replace(/[\u0300-\u036f]/g, '')
 }
 
+function isExpandedEmergencyResourceRow(row, serviceCapacity = 0) {
+  return normalizeText(row.tipo) !== 'cama' || serviceCapacity <= 0 || toNumber(row.camas) <= 0
+}
+
+function oxygenationMarkerCount(row) {
+  if (row.c_oxigenoterapia !== null && row.c_oxigenoterapia !== undefined) {
+    return toNumber(row.c_oxigenoterapia)
+  }
+
+  return toNumber(row.c_oxi) + toNumber(row.c_vm) + toNumber(row.c_fl)
+}
+
 function selectEmergenciaAmpliadaRows(sourceRows = []) {
   const emergenciaPrimerPisoRows = sourceRows.filter((row) => normalizeText(row.piso) === 'emergencia 1er piso')
   if (emergenciaPrimerPisoRows.length > 0) {
@@ -69,17 +81,24 @@ function calculateDemandaAmpliada(rows = []) {
   }
 
   let total = 0
+  let conOxigeno = 0
   const sourceRows = []
   for (const group of groups.values()) {
     if (!group.hasDemandBase) {
       continue
     }
 
-    total += Math.max(Math.max(group.cocup, group.tocupaSp) - group.camas, 0)
+    const demand = Math.max(Math.max(group.cocup, group.tocupaSp) - group.camas, 0)
+    const oxygenDemand = group.rows
+      .filter((row) => isExpandedEmergencyResourceRow(row, group.camas))
+      .reduce((sum, row) => sum + oxygenationMarkerCount(row), 0)
+
+    total += demand
+    conOxigeno += Math.min(demand, oxygenDemand)
     sourceRows.push(...group.rows)
   }
 
-  return { total, sourceRows }
+  return { total, conOxigeno, sinOxigeno: Math.max(total - conOxigeno, 0), sourceRows }
 }
 
 function selectRowsBySource(normalizedRows, sourceTag, fallbackSourceTag) {
@@ -372,8 +391,8 @@ export function buildEmergenciaAmpliadaBlock(normalizedRows, options = {}) {
   const demandaAmpliada = calculateDemandaAmpliada(emergenciaAmpliadaSourceRows)
 
   const total = demandaAmpliada.total
-  const conOxigeno = 0
-  const sinOxigeno = demandaAmpliada.total
+  const conOxigeno = demandaAmpliada.conOxigeno
+  const sinOxigeno = demandaAmpliada.sinOxigeno
 
   const row = {
     area: 'Nro de PAcientes en Sillas, Sillas de Ruedas, cAmillas, gradas, etc en espera de cama de Hospitalizacion',

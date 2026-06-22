@@ -59,6 +59,7 @@ export function buildSusaludAuditRows({
     cinah: row.cinah,
     c_vm: row.c_vm,
     c_oxi: row.c_oxi,
+    c_oxigenoterapia: row.c_oxigenoterapia,
 
     vmopera: row.vmopera,
     vminopera: row.vminopera,

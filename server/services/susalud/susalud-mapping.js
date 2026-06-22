@@ -77,8 +77,8 @@ export const LEGACY_FORMULAS_BY_BLOCK = {
   },
   EMERGENCIA_AMPLIADA: {
     TOTAL: 'Sobre Emergencia 1er Piso: SUM(max(max(SUM(cocup por servicio), MAX(tocupa)) - MAX(camas/CAMASARQ), 0))',
-    C_OXIGENO: '0',
-    S_OXIGENO: 'Igual al TOTAL de demanda adicional de Emergencia 1er Piso',
+    C_OXIGENO: 'SUM(c_oxigenoterapia de filas de recurso ampliado), limitado por demanda adicional por servicio',
+    S_OXIGENO: 'TOTAL - C_OXIGENO',
   },
   RECURSOS_CRITICOS: {
     VENTILADORES: 'total=SUM(vmopera+vminopera), inop=SUM(vminopera), op=SUM(vmopera), disponibles=SUM(vmopera)-SUM(c_vm), en_uso=SUM(c_vm) en ids [398,669,672,430,670,690]',

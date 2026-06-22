@@ -29,6 +29,13 @@ export function normalizeSusaludDataset(rows, {
     const cinah = toNumber(row.cinah)
     const c_vm = toNumber(row.c_vm)
     const c_oxi = toNumber(row.c_oxi)
+    const hasOxigenoterapia =
+      Object.hasOwn(row, 'c_oxigenoterapia') ||
+      Object.hasOwn(row, 'C_OXIGENOTERAPIA') ||
+      Object.hasOwn(row, 'OXIGENOTERAPIA')
+    const c_oxigenoterapia = hasOxigenoterapia
+      ? toNumber(row.c_oxigenoterapia ?? row.C_OXIGENOTERAPIA ?? row.OXIGENOTERAPIA)
+      : null
 
     const vmopera = toNumber(row.vmopera)
     const vminopera = toNumber(row.vminopera)
@@ -68,6 +75,7 @@ export function normalizeSusaludDataset(rows, {
       c_vm,
       c_fl: toNumber(row.c_fl),
       c_oxi,
+      c_oxigenoterapia,
       camas,
       tocupa,
 

@@ -191,6 +191,7 @@ function mapCamasRow(row) {
     c_vm:       pickNum(row, 'C_VM', 'c_vm'),
     c_fl:       pickNum(row, 'C_FL', 'c_fl'),
     c_oxi:      pickNum(row, 'OXIG', 'C_OXI', 'c_oxi'),
+    c_oxigenoterapia: pickNum(row, 'C_OXIGENOTERAPIA', 'OXIGENOTERAPIA', 'c_oxigenoterapia'),
     total:      pickNum(row, 'TOTAL', 'total', 'TOTCAMAS', 'tcamas'),
     chabi:      pickNum(row, 'C_HABI', 'CHABI', 'chabi'),
     cocup:      pickNum(row, 'C_OCUP', 'COCUP', 'cocup'),

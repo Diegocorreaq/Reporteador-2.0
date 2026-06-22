@@ -244,6 +244,58 @@ test('SUSALUD: emergencia ampliada usa demanda de monitoreo si no hay detalle co
   assert.equal(auditRow.fuente_demanda_ampliada, 'demanda_monitoreo_primer_piso')
 })
 
+test('SUSALUD: emergencia ampliada clasifica oxigeno en recursos de exceso', () => {
+  const payload = buildSusaludExportPayload({
+    resumenRows: [
+      {
+        idservicio: 664,
+        piso: 'Emergencia 1er Piso',
+        servicio: 'OBSERVACION MEDICINA 3',
+        tipo: 'Cama',
+        camas: 2,
+        total: 2,
+        cocup: 2,
+        tocupa: 13,
+        c_oxigenoterapia: 2,
+      },
+      {
+        idservicio: 664,
+        piso: 'Emergencia 1er Piso',
+        servicio: 'OBSERVACION MEDICINA 3',
+        tipo: 'Silla',
+        camas: 2,
+        total: 5,
+        cocup: 5,
+        tocupa: 13,
+        c_oxigenoterapia: 1,
+      },
+      {
+        idservicio: 664,
+        piso: 'Emergencia 1er Piso',
+        servicio: 'OBSERVACION MEDICINA 3',
+        tipo: 'Chailones',
+        camas: 2,
+        total: 6,
+        cocup: 6,
+        tocupa: 13,
+        c_oxigenoterapia: 2,
+      },
+    ],
+    corteTimestamp: new Date('2026-04-19T02:00:00.000Z'),
+    includeAudit: true,
+    onlyTipoCama: true,
+  })
+
+  assert.deepEqual(
+    [
+      payload.emergenciaAmpliadaRows[0].total,
+      payload.emergenciaAmpliadaRows[0].conOxigeno,
+      payload.emergenciaAmpliadaRows[0].sinOxigeno,
+    ],
+    [11, 3, 8],
+  )
+})
+
 test('SUSALUD: filtro Cama excluye otros recursos antes de sumar y auditar', () => {
   const payload = buildSusaludExportPayload({
     resumenRows: [
