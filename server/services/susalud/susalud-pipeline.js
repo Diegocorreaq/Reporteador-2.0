@@ -24,8 +24,22 @@ function isHospitalizacionPediatricaCuna(row) {
   return toNumber(row?.idservicio) === 650 && normalizeTipo(row?.tipo) === 'CUNA'
 }
 
+function isUciNeonatologiaIncubadora(row) {
+  return toNumber(row?.idservicio) === 430 && normalizeTipo(row?.tipo) === 'INCUBADORA'
+}
+
+function isUcinNeonatologiaCuna(row) {
+  const idservicio = toNumber(row?.idservicio)
+  return (idservicio === 440 || idservicio === 441) && normalizeTipo(row?.tipo) === 'CUNA'
+}
+
 function isTipoCama(row) {
-  return normalizeTipo(row?.tipo) === 'CAMA' || isHospitalizacionPediatricaCuna(row)
+  return (
+    normalizeTipo(row?.tipo) === 'CAMA' ||
+    isHospitalizacionPediatricaCuna(row) ||
+    isUciNeonatologiaIncubadora(row) ||
+    isUcinNeonatologiaCuna(row)
+  )
 }
 
 function filterOnlyTipoCama(rows = []) {

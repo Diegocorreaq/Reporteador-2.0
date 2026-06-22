@@ -76,6 +76,7 @@ export const resumenRowsFixture = [
   }),
   makeRow('UCI NEONATOLOGIA 2', {
     idservicio: 430,
+    tipo: 'Incubadora',
     total: 8,
     cinah: 0,
     cocup: 8,
@@ -252,7 +253,7 @@ export const expectedParity = {
   ucin: {
     'UCIN ADULTO': [10, 2, 8, 2, 6, 6, 0, 0, 0],
     'UCIN PEDIATRICO': [6, 2, 4, 0, 4, 4, 0, 0, 0],
-    'UCIN NEONATOLOGIA': [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    'UCIN NEONATOLOGIA': [24, 4, 20, 8, 12, 12, 0, 0, 0],
   },
   hospitalizacion: {
     'HOSPITALIZACION ADULTOS': [160, 0, 160, 9, 151, 151, 0, 0],

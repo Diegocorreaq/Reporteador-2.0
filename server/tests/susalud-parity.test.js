@@ -291,6 +291,35 @@ test('SUSALUD: incluye cunas de hospitalizacion pediatrica', () => {
   assert.equal(payload.normalizedDataset.some((row) => row.idservicio === 418 && row.tipo === 'Cuna'), false)
 })
 
+test('SUSALUD: incluye incubadora UCI neo y cuna UCIN neo', () => {
+  const payload = buildSusaludExportPayload({
+    resumenRows: [
+      { idservicio: 430, piso: 'Hospitalizacion 2do Piso', servicio: 'UCI NEONATOLOGIA SALA 2', tipo: 'Incubadora', camas: 8, total: 8, chabi: 8, cocup: 7, clibr: 1, cinah: 0, tocupa: 7 },
+      { idservicio: 440, piso: 'Hospitalizacion 2do Piso', servicio: 'UCIN NEONATOLOGIA SALA 1', tipo: 'Cuna', camas: 8, total: 16, chabi: 13, cocup: 8, clibr: 5, cinah: 3, tocupa: 8 },
+      { idservicio: 440, piso: 'Hospitalizacion 2do Piso', servicio: 'UCIN NEONATOLOGIA SALA 1', tipo: 'Incubadora', camas: 8, total: 1, chabi: 0, cocup: 0, clibr: 0, cinah: 1, tocupa: 8 },
+      { idservicio: 441, piso: 'Hospitalizacion 2do Piso', servicio: 'UCIN NEONATOLOGIA SALA 3', tipo: 'Cuna', camas: 7, total: 3, chabi: 3, cocup: 3, clibr: 0, cinah: 0, tocupa: 6 },
+      { idservicio: 441, piso: 'Hospitalizacion 2do Piso', servicio: 'UCIN NEONATOLOGIA SALA 3', tipo: 'Incubadora', camas: 7, total: 4, chabi: 4, cocup: 4, clibr: 0, cinah: 0, tocupa: 6 },
+    ],
+    corteTimestamp: new Date('2026-04-19T02:00:00.000Z'),
+    includeAudit: true,
+    onlyTipoCama: true,
+  })
+
+  const uciNeonatologia = payload.uciRows.find((row) => row.upssUci === 'UCI NEONATOLOGIA')
+  const ucinNeonatologia = payload.ucinRows.find((row) => row.upssUcin === 'UCIN NEONATOLOGIA')
+
+  assert.deepEqual(toUciTuple(uciNeonatologia), [8, 0, 8, 1, 7, 7, 0, 0])
+  assert.deepEqual(toUcinTuple(ucinNeonatologia), [15, 4, 11, 0, 11, 11, 0, 0, 0])
+  assert.deepEqual(
+    payload.normalizedDataset.map((row) => [row.idservicio, row.tipo]),
+    [
+      [430, 'Incubadora'],
+      [440, 'Cuna'],
+      [441, 'Cuna'],
+    ],
+  )
+})
+
 test('SUSALUD: capacidad oficial usa camas arq por servicio', () => {
   const payload = buildSusaludExportPayload({
     resumenRows: [
