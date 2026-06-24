@@ -102,11 +102,40 @@ function normalizePiso(piso: string): string {
   return clean || 'Sin piso'
 }
 
+function normalizeToken(value: string): string {
+  return String(value ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '')
+}
+
+const RESUMEN_SERVICIO_ALIASES = new Map<string, string>([
+  // El SP legacy entrega pediatria con y sin "DE"; en la tabla debe verse como un solo servicio.
+  ['saladeobservacionpediatria', 'SALA DE OBSERVACION PEDIATRIA'],
+  ['salaobservacionpediatria', 'SALA DE OBSERVACION PEDIATRIA'],
+])
+const OBSERVACION_PEDIATRIA_CANONICAL = 'SALA DE OBSERVACION PEDIATRIA'
+const OBSERVACION_PEDIATRIA_MONITOREO_SOURCE = 'OBSERVACION PEDIATRIA 1'
+
+function normalizeResumenServicio(servicio: string): string {
+  const clean = servicio.trim()
+  if (!clean) {
+    return 'Sin servicio'
+  }
+
+  return RESUMEN_SERVICIO_ALIASES.get(normalizeToken(clean)) ?? clean
+}
+
+function isObservacionPediatriaResumen(servicio: string): boolean {
+  return normalizeToken(servicio) === normalizeToken(OBSERVACION_PEDIATRIA_CANONICAL)
+}
+
 function parseResumenRow(raw: SighTableRow): ResumenCamasRow {
   return {
     idservicio: resolveRowNumber(raw, 'IDSERVICIO', ['idservicio', 'id_servicio', 'ID_SERVICIO']),
     piso: normalizePiso(resolveRowText(raw, 'PISO', ['piso'])),
-    servicio: resolveRowText(raw, 'NOMBRESERVICIO', ['SERVICIO', 'CONSULTORIO', 'servicio']).trim() || 'Sin servicio',
+    servicio: normalizeResumenServicio(resolveRowText(raw, 'NOMBRESERVICIO', ['SERVICIO', 'CONSULTORIO', 'servicio'])),
     tipo: resolveRowText(raw, 'TIPO', ['tipo']).trim() || '-',
     operativas: resolveRowNumber(raw, 'HABILITADAS', ['CHABI', 'chabi']),
     ocupadas: resolveRowNumber(raw, 'OCUPADAS', ['COCUP', 'cocup']),
@@ -116,13 +145,66 @@ function parseResumenRow(raw: SighTableRow): ResumenCamasRow {
   }
 }
 
+function parseResumenRowFromMonitoreo(raw: SighTableRow, servicio: string): ResumenCamasRow {
+  return {
+    idservicio: resolveRowNumber(raw, 'IDSERVICIO', ['idservicio', 'id_servicio', 'ID_SERVICIO']),
+    piso: normalizePiso(resolveRowText(raw, 'PISO', ['piso'])),
+    servicio,
+    tipo: resolveRowText(raw, 'TIPO', ['tipo']).trim() || '-',
+    operativas: resolveRowNumber(raw, 'CHABI', ['HABILITADAS', 'chabi']),
+    ocupadas: resolveRowNumber(raw, 'COCUP', ['OCUPADAS', 'cocup']),
+    disponibles: resolveRowNumber(raw, 'CLIBR', ['LIBRES', 'clibr']),
+    transitorias: resolveRowNumber(raw, 'CTRAN', ['TRASFERIDOS', 'ctran']),
+    inhabilitadas: resolveRowNumber(raw, 'CINAH', ['INABILITADOS', 'cinah']),
+  }
+}
+
+function applyResumenCorrectionsFromMonitoreo(rows: ResumenCamasRow[], monitoreoRows: SighTableRow[]): ResumenCamasRow[] {
+  const resumenTypes = new Set(
+    rows
+      .filter((row) => isObservacionPediatriaResumen(row.servicio))
+      .map((row) => normalizeToken(row.tipo)),
+  )
+
+  if (resumenTypes.size === 0) {
+    return rows
+  }
+
+  const correctedPediatriaRows = monitoreoRows
+    .filter((raw) => normalizeToken(resolveRowText(raw, 'SERVICIO', ['NOMBRESERVICIO', 'CONSULTORIO', 'servicio'])) === normalizeToken(OBSERVACION_PEDIATRIA_MONITOREO_SOURCE))
+    .map((raw) => parseResumenRowFromMonitoreo(raw, OBSERVACION_PEDIATRIA_CANONICAL))
+    .filter((row) => resumenTypes.has(normalizeToken(row.tipo)))
+    .sort((left, right) => compareNullableTextLast(left.tipo, right.tipo))
+
+  if (correctedPediatriaRows.length === 0) {
+    return rows
+  }
+
+  const correctedRows: ResumenCamasRow[] = []
+  let insertedCorrection = false
+
+  for (const row of rows) {
+    if (!isObservacionPediatriaResumen(row.servicio)) {
+      correctedRows.push(row)
+      continue
+    }
+
+    if (!insertedCorrection) {
+      correctedRows.push(...correctedPediatriaRows)
+      insertedCorrection = true
+    }
+  }
+
+  return correctedRows
+}
+
 function sortResumenRowsNullsLast(rows: SighTableRow[]): SighTableRow[] {
   return rows
     .map((row, index) => ({
       row,
       index,
       pisoRaw: resolveRowText(row, 'PISO', ['piso']).trim(),
-      servicioRaw: resolveRowText(row, 'NOMBRESERVICIO', ['SERVICIO', 'CONSULTORIO', 'servicio']).trim(),
+      servicioRaw: normalizeResumenServicio(resolveRowText(row, 'NOMBRESERVICIO', ['SERVICIO', 'CONSULTORIO', 'servicio'])),
       tipoRaw: resolveRowText(row, 'TIPO', ['tipo']).trim(),
     }))
     .sort((left, right) => (
@@ -132,14 +214,6 @@ function sortResumenRowsNullsLast(rows: SighTableRow[]): SighTableRow[] {
       left.index - right.index
     ))
     .map((item) => item.row)
-}
-
-function normalizeToken(value: string): string {
-  return String(value ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]/g, '')
 }
 
 function buildServiceKey(row: Pick<ResumenCamasRow, 'piso' | 'servicio' | 'tipo'>): string {
@@ -182,7 +256,7 @@ function buildDetalleIdLookup(rows: SighTableRow[]): DetalleIdLookup {
     const parsed: ResumenCamasRow = {
       idservicio: resolveRowNumber(raw, 'IDSERVICIO', ['idservicio', 'id_servicio']),
       piso: normalizePiso(resolveRowText(raw, 'PISO', ['piso'])),
-      servicio: resolveRowText(raw, 'SERVICIO', ['NOMBRESERVICIO', 'CONSULTORIO', 'servicio']).trim(),
+      servicio: normalizeResumenServicio(resolveRowText(raw, 'SERVICIO', ['NOMBRESERVICIO', 'CONSULTORIO', 'servicio'])),
       tipo: resolveRowText(raw, 'TIPO', ['tipo']).trim(),
       operativas: resolveRowNumber(raw, 'CHABI', ['HABILITADAS', 'chabi']),
       ocupadas: resolveRowNumber(raw, 'COCUP', ['OCUPADAS', 'cocup']),
@@ -451,11 +525,12 @@ export function ResumenCamasPage() {
       const sortedPayload = sortResumenRowsNullsLast(payload)
       const normalizedRows = sortedPayload.map(parseResumenRow)
 
-      if (normalizedRows.some((row) => row.idservicio <= 0)) {
+      if (normalizedRows.some((row) => row.idservicio <= 0 || isObservacionPediatriaResumen(row.servicio))) {
         try {
           const monitoreoRows = await getMonitoreoCamasReport()
+          const correctedRows = applyResumenCorrectionsFromMonitoreo(normalizedRows, monitoreoRows)
           const detailLookup = buildDetalleIdLookup(monitoreoRows)
-          setRows(normalizedRows.map((row) => ({ ...row, idservicio: resolveDetalleId(row, detailLookup) })))
+          setRows(correctedRows.map((row) => ({ ...row, idservicio: resolveDetalleId(row, detailLookup) })))
         } catch {
           setRows(normalizedRows)
         }
