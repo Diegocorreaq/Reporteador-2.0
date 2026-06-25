@@ -65,6 +65,34 @@ export async function executeProcedure(name, params = [], options = {}) {
 }
 
 /**
+ * Execute a stored procedure and return every resultset.
+ * Useful for exports where one procedure returns multiple report blocks.
+ * @param {string} name - Procedure name
+ * @param {Array} params - Parameters
+ * @param {Object} options - Options
+ * @param {number} [options.timeoutMs] - Query timeout
+ * @param {string} [options.connection] - Connection name
+ * @returns {Promise<Array<Array>>} All normalized recordsets
+ */
+export async function executeProcedureRecordsets(name, params = [], options = {}) {
+  const connectionName = options.connection ?? 'general'
+  const pool = await getSqlPool(connectionName)
+  const request = pool.request()
+
+  if (options.timeoutMs) {
+    request.timeout = options.timeoutMs
+  }
+
+  params.forEach((param, index) => {
+    const paramName = param.name ?? `p${index}`
+    request.input(paramName, param.type ?? inferSqlType(param.value), param.value)
+  })
+
+  const result = await request.execute(name)
+  return (result.recordsets ?? []).map((recordset) => normalizeRecordset(recordset))
+}
+
+/**
  * Execute a SQL query with automatic connection resolution
  * @param {string} query - SQL query
  * @param {Array} params - Parameters

@@ -64,6 +64,11 @@ import {
   updateLavadoRegistro,
 } from '../services/lavado-manos.service.js'
 import { exportEpidemiologiaReporte } from '../services/epidemiologia-reportes.service.js'
+import { exportEfficiencyIndicatorsExcel } from '../services/efficiency-indicators.service.js'
+import {
+  exportEfficacyIndicatorsExcel,
+  exportQualityIndicatorsExcel,
+} from '../services/hospital-quality-efficacy-indicators.service.js'
 import { requireAuth } from '../middleware/require-auth.js'
 import { authLimiter, exportLimiter } from '../middleware/rate-limit.js'
 import {
@@ -767,6 +772,42 @@ reportsRouter.get('/epidemiologia/reportes/export', requireAuth, exportLimiter, 
     sendDownload(response, file)
   } catch (error) {
     handleError(response, error, 'No se pudo exportar el reporte de epidemiologia.')
+  }
+})
+
+reportsRouter.get('/indicadores/eficiencia/export/excel', requireAuth, exportLimiter, async (request, response) => {
+  try {
+    const file = await exportEfficiencyIndicatorsExcel({
+      fechaInicio: request.query.fechaInicio,
+      fechaFin: request.query.fechaFin,
+    })
+    sendDownload(response, file, { noStore: true })
+  } catch (error) {
+    handleError(response, error, 'No se pudo exportar los indicadores de eficiencia.')
+  }
+})
+
+reportsRouter.get('/indicadores/eficacia/export/excel', requireAuth, exportLimiter, async (request, response) => {
+  try {
+    const file = await exportEfficacyIndicatorsExcel({
+      fechaInicio: request.query.fechaInicio,
+      fechaFin: request.query.fechaFin,
+    })
+    sendDownload(response, file, { noStore: true })
+  } catch (error) {
+    handleError(response, error, 'No se pudo exportar los indicadores de eficacia.')
+  }
+})
+
+reportsRouter.get('/indicadores/calidad/export/excel', requireAuth, exportLimiter, async (request, response) => {
+  try {
+    const file = await exportQualityIndicatorsExcel({
+      fechaInicio: request.query.fechaInicio,
+      fechaFin: request.query.fechaFin,
+    })
+    sendDownload(response, file, { noStore: true })
+  } catch (error) {
+    handleError(response, error, 'No se pudo exportar los indicadores de calidad.')
   }
 })
 
