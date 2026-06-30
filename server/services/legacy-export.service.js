@@ -2704,7 +2704,7 @@ function resolveEmployeeName(row) {
 }
 
 const LEGACY_AUTH_PROCEDURES = {
-  general: { procedure: 'SP_USUARIO_VALIDA', paramStyle: 'general' },
+  general: { procedure: 'SP_USUARIO_VALIDA', paramStyle: 'legacy', connection: 'sigh1' },
   lavado: { procedure: 'SP_USUARIO_VALIDA_LM', paramStyle: 'legacy' },
   'epidemiologia/pacientes-oncologicos': { procedure: 'SP_USUARIO_VALIDA_EPI_ONCOLOGICOS', paramStyle: 'legacy' },
   'epidemiologia/pfa-sifilis-sarampion': { procedure: 'SP_USUARIO_VALIDA_EPI_PFA_SIFILIS_SARAMPION', paramStyle: 'legacy' },
@@ -2741,6 +2741,7 @@ export async function validateLegacyUser({ dni, password, ip, scope = 'general' 
   const rows = await executeProcedure(
     authDefinition.procedure,
     buildAuthParams({ dni, password, ip, paramStyle: authDefinition.paramStyle }),
+    { connection: authDefinition.connection ?? 'general' },
   )
 
   const row = rows[0]
