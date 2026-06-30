@@ -14,11 +14,11 @@ import {
 import { Input } from '@/components/ui/input'
 import { findLegacyModuleMapping } from '@/config/legacy-functional-map'
 import {
-  downloadIndicadoresHospitalariosExcel,
-  type HospitalIndicatorExportType,
+  downloadPowerBiDashboardExcel,
+  type PowerBiDashboardExportType,
 } from '@/modules/indicadores/services/eficiencia-export.service'
 
-const MIN_INDICATOR_EXPORT_DATE = '2019-01-01'
+const DEFAULT_MIN_EXPORT_DATE = '2019-01-01'
 
 function toDateInputValue(date: Date) {
   const year = date.getFullYear()
@@ -27,18 +27,34 @@ function toDateInputValue(date: Date) {
   return `${year}-${month}-${day}`
 }
 
-const hospitalIndicatorExports: Partial<Record<string, { type: HospitalIndicatorExportType; title: string }>> = {
+interface DashboardExcelExportConfig {
+  type: PowerBiDashboardExportType
+  title: string
+  description: string
+  minDate?: string
+}
+
+const dashboardExcelExports: Partial<Record<string, DashboardExcelExportConfig>> = {
   'indicadores-hospitalarios/indicadores-de-eficiencia': {
     type: 'eficiencia',
     title: 'indicadores de eficiencia',
+    description: 'Seleccione el rango de fechas para generar el Excel con las bases de cada indicador.',
   },
   'indicadores-hospitalarios/indicadores-de-eficacia': {
     type: 'eficacia',
     title: 'indicadores de eficacia',
+    description: 'Seleccione el rango de fechas para generar el Excel con las bases de cada indicador.',
   },
   'indicadores-hospitalarios/indicadores-de-calidad': {
     type: 'calidad',
     title: 'indicadores de calidad',
+    description: 'Seleccione el rango de fechas para generar el Excel con las bases de cada indicador.',
+  },
+  'atencion-ambulatoria-hospitalizacion/consulta-externa-por-por-consultorio-y-profesional': {
+    type: 'consultaExternaConsultorioProfesional',
+    title: 'consulta externa por consultorio y profesional',
+    description: 'Seleccione el rango de fechas para generar el Excel con las bases de los cuadros del dashboard.',
+    minDate: '2020-01-01',
   },
 }
 
@@ -51,13 +67,14 @@ export function LegacyEmbedPage() {
   const [fechaFin, setFechaFin] = useState(toDateInputValue(today))
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
-  const indicatorExport = mapping?.path ? hospitalIndicatorExports[mapping.path] : undefined
+  const dashboardExport = mapping?.path ? dashboardExcelExports[mapping.path] : undefined
+  const minExportDate = dashboardExport?.minDate ?? DEFAULT_MIN_EXPORT_DATE
 
-  async function handleIndicatorExport(event: FormEvent<HTMLFormElement>) {
+  async function handleDashboardExport(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setExportError('')
 
-    if (!indicatorExport) {
+    if (!dashboardExport) {
       setExportError('No se encontro exportador para este dashboard.')
       return
     }
@@ -72,14 +89,14 @@ export function LegacyEmbedPage() {
       return
     }
 
-    if (fechaInicio < MIN_INDICATOR_EXPORT_DATE || fechaFin < MIN_INDICATOR_EXPORT_DATE) {
-      setExportError('Solo se puede consultar información desde el 2019.')
+    if (fechaInicio < minExportDate || fechaFin < minExportDate) {
+      setExportError(`Solo se puede consultar informacion desde ${minExportDate}.`)
       return
     }
 
     setExporting(true)
     try {
-      await downloadIndicadoresHospitalariosExcel(indicatorExport.type, { fechaInicio, fechaFin })
+      await downloadPowerBiDashboardExcel(dashboardExport.type, { fechaInicio, fechaFin })
       setExportDialogOpen(false)
     } catch {
       setExportError('No se pudo generar el Excel. Revise el rango de fechas e intente nuevamente.')
@@ -101,8 +118,8 @@ export function LegacyEmbedPage() {
   return (
     <>
       <section className="flex min-h-[calc(100vh-6rem)] flex-col">
-        <div className={`relative flex flex-1 flex-col ${indicatorExport ? 'gap-2 md:gap-0' : ''}`}>
-          {indicatorExport ? (
+        <div className={`relative flex flex-1 flex-col ${dashboardExport ? 'gap-2 md:gap-0' : ''}`}>
+          {dashboardExport ? (
             <Button
               aria-label="Descargar Excel"
               className="group h-10 w-full justify-start gap-2 overflow-hidden rounded-full border-emerald-200 bg-white px-3 text-emerald-700 shadow-md transition-[width,background-color,border-color,box-shadow] duration-300 ease-out hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 hover:shadow-lg md:absolute md:-right-4 md:top-4 md:z-10 md:h-11 md:w-14 md:justify-start md:gap-0 md:pl-3 md:pr-7 md:hover:w-44 md:hover:gap-2 md:hover:pl-4"
@@ -134,11 +151,11 @@ export function LegacyEmbedPage() {
 
       <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
         <DialogContent>
-          <form onSubmit={handleIndicatorExport}>
+          <form onSubmit={handleDashboardExport}>
             <DialogHeader>
-              <DialogTitle>Exportar {indicatorExport?.title ?? 'indicadores hospitalarios'}</DialogTitle>
+              <DialogTitle>Exportar {dashboardExport?.title ?? 'dashboard'}</DialogTitle>
               <DialogDescription>
-                Seleccione el rango de fechas para generar el Excel con las bases de cada indicador.
+                {dashboardExport?.description ?? 'Seleccione el rango de fechas para generar el Excel.'}
               </DialogDescription>
             </DialogHeader>
 
@@ -147,7 +164,7 @@ export function LegacyEmbedPage() {
                 Fecha inicio
                 <Input
                   max={fechaFin}
-                  min={MIN_INDICATOR_EXPORT_DATE}
+                  min={minExportDate}
                   onChange={(event) => setFechaInicio(event.target.value)}
                   required
                   type="date"
@@ -157,7 +174,7 @@ export function LegacyEmbedPage() {
               <label className="space-y-1.5 text-sm font-medium text-text">
                 Fecha fin
                 <Input
-                  min={fechaInicio > MIN_INDICATOR_EXPORT_DATE ? fechaInicio : MIN_INDICATOR_EXPORT_DATE}
+                  min={fechaInicio > minExportDate ? fechaInicio : minExportDate}
                   onChange={(event) => setFechaFin(event.target.value)}
                   required
                   type="date"

@@ -36,19 +36,32 @@ const indicatorExportEndpoints = {
   calidad: '/indicadores/calidad/export/excel',
 } as const
 
-export type HospitalIndicatorExportType = keyof typeof indicatorExportEndpoints
+const dashboardExportEndpoints = {
+  ...indicatorExportEndpoints,
+  consultaExternaConsultorioProfesional: '/consulta-externa/consultorio-profesional/export/excel',
+} as const
 
-export async function downloadIndicadoresHospitalariosExcel(type: HospitalIndicatorExportType, filters: {
+export type HospitalIndicatorExportType = keyof typeof indicatorExportEndpoints
+export type PowerBiDashboardExportType = keyof typeof dashboardExportEndpoints
+
+export async function downloadPowerBiDashboardExcel(type: PowerBiDashboardExportType, filters: {
   fechaInicio: string
   fechaFin: string
 }) {
-  const response = (await httpClient.get(indicatorExportEndpoints[type], {
+  const response = (await httpClient.get(dashboardExportEndpoints[type], {
     params: filters,
     responseType: 'blob',
     timeout: 180000,
   })) as DownloadFileResponse
 
   triggerBrowserDownload(response.data, parseFileName(response.headers['content-disposition']))
+}
+
+export async function downloadIndicadoresHospitalariosExcel(type: HospitalIndicatorExportType, filters: {
+  fechaInicio: string
+  fechaFin: string
+}) {
+  return downloadPowerBiDashboardExcel(type, filters)
 }
 
 export async function downloadIndicadoresEficienciaExcel(filters: {

@@ -65,6 +65,7 @@ import {
 } from '../services/lavado-manos.service.js'
 import { exportEpidemiologiaReporte } from '../services/epidemiologia-reportes.service.js'
 import { exportEfficiencyIndicatorsExcel } from '../services/efficiency-indicators.service.js'
+import { exportConsultaExternaConsultorioProfesionalExcel } from '../services/consulta-externa-consultorio-profesional.service.js'
 import {
   exportEfficacyIndicatorsExcel,
   exportQualityIndicatorsExcel,
@@ -808,6 +809,18 @@ reportsRouter.get('/indicadores/calidad/export/excel', requireAuth, exportLimite
     sendDownload(response, file, { noStore: true })
   } catch (error) {
     handleError(response, error, 'No se pudo exportar los indicadores de calidad.')
+  }
+})
+
+reportsRouter.get('/consulta-externa/consultorio-profesional/export/excel', requireAuth, exportLimiter, async (request, response) => {
+  try {
+    const file = await exportConsultaExternaConsultorioProfesionalExcel({
+      fechaInicio: request.query.fechaInicio,
+      fechaFin: request.query.fechaFin,
+    })
+    sendDownload(response, file, { noStore: true })
+  } catch (error) {
+    handleError(response, error, 'No se pudo exportar la consulta externa por consultorio y profesional.')
   }
 })
 
