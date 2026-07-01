@@ -711,9 +711,46 @@ export async function getResumenCamasReport(tipoCama) {
   return normalizeRows(rows)
 }
 
+function buildOcupacionResumenKey(row) {
+  const idServicio = pickNum(row, 'IDSERVICIO', 'idservicio')
+  const tipo = normalizeLookupToken(pick(row, 'TIPO', 'tipo'))
+  return idServicio > 0 && tipo ? `${idServicio}|${tipo}` : ''
+}
+
+function applyMonitoreoOcupacionCriteria(ocupacionRows, monitoreoRows) {
+  const monitoreoByKey = new Map()
+
+  for (const row of monitoreoRows) {
+    const key = buildOcupacionResumenKey(row)
+    if (key) {
+      monitoreoByKey.set(key, row)
+    }
+  }
+
+  return ocupacionRows.map((row) => {
+    const monitoreoRow = monitoreoByKey.get(buildOcupacionResumenKey(row))
+    if (!monitoreoRow) {
+      return row
+    }
+
+    return {
+      ...row,
+      C_HABI: pickNum(monitoreoRow, 'C_HABI', 'CHABI', 'chabi'),
+      C_OCUP: pickNum(monitoreoRow, 'C_OCUP', 'COCUP', 'cocup'),
+      C_LIBR: pickNum(monitoreoRow, 'C_LIBR', 'CLIBR', 'clibr'),
+      C_TRAN: pickNum(monitoreoRow, 'C_TRAN', 'CTRAN', 'ctran'),
+      C_INAH: pickNum(monitoreoRow, 'C_INAH', 'CINAH', 'cinah'),
+    }
+  })
+}
+
 export async function getOcupacionHospitalizacionReport() {
-  const rows = await executeProcedure('SP_CAMA_OCUPA', [], { timeoutMs: REPORT_TIMEOUT_MS })
-  return normalizeRows(rows)
+  const [rows, monitoreoRows] = await Promise.all([
+    executeProcedure('SP_CAMA_OCUPA', [], { timeoutMs: REPORT_TIMEOUT_MS }),
+    getMonitoreoCamasReport(),
+  ])
+
+  return normalizeRows(applyMonitoreoOcupacionCriteria(rows, monitoreoRows))
 }
 
 export async function getOcupacionUciReport() {
