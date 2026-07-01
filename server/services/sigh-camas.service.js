@@ -888,6 +888,20 @@ async function getCamasReservadasSopDetalle(idServicio, tipo) {
   return rows
 }
 
+function normalizeCamaKey(row) {
+  return normalizeLookupToken(pick(row, 'NROCAMA', 'CAMA', 'CODIGOCAMA', 'codigocama'))
+}
+
+function mergeCamasOcupadasConReservas(ocupadasRows, reservasRows) {
+  const camasOcupadas = new Set(ocupadasRows.map(normalizeCamaKey).filter(Boolean))
+  const reservasSinDuplicar = reservasRows.filter((row) => {
+    const cama = normalizeCamaKey(row)
+    return cama && !camasOcupadas.has(cama)
+  })
+
+  return [...ocupadasRows, ...reservasSinDuplicar]
+}
+
 export async function getCamasDetalle(tipoDetalle, filters) {
   const key = String(tipoDetalle ?? '').toLowerCase()
   const definition = DETAIL_PROCEDURE_BY_TYPE[key]
@@ -907,7 +921,7 @@ export async function getCamasDetalle(tipoDetalle, filters) {
   let rows = await executeProcedure(definition.procedure, params, { timeoutMs: REPORT_TIMEOUT_MS })
   if (key === '2') {
     const reservas = await getCamasReservadasSopDetalle(filters.idServicio, filters.tipo)
-    rows = [...rows, ...reservas]
+    rows = mergeCamasOcupadasConReservas(rows, reservas)
   }
 
   return normalizeCamasDetalleRows(key, rows)
