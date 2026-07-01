@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { hasLegacyAuthScope, validateLegacyUser } from '../services/legacy-export.service.js'
 import { createSession, verifySession } from '../services/auth-session.service.js'
+import { getReportAccessPermission, validateReportAccess } from '../services/report-access.service.js'
 import { requireAuth } from '../middleware/require-auth.js'
 import { authLimiter } from '../middleware/rate-limit.js'
 import {
@@ -20,7 +21,30 @@ function getClientIp(request) {
   return request.ip || request.socket?.remoteAddress || '0.0.0.0'
 }
 
-function buildUserResponse(sessionPayload) {
+async function getDeniedPermissions(sessionPayload, ip, correlationId) {
+  const scope = 'laboratorio-cultivos/mapa-microbiologico'
+  const permission = getReportAccessPermission(scope)
+
+  try {
+    const validation = await validateReportAccess({
+      scope,
+      dni: sessionPayload.username,
+      ip,
+    })
+
+    return validation.ok || !permission ? [] : [permission]
+  } catch (error) {
+    logger.warn({
+      correlationId,
+      event: 'auth:report-access:error',
+      scope,
+      message: error instanceof Error ? error.message : String(error),
+    })
+    return permission ? [permission] : []
+  }
+}
+
+async function buildUserResponse(sessionPayload, request) {
   return {
     id: sessionPayload.id,
     username: sessionPayload.username,
@@ -31,6 +55,7 @@ function buildUserResponse(sessionPayload) {
     service: 'Unidad de Inteligencia Sanitaria',
     email: `${sessionPayload.username}@hospital.local`,
     permissions: ['*'],
+    deniedPermissions: await getDeniedPermissions(sessionPayload, getClientIp(request), request.correlationId),
     pprRole: null,
   }
 }
@@ -108,7 +133,7 @@ authRouter.post('/auth/login', authLimiter, async (request, response) => {
       ip,
     })
 
-    response.json({ user: buildUserResponse(sessionPayload) })
+    response.json({ user: await buildUserResponse(sessionPayload, request) })
   } catch (error) {
     logger.error({
       correlationId,
@@ -120,8 +145,8 @@ authRouter.post('/auth/login', authLimiter, async (request, response) => {
 })
 
 // GET /auth/me — return current authenticated user from session cookie
-authRouter.get('/auth/me', requireAuth, (request, response) => {
-  response.json({ user: buildUserResponse(request.user) })
+authRouter.get('/auth/me', requireAuth, async (request, response) => {
+  response.json({ user: await buildUserResponse(request.user, request) })
 })
 
 // POST /auth/logout — clear session cookie

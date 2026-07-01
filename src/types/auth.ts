@@ -11,6 +11,7 @@ export interface AuthUser {
   service: string
   email: string
   permissions: string[]
+  deniedPermissions?: string[]
   pprRole: PprRole | null
 }
 

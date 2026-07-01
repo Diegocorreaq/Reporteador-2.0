@@ -40,6 +40,14 @@ function hasAccess(user: AuthUser | null | undefined, access?: NavigationAccessR
   }
 
   const grantedPermissions = new Set(user.permissions)
+  const deniedPermissions = new Set(user.deniedPermissions ?? [])
+  const permissionDenied =
+    !!access.permissions?.length &&
+    access.permissions.some((permission) => matchesPermission(deniedPermissions, permission))
+  if (permissionDenied) {
+    return false
+  }
+
   const dniMatch = userMatchesAllowedDnis(user, access.allowedDnis)
   const roleMatch = !access.roles?.length || access.roles.includes(user.role)
   const permissionMatch =
