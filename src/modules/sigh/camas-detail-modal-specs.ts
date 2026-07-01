@@ -25,6 +25,7 @@ export const CAMAS_DETAIL_MODAL_SPECS: Record<string, CamasDetailModalSpec> = {
       { key: 'codigocama', label: 'Cod. Cama' },
       { key: 'estadocama', label: 'Estado' },
       { key: 'paciente', label: 'Paciente' },
+      { key: 'servicioactual', label: 'Servicio actual' },
     ],
   },
   '3': {

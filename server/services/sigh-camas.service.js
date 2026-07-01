@@ -84,6 +84,7 @@ const DETAIL_FIELDS_BY_TYPE = {
     estadocama: ['ESTADOCAMA', 'ESTADO'],
     piso: ['PISO'],
     paciente: ['PACIENTE'],
+    servicioactual: ['SERVICIOACTUAL', 'SERVICIO_ACTUAL'],
   },
   '3': {
     codigocama: ['NROCAMA', 'CAMA', 'CODIGOCAMA'],
@@ -702,44 +703,95 @@ export async function listTiposCama() {
 }
 
 export async function getResumenCamasReport(tipoCama) {
-  const rows = await executeProcedure(
-    'SP_CAMA_RESUMEN_1',
-    [{ name: 'IdTipoCama', type: sql.Int, value: Number(tipoCama ?? 0) || 0 }],
-    { timeoutMs: REPORT_TIMEOUT_MS },
-  )
+  const [rows, monitoreoRows] = await Promise.all([
+    executeProcedure(
+      'SP_CAMA_RESUMEN_1',
+      [{ name: 'IdTipoCama', type: sql.Int, value: Number(tipoCama ?? 0) || 0 }],
+      { timeoutMs: REPORT_TIMEOUT_MS },
+    ),
+    getMonitoreoCamasReport(),
+  ])
 
-  return normalizeRows(rows)
+  return normalizeRows(applyMonitoreoCamasCriteria(rows, monitoreoRows))
 }
 
-function buildOcupacionResumenKey(row) {
-  const idServicio = pickNum(row, 'IDSERVICIO', 'idservicio')
+function buildServiceCriteriaTokens(value) {
+  const token = normalizeLookupToken(value)
+  if (!token) {
+    return []
+  }
+
+  const tokens = new Set([token])
+  if (token === 'hospitalizacioncirugiaoncologica') {
+    tokens.add('hospitalizacioncirugiaoncologia')
+  }
+  if (token === 'hospitalizacioncirugiaoncologia') {
+    tokens.add('hospitalizacioncirugiaoncologica')
+  }
+
+  return [...tokens]
+}
+
+function buildMonitoreoCriteriaKeys(row) {
+  const keys = []
+  const idServicio = pickNum(row, 'IDSERVICIO', 'idservicio', 'ID_SERVICIO', 'id_servicio')
   const tipo = normalizeLookupToken(pick(row, 'TIPO', 'tipo'))
-  return idServicio > 0 && tipo ? `${idServicio}|${tipo}` : ''
+  if (!tipo) {
+    return keys
+  }
+
+  if (idServicio > 0) {
+    keys.push(`id:${idServicio}|${tipo}`)
+  }
+
+  const servicios = buildServiceCriteriaTokens(pick(row, 'NOMBRESERVICIO', 'CONSULTORIO', 'SERVICIO', 'servicio'))
+  for (const servicio of servicios) {
+    keys.push(`servicio:${servicio}|${tipo}`)
+  }
+
+  return keys
 }
 
-function applyMonitoreoOcupacionCriteria(ocupacionRows, monitoreoRows) {
+function applyMonitoreoCamasCriteria(rows, monitoreoRows) {
   const monitoreoByKey = new Map()
 
   for (const row of monitoreoRows) {
-    const key = buildOcupacionResumenKey(row)
-    if (key) {
+    for (const key of buildMonitoreoCriteriaKeys(row)) {
       monitoreoByKey.set(key, row)
     }
   }
 
-  return ocupacionRows.map((row) => {
-    const monitoreoRow = monitoreoByKey.get(buildOcupacionResumenKey(row))
+  return rows.map((row) => {
+    let monitoreoRow = null
+    for (const key of buildMonitoreoCriteriaKeys(row)) {
+      monitoreoRow = monitoreoByKey.get(key)
+      if (monitoreoRow) {
+        break
+      }
+    }
+
     if (!monitoreoRow) {
       return row
     }
 
+    const habilitadas = pickNum(monitoreoRow, 'C_HABI', 'CHABI', 'chabi')
+    const ocupadas = pickNum(monitoreoRow, 'C_OCUP', 'COCUP', 'cocup')
+    const libres = pickNum(monitoreoRow, 'C_LIBR', 'CLIBR', 'clibr')
+    const transitorias = pickNum(monitoreoRow, 'C_TRAN', 'CTRAN', 'ctran')
+    const inhabilitadas = pickNum(monitoreoRow, 'C_INAH', 'CINAH', 'cinah')
+
     return {
       ...row,
-      C_HABI: pickNum(monitoreoRow, 'C_HABI', 'CHABI', 'chabi'),
-      C_OCUP: pickNum(monitoreoRow, 'C_OCUP', 'COCUP', 'cocup'),
-      C_LIBR: pickNum(monitoreoRow, 'C_LIBR', 'CLIBR', 'clibr'),
-      C_TRAN: pickNum(monitoreoRow, 'C_TRAN', 'CTRAN', 'ctran'),
-      C_INAH: pickNum(monitoreoRow, 'C_INAH', 'CINAH', 'cinah'),
+      HABILITADAS: habilitadas,
+      OCUPADAS: ocupadas,
+      LIBRES: libres,
+      TRASFERIDOS: transitorias,
+      INABILITADOS: inhabilitadas,
+      C_HABI: habilitadas,
+      C_OCUP: ocupadas,
+      C_LIBR: libres,
+      C_TRAN: transitorias,
+      C_INAH: inhabilitadas,
     }
   })
 }
@@ -750,12 +802,90 @@ export async function getOcupacionHospitalizacionReport() {
     getMonitoreoCamasReport(),
   ])
 
-  return normalizeRows(applyMonitoreoOcupacionCriteria(rows, monitoreoRows))
+  return normalizeRows(applyMonitoreoCamasCriteria(rows, monitoreoRows))
 }
 
 export async function getOcupacionUciReport() {
-  const rows = await executeProcedure('SP_CAMA_OCUPA_U', [], { timeoutMs: REPORT_TIMEOUT_MS })
-  return normalizeRows(rows)
+  const [rows, monitoreoRows] = await Promise.all([
+    executeProcedure('SP_CAMA_OCUPA_U', [], { timeoutMs: REPORT_TIMEOUT_MS }),
+    getMonitoreoCamasReport(),
+  ])
+
+  return normalizeRows(applyMonitoreoCamasCriteria(rows, monitoreoRows))
+}
+
+async function getCamasReservadasSopDetalle(idServicio, tipo) {
+  const rows = await executeQuery(
+    `WITH MOV_CQ AS (
+      SELECT
+        A.IdAtencion,
+        A.IdCuentaAtencion,
+        A.IdPaciente,
+        H.IdEstanciaHospitalaria,
+        H.Secuencia,
+        H.FechaOcupacion,
+        H.IdServicio,
+        H.IdCama,
+        H.LlegoAlServicio,
+        S.cod_Upss,
+        ROW_NUMBER() OVER (
+          PARTITION BY A.IdAtencion
+          ORDER BY H.Secuencia DESC, H.FechaOcupacion DESC, H.IdEstanciaHospitalaria DESC
+        ) fila_actual
+      FROM SIGH..Atenciones A
+      INNER JOIN SIGH..AtencionesEstanciaHospitalaria H ON H.IdAtencion = A.IdAtencion
+      LEFT JOIN SIGH_EST..T_Upss_Consultorio S ON S.cod_Consultorio = H.IdServicio
+      WHERE A.FechaEgreso IS NULL
+      AND H.LlegoAlServicio = 1
+    ),
+    ACTUAL_CQ AS (
+      SELECT *
+      FROM MOV_CQ
+      WHERE fila_actual = 1
+      AND cod_Upss = 4
+      AND FechaOcupacion >= DATEADD(day, -1, CONVERT(date, GETDATE()))
+    ),
+    ORIGEN_CQ AS (
+      SELECT
+        M.*,
+        ROW_NUMBER() OVER (
+          PARTITION BY M.IdAtencion
+          ORDER BY M.Secuencia DESC, M.FechaOcupacion DESC, M.IdEstanciaHospitalaria DESC
+        ) fila_origen
+      FROM MOV_CQ M
+      INNER JOIN ACTUAL_CQ CQ ON CQ.IdAtencion = M.IdAtencion
+      WHERE ISNULL(M.cod_Upss, 0) <> 4
+      AND M.IdCama IS NOT NULL
+    )
+    SELECT
+      CM.Codigo NROCAMA,
+      SR.PISO,
+      TCM.Descripcion TIPOCAMA,
+      CONCAT('Reservada (', ECM.Descripcion, ')') ESTADOCAMA,
+      ISNULL((LEFT(P.PrimerNombre, 1) + ',' + P.ApellidoPaterno + ',' + LEFT(P.ApellidoMaterno, 1)), '') PACIENTE,
+      O.IdCuentaAtencion,
+      SR2.des_Consultorio SERVICIOACTUAL,
+      CM.IdServicioPropietario
+    FROM ACTUAL_CQ CQ
+    INNER JOIN ORIGEN_CQ O ON O.IdAtencion = CQ.IdAtencion AND O.fila_origen = 1
+    INNER JOIN SIGH..Camas CM ON CM.IdCama = O.IdCama AND CM.IdServicioPropietario = O.IdServicio
+    LEFT JOIN SIGH..TiposCama TCM ON TCM.IdTipoCama = CM.IdTiposCama
+    LEFT JOIN SIGH..EstadosCama ECM ON ECM.IdEstadoCama = CM.IdEstadoCama
+    LEFT JOIN SIGH..Pacientes P ON P.IdPaciente = O.IdPaciente
+    LEFT JOIN SIGH_EST..T_Upss_Consultorio SR ON SR.cod_Consultorio = O.IdServicio
+    LEFT JOIN SIGH_EST..T_Upss_Consultorio SR2 ON SR2.cod_Consultorio = CQ.IdServicio
+    WHERE CM.IdEstadoCama IN (1, 4)
+    AND O.IdServicio = @idservicio
+    AND TCM.Descripcion = @tipo
+    ORDER BY CM.Codigo`,
+    [
+      { name: 'idservicio', type: sql.Int, value: Number(idServicio ?? 0) || 0 },
+      { name: 'tipo', type: sql.NVarChar, value: String(tipo ?? '').trim() },
+    ],
+    { timeoutMs: REPORT_TIMEOUT_MS },
+  )
+
+  return rows
 }
 
 export async function getCamasDetalle(tipoDetalle, filters) {
@@ -774,7 +904,12 @@ export async function getCamasDetalle(tipoDetalle, filters) {
     return { name: 'tipo', type: sql.NVarChar, value: String(filters.tipo ?? '').trim() }
   })
 
-  const rows = await executeProcedure(definition.procedure, params, { timeoutMs: REPORT_TIMEOUT_MS })
+  let rows = await executeProcedure(definition.procedure, params, { timeoutMs: REPORT_TIMEOUT_MS })
+  if (key === '2') {
+    const reservas = await getCamasReservadasSopDetalle(filters.idServicio, filters.tipo)
+    rows = [...rows, ...reservas]
+  }
+
   return normalizeCamasDetalleRows(key, rows)
 }
 
