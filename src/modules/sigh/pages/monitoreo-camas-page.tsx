@@ -48,6 +48,9 @@ interface CamasRow {
   totalaf: number
   afopera: number
   afinopera: number
+  monitor_total: number
+  monitor_operativos: number
+  monitor_inoperativos: number
   veces: number
   veces1: number
 }
@@ -74,6 +77,9 @@ interface Sums {
   totalaf: number
   afopera: number
   afinopera: number
+  monitor_total: number
+  monitor_operativos: number
+  monitor_inoperativos: number
 }
 
 interface DataItem {
@@ -116,6 +122,9 @@ interface ServiceMetrics {
   afopera: number
   afinopera: number
   afPct: number
+  monitor_total: number
+  monitor_operativos: number
+  monitor_inoperativos: number
 }
 
 interface ServiceGroup {
@@ -184,6 +193,9 @@ function parseCamasRow(raw: SighTableRow): CamasRow {
     totalaf: n('totalaf'),
     afopera: n('afopera'),
     afinopera: n('afinopera'),
+    monitor_total: n('monitor_total'),
+    monitor_operativos: n('monitor_operativos'),
+    monitor_inoperativos: n('monitor_inoperativos'),
     veces: n('veces') || 1,
     veces1: n('veces1') || 1,
   }
@@ -208,6 +220,7 @@ function emptySums(): Sums {
     ctran: 0, cinah: 0, pcr: 0, espera_ant: 0, espera_mol: 0,
     c_vm: 0, totalvm: 0, vmopera: 0, vminopera: 0,
     c_fl: 0, totalaf: 0, afopera: 0, afinopera: 0,
+    monitor_total: 0, monitor_operativos: 0, monitor_inoperativos: 0,
   }
 }
 
@@ -256,6 +269,9 @@ function computeServiceMetrics(rows: CamasRow[]): ServiceMetrics {
   const totalaf = rows.reduce((max, row) => Math.max(max, row.totalaf), 0)
   const afopera = rows.reduce((max, row) => Math.max(max, row.afopera), 0)
   const afinopera = rows.reduce((max, row) => Math.max(max, row.afinopera), 0)
+  const monitor_total = rows.reduce((max, row) => Math.max(max, row.monitor_total), 0)
+  const monitor_operativos = rows.reduce((max, row) => Math.max(max, row.monitor_operativos), 0)
+  const monitor_inoperativos = rows.reduce((max, row) => Math.max(max, row.monitor_inoperativos), 0)
 
   return {
     camas,
@@ -274,6 +290,9 @@ function computeServiceMetrics(rows: CamasRow[]): ServiceMetrics {
     afopera,
     afinopera,
     afPct: clampPercent(safePercentValue(c_fl, afopera)),
+    monitor_total,
+    monitor_operativos,
+    monitor_inoperativos,
   }
 }
 
@@ -330,6 +349,9 @@ function addGroupToSums(sums: Sums, group: ServiceGroup) {
   sums.totalaf += group.metrics.totalaf
   sums.afopera += group.metrics.afopera
   sums.afinopera += group.metrics.afinopera
+  sums.monitor_total += group.metrics.monitor_total
+  sums.monitor_operativos += group.metrics.monitor_operativos
+  sums.monitor_inoperativos += group.metrics.monitor_inoperativos
 }
 
 function processCamasData(rawRows: SighTableRow[]): TableItem[] {
@@ -639,10 +661,11 @@ function KpiStrip({ totals }: { totals: Sums | null }) {
     { label: 'Pendientes molecular', value: totals.espera_mol, alert: totals.espera_mol > 0 },
     { label: 'VM en uso', value: totals.c_vm, support: true },
     { label: 'AF en uso', value: totals.c_fl, support: true },
+    { label: 'Monitores', value: totals.monitor_total, support: true },
   ]
 
   return (
-    <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5 xl:grid-cols-9">
+    <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5 xl:grid-cols-10">
       {items.map((item) => (
         <div
           key={item.label}
@@ -808,6 +831,10 @@ function SubtotalRow({ sums, bg }: { sums: Sums; bg: string }) {
       <td className={tdSubtotal}>{sums.afopera}</td>
       <td className={tdSubtotal}>{sums.afinopera}</td>
       <td className={tdSubtotal}>{safePct(sums.c_fl, sums.afopera)}</td>
+      {/* Monitores */}
+      <td className={tdSubtotal}>{sums.monitor_total}</td>
+      <td className={tdSubtotal}>{sums.monitor_operativos}</td>
+      <td className={tdSubtotal}>{sums.monitor_inoperativos}</td>
     </tr>
   )
 }
@@ -847,6 +874,9 @@ function TotalGeneralRow({ sums }: { sums: Sums }) {
       <td className={tdTotal}>{sums.afopera}</td>
       <td className={tdTotal}>{sums.afinopera}</td>
       <td className={tdTotal}>{safePct(sums.c_fl, sums.afopera)}</td>
+      <td className={tdTotal}>{sums.monitor_total}</td>
+      <td className={tdTotal}>{sums.monitor_operativos}</td>
+      <td className={tdTotal}>{sums.monitor_inoperativos}</td>
     </tr>
   )
 }
@@ -1017,7 +1047,7 @@ export function MonitoreoCamasPage() {
               </div>
             ) : null}
             <div className="max-h-[68vh] overflow-auto rounded-md border border-border/70 bg-white">
-            <table className="border-separate border-spacing-0 text-[10px]" style={{ minWidth: 1780 }}>
+            <table className="border-separate border-spacing-0 text-[10px]" style={{ minWidth: 1970 }}>
               <thead className="bg-[#eef5fb] text-[#123B63]">
                 {/* Row 1 - group headers */}
                 <tr>
@@ -1029,6 +1059,7 @@ export function MonitoreoCamasPage() {
                   <th className={`${TH_GROUP} sticky top-0 z-20`} colSpan={2}>Resultados Pendientes</th>
                   <th className={`${TH_GROUP} sticky top-0 z-20`} colSpan={5}>Ventilación Mecánica (VM)</th>
                   <th className={`${TH_GROUP} sticky top-0 z-20`} colSpan={5}>Oxígeno Alto Flujo (AF)</th>
+                  <th className={`${TH_GROUP} sticky top-0 z-20`} colSpan={3}>Monitores</th>
                 </tr>
                 {/* Row 2 - subcolumns */}
                 <tr>
@@ -1059,12 +1090,16 @@ export function MonitoreoCamasPage() {
                   <th className={`${TH_SUB} sticky top-[33px] z-20`}>Operativas (G)</th>
                   <th className={`${TH_SUB} sticky top-[33px] z-20`}>Inoperativas</th>
                   <th className={`${TH_SUB} sticky top-[33px] z-20`}>% uso AF (F/G)</th>
+
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Total</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Operativos</th>
+                  <th className={`${TH_SUB} sticky top-[33px] z-20`}>Inoperativos</th>
                 </tr>
               </thead>
               <tbody>
                 {tableItems.length === 0 ? (
                   <tr>
-                    <td colSpan={26} className="px-3 py-5 text-center text-xs text-muted">
+                    <td colSpan={29} className="px-3 py-5 text-center text-xs text-muted">
                       {loading ? 'Consultando monitoreo de camas...' : 'No se encuentran registros.'}
                     </td>
                   </tr>
@@ -1215,6 +1250,15 @@ export function MonitoreoCamasPage() {
                                 : { backgroundColor: metrics.afopera > 0 ? pctBg(metrics.afPct) : undefined }}>
                               {metrics.totalaf === 0 ? '-' : pctText(metrics.afPct)}
                             </td>
+                          </>
+                        )}
+
+                        {/* Monitores */}
+                        {showServicio && (
+                          <>
+                            <td className={TD} rowSpan={servicioSpan}>{numCell(metrics.monitor_total)}</td>
+                            <td className={TD} rowSpan={servicioSpan}>{numCell(metrics.monitor_operativos)}</td>
+                            <td className={TD} rowSpan={servicioSpan}>{numCell(metrics.monitor_inoperativos)}</td>
                           </>
                         )}
                       </tr>

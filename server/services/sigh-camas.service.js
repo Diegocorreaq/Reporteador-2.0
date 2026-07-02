@@ -33,6 +33,90 @@ function normalizeLookupToken(value) {
     .replace(/[^a-z0-9]/g, '')
 }
 
+function normalizeServiceName(value) {
+  return normalizeLookupToken(value)
+}
+
+function consensusResourceEntry(monitor = 0, ventilador = 0) {
+  return { monitor, ventilador }
+}
+
+const CONSENSUS_CAMAS_RESOURCES_BY_SERVICE = new Map(
+  [
+    ['HOSPITALIZACION PEDIATRIA', 0, 0],
+    ['HOSPITALIZACION NEONATOLOGIA', 1, 0],
+    ['ALOJAMIENTO CONJUNTO', 0, 0],
+    ['ALOJAMIENTO CONJUNTO 2', 0, 0],
+    ['SALA DE ATENCION INMEDIATA', 1, 0],
+    ['ATENCION INMEDIATA', 1, 0],
+    ['MAMA CANGURO', 0, 0],
+    ['HOSPITALIZACION GINECOBSTETRICIA', 2, 0],
+    ['HOSPITALIZACION 2 GINECO-OBSTETRICIA', 2, 0],
+    ['HOSPITALIZACION GINECOLOGIA', 0, 0],
+    ['HOSPITALIZACION GINECOLOGICA', 0, 0],
+    ['HOSPITALIZACION GINECOLOGIA ONCOLOGICA', 0, 0],
+    ['HOSPITALIZACION GINECOONCOLOGICA', 0, 0],
+    ['HOSPITALIZACION OBSTETRICIA', 0, 0],
+    ['HOSPITALIZACION OBSTETRICIA ARO', 2, 0],
+    ['HOSPITALIZACION CIRUGIA', 0, 0],
+    ['HOSPITALIZACION CIRUGIA ONCOLOGICA', 0, 0],
+    ['HOSPITALIZACION MEDICINA', 1, 0],
+    ['HOSPITALIZACION SALUD MENTAL', 0, 0],
+    ['URPA HEVES', 14, 0],
+    ['URPA', 14, 0],
+    ['UCI PEDIATRICA', 6, 2],
+    ['UCIN PEDIATRIA', 5, 1],
+    ['UCIN PEDIATRICO', 5, 1],
+    ['UCI NEONATOLOGIA SALA 2', 8, 5],
+    ['UCIN NEONATOLOGIA SALA 1', 9, 0],
+    ['UCIN NEONATOLOGIA SALA 3', 7, 0],
+    ['UCI ADULTOS A', 18, 15],
+    ['UCI ADULTO', 18, 15],
+    ['UCIN ADULTOS C', 8, 0],
+    ['UCIN ADULTO', 8, 0],
+    ['SHOCK TRAUMA ADULTOS', 4, 2],
+    ['OBSERVACION VARONES', 9, 0],
+    ['OBSERVACION MUJERES', 9, 0],
+    ['SHOCK TRAUMA PEDIATRIA', 3, 0],
+    ['TRAUMASHOCK', 3, 0],
+    ['OBSERVACION AISLADO 1 PEDIATRICA', 1, 0],
+    ['OBSERVACION AISLADO 2 PEDIATRICA', 1, 0],
+    ['OBSERVACION AISLADOS', 2, 0],
+    ['OBSERVACION PEDIATRIA 1', 2, 0],
+    ['OBSERVACION PEDIATRIA 2', 2, 0],
+    ['OBSERVACION', 4, 0],
+    ['OBSERVACION PASILLO', 0, 0],
+    ['ZONA DE NEBULIZACION', 0, 0],
+    ['CARPA OBSERVA 4', 0, 0],
+    ['CONTAINER', 0, 0],
+    ['OBSERVACION MEDICINA 1', 0, 0],
+    ['OBSERVACION MEDICINA 3', 0, 0],
+    ['OBSERVACION QUIRURGICA', 0, 0],
+  ].map(([service, monitor, ventilador]) => [
+    normalizeServiceName(service),
+    consensusResourceEntry(monitor, ventilador),
+  ]),
+)
+
+function applyConsensusCamasResources(row) {
+  const consensus = CONSENSUS_CAMAS_RESOURCES_BY_SERVICE.get(normalizeServiceName(row.servicio))
+  if (!consensus) {
+    return row
+  }
+
+  return {
+    ...row,
+    totalvm: consensus.ventilador,
+    vmopera: consensus.ventilador,
+    vminopera: 0,
+    monitor_total: consensus.monitor,
+    monitor_operativos: consensus.monitor,
+    monitor_inoperativos: 0,
+    fvopera: consensus.monitor,
+    fvinopera: 0,
+  }
+}
+
 function detailValueText(value) {
   if (value === null || value === undefined) {
     return ''
@@ -182,7 +266,7 @@ export function normalizeCamasDetalleRows(tipoDetalle, rows = []) {
 }
 
 function mapCamasRow(row) {
-  return {
+  return applyConsensusCamasResources({
     idservicio: pickNum(row, 'IDSERVICIO', 'idservicio'),
     piso:       String(pick(row, 'PISO', 'piso') ?? '').trim(),
     servicio:   String(pick(row, 'CONSULTORIO', 'SERVICIO', 'servicio') ?? '').trim(),
@@ -223,7 +307,7 @@ function mapCamasRow(row) {
     fvinopera: pickNum(row, 'MONITOR_FV_I', 'FVINOPERA', 'fvinopera'),
     veces:      pickNum(row, 'VECES', 'veces') || 1,
     veces1:     pickNum(row, 'VECES1', 'veces1') || 1,
-  }
+  })
 }
 
 function safePercentValue(numerator, denominator) {
@@ -989,6 +1073,25 @@ function filterCamasDisponiblesSinReservas(disponiblesRows, reservasRows) {
   })
 }
 
+function deduplicateCamasDetalleRows(rows) {
+  const seen = new Set()
+  const deduplicated = []
+
+  for (const row of rows) {
+    const cama = normalizeCamaKey(row)
+    if (cama) {
+      if (seen.has(cama)) {
+        continue
+      }
+      seen.add(cama)
+    }
+
+    deduplicated.push(row)
+  }
+
+  return deduplicated
+}
+
 export async function getCamasDetalle(tipoDetalle, filters) {
   const key = String(tipoDetalle ?? '').toLowerCase()
   const definition = DETAIL_PROCEDURE_BY_TYPE[key]
@@ -1019,6 +1122,9 @@ export async function getCamasDetalle(tipoDetalle, filters) {
   if (key === '3') {
     const reservas = await getCamasReservadasSopDetalle(filters.idServicio, filters.tipo)
     rows = filterCamasDisponiblesSinReservas(rows, reservas)
+  }
+  if (key === '2' || key === '3') {
+    rows = deduplicateCamasDetalleRows(rows)
   }
 
   return normalizeCamasDetalleRows(key, rows)
