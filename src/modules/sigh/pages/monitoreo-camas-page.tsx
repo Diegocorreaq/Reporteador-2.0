@@ -697,18 +697,37 @@ function resolveDetailCell(row: SighTableRow, key: string): string {
   return ''
 }
 
+function formatDetailDateTime(value: string): string {
+  const raw = value.trim()
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/)
+  if (match) {
+    return `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}`
+  }
+
+  return raw
+}
+
+function formatDetailCell(row: SighTableRow, key: string): string {
+  const value = resolveDetailCell(row, key)
+  if (key.toLowerCase() === 'libre') {
+    return formatDetailDateTime(value)
+  }
+
+  return value
+}
+
 function DetailTable({ rows, columns }: { rows: SighTableRow[]; columns: { key: string; label: string }[] }) {
   const effectiveCols = columns.length > 0
     ? columns
     : Object.keys(rows[0] ?? {}).map((k) => ({ key: k, label: k }))
 
   return (
-    <div className="overflow-x-auto rounded border border-border/70 bg-white">
+    <div className="max-h-[62vh] overflow-auto rounded border border-border/70 bg-white sm:max-h-[68vh]">
       <table className="min-w-full border-collapse text-[11px]">
         <thead>
           <tr className="bg-[#eef5fb] text-[#123B63]">
             {effectiveCols.map((c) => (
-              <th key={c.key} className="border-b border-border px-2 py-1 font-semibold uppercase text-center">
+              <th key={c.key} className="sticky top-0 z-10 border-b border-border bg-[#eef5fb] px-2 py-1 text-center font-semibold uppercase">
                 {c.label}
               </th>
             ))}
@@ -726,7 +745,7 @@ function DetailTable({ rows, columns }: { rows: SighTableRow[]; columns: { key: 
               <tr key={i} className="odd:bg-white even:bg-[#f8fbff]">
                 {effectiveCols.map((c) => (
                   <td key={c.key} className="border-b border-border/60 px-2 py-0.5 text-center">
-                    {resolveDetailCell(row, c.key) || ''}
+                    {formatDetailCell(row, c.key) || ''}
                   </td>
                 ))}
               </tr>
@@ -1211,8 +1230,8 @@ export function MonitoreoCamasPage() {
 
       {/* Detail modal */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="w-[min(95vw,1300px)] max-w-none">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[85vh] w-[min(95vw,1300px)] max-w-none flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle>{modalSpec.title}</DialogTitle>
             {detailContext ? (
               <DialogDescription>
@@ -1221,7 +1240,7 @@ export function MonitoreoCamasPage() {
             ) : null}
           </DialogHeader>
           {detailLoading ? (
-            <p className="py-6 text-center text-sm text-muted">Cargando detalle...</p>
+            <p className="shrink-0 py-6 text-center text-sm text-muted">Cargando detalle...</p>
           ) : (
             <DetailTable
               rows={detailRows}
