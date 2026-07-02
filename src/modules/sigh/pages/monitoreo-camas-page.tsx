@@ -247,12 +247,12 @@ function computeServiceMetrics(rows: CamasRow[]): ServiceMetrics {
   const ocupacionBase = Math.min(tocupa, camas)
   const demanda = Math.max(tocupa - camas, 0)
 
-  const c_vm = rows.reduce((max, row) => Math.max(max, row.c_vm), 0)
+  const c_vm = rows.reduce((sum, row) => sum + row.c_vm, 0)
   const totalvm = rows.reduce((max, row) => Math.max(max, row.totalvm), 0)
   const vmopera = rows.reduce((max, row) => Math.max(max, row.vmopera), 0)
   const vminopera = rows.reduce((max, row) => Math.max(max, row.vminopera), 0)
 
-  const c_fl = rows.reduce((max, row) => Math.max(max, row.c_fl), 0)
+  const c_fl = rows.reduce((sum, row) => sum + row.c_fl, 0)
   const totalaf = rows.reduce((max, row) => Math.max(max, row.totalaf), 0)
   const afopera = rows.reduce((max, row) => Math.max(max, row.afopera), 0)
   const afinopera = rows.reduce((max, row) => Math.max(max, row.afinopera), 0)

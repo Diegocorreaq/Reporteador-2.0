@@ -292,12 +292,12 @@ function computeServiceMetrics(rows) {
   const ocupacionBase = Math.min(tocupa, camas)
   const demanda = Math.max(tocupa - camas, 0)
 
-  const c_vm = rows.reduce((max, row) => Math.max(max, row.c_vm), 0)
+  const c_vm = rows.reduce((sum, row) => sum + row.c_vm, 0)
   const totalvm = rows.reduce((max, row) => Math.max(max, row.totalvm), 0)
   const vmopera = rows.reduce((max, row) => Math.max(max, row.vmopera), 0)
   const vminopera = rows.reduce((max, row) => Math.max(max, row.vminopera), 0)
 
-  const c_fl = rows.reduce((max, row) => Math.max(max, row.c_fl), 0)
+  const c_fl = rows.reduce((sum, row) => sum + row.c_fl, 0)
   const totalaf = rows.reduce((max, row) => Math.max(max, row.totalaf), 0)
   const afopera = rows.reduce((max, row) => Math.max(max, row.afopera), 0)
   const afinopera = rows.reduce((max, row) => Math.max(max, row.afinopera), 0)
@@ -888,6 +888,79 @@ async function getCamasReservadasSopDetalle(idServicio, tipo) {
   return rows
 }
 
+async function getCamasOxigenoterapiaDetalle(idServicio, valorOxigenoterapia) {
+  const rows = await executeQuery(
+    `SELECT
+      S1.IdCuentaAtencion IDCUENTA,
+      S1.NROCAMA CAMA,
+      S1.ESTADOCAMA,
+      ISNULL((LEFT(P.PrimerNombre, 1) + ',' + P.ApellidoPaterno + ',' + LEFT(P.ApellidoMaterno, 1)), '') PACIENTE
+    FROM (
+      SELECT X1.*, X2.IdAtencion, X2.IdCuentaAtencion
+      FROM (
+        SELECT
+          CM.Codigo NROCAMA,
+          CM.IdCama,
+          SR.cod_Consultorio IDSERVICIO,
+          ECM.Descripcion ESTADOCAMA,
+          CM.IdPaciente
+        FROM SIGH..Camas CM
+        LEFT JOIN SIGH..EstadosCama ECM ON ECM.IdEstadoCama = CM.IdEstadoCama
+        LEFT JOIN SIGH_EST..T_Upss_Consultorio SR ON SR.cod_Consultorio = CM.IdServicioPropietario
+        WHERE CM.IdEstadoCama <> 10
+        AND SR.COD_ESTADO = 1
+        AND SR.cod_Consultorio NOT IN (11, 28, 196, 8, 461, 600)
+        AND SR.cod_Consultorio = @idservicio
+      ) X1
+      LEFT JOIN (
+        SELECT IDCAMA, IDSERVICIO, IDPACIENTE, IDATENCION, IdCuentaAtencion
+        FROM (
+          SELECT
+            H.IdCama,
+            H.IdServicio,
+            A1.IdPaciente,
+            A1.IdAtencion,
+            A1.IdCuentaAtencion,
+            ROW_NUMBER() OVER (
+              PARTITION BY H.IdCama, H.IdServicio, A1.IdPaciente
+              ORDER BY H.Secuencia DESC, A1.FechaIngreso DESC, A1.IdAtencion DESC
+            ) fila
+          FROM SIGH..Atenciones A1
+          INNER JOIN SIGH..AtencionesEstanciaHospitalaria H ON H.IdAtencion = A1.IdAtencion
+          WHERE A1.FechaEgreso IS NULL
+          AND H.LlegoAlServicio = 1
+        ) X2R
+        WHERE fila = 1
+      ) X2 ON X1.IdCama = X2.IdCama AND X1.IDSERVICIO = X2.IdServicio AND X1.IdPaciente = X2.IdPaciente
+    ) S1
+    INNER JOIN SIGH..Pacientes P ON P.IdPaciente = S1.IdPaciente
+    INNER JOIN (
+      SELECT EV.IdCuentaAtencion, MAX(EV.IdVisita) IDULTVIS
+      FROM efimedic..EvoVisitaX EV
+      WHERE EV.estado = 1
+      AND EV.idTipoEvolucion = 1
+      GROUP BY EV.IdCuentaAtencion
+    ) R2 ON S1.IdCuentaAtencion = R2.IdCuentaAtencion
+    INNER JOIN (
+      SELECT EV.IdCuentaAtencion, EVD.IdVisita, EVD.valor2
+      FROM efimedic..EvoVisitaDetalleX EVD
+      INNER JOIN efimedic..EvoVisitaX EV ON EV.IdVisita = EVD.IdVisita
+      WHERE EVD.estado = 1
+      AND EV.estado = 1
+      AND YEAR(EV.fecha) = YEAR(GETDATE())
+      AND EVD.valor2 = @valorOxigenoterapia
+    ) R3 ON R2.IdCuentaAtencion = R3.IdCuentaAtencion AND R2.IDULTVIS = R3.IdVisita
+    ORDER BY S1.NROCAMA`,
+    [
+      { name: 'idservicio', type: sql.Int, value: Number(idServicio ?? 0) || 0 },
+      { name: 'valorOxigenoterapia', type: sql.Int, value: Number(valorOxigenoterapia ?? 0) || 0 },
+    ],
+    { timeoutMs: REPORT_TIMEOUT_MS },
+  )
+
+  return rows
+}
+
 function normalizeCamaKey(row) {
   return normalizeLookupToken(pick(row, 'NROCAMA', 'CAMA', 'CODIGOCAMA', 'codigocama'))
 }
@@ -902,12 +975,32 @@ function mergeCamasOcupadasConReservas(ocupadasRows, reservasRows) {
   return [...ocupadasRows, ...reservasSinDuplicar]
 }
 
+function filterCamasDisponiblesSinReservas(disponiblesRows, reservasRows) {
+  const camasReservadas = new Set(reservasRows.map(normalizeCamaKey).filter(Boolean))
+
+  return disponiblesRows.filter((row) => {
+    const cama = normalizeCamaKey(row)
+    if (cama && camasReservadas.has(cama)) {
+      return false
+    }
+
+    const estado = normalizeLookupToken(pick(row, 'ESTADOCAMA', 'ESTADO', 'estadocama'))
+    return estado !== 'trasladado'
+  })
+}
+
 export async function getCamasDetalle(tipoDetalle, filters) {
   const key = String(tipoDetalle ?? '').toLowerCase()
   const definition = DETAIL_PROCEDURE_BY_TYPE[key]
 
   if (!definition) {
     throw new Error('No existe la consulta de detalle solicitada.')
+  }
+
+  if (key === '6' || key === '7') {
+    const valorOxigenoterapia = key === '6' ? 4 : 5
+    const rows = await getCamasOxigenoterapiaDetalle(filters.idServicio, valorOxigenoterapia)
+    return normalizeCamasDetalleRows(key, rows)
   }
 
   const params = definition.params.map((paramName) => {
@@ -922,6 +1015,10 @@ export async function getCamasDetalle(tipoDetalle, filters) {
   if (key === '2') {
     const reservas = await getCamasReservadasSopDetalle(filters.idServicio, filters.tipo)
     rows = mergeCamasOcupadasConReservas(rows, reservas)
+  }
+  if (key === '3') {
+    const reservas = await getCamasReservadasSopDetalle(filters.idServicio, filters.tipo)
+    rows = filterCamasDisponiblesSinReservas(rows, reservas)
   }
 
   return normalizeCamasDetalleRows(key, rows)
