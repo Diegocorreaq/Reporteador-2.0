@@ -325,6 +325,16 @@ reportsRouter.get('/exports/download', requireAuth, exportLimiter, async (reques
 
     sendDownload(response, file)
   } catch (error) {
+    logger.error({
+      correlationId: request.correlationId,
+      event: 'exports:download:error',
+      catalog: String(request.query.catalog ?? '').trim(),
+      key: String(request.query.key ?? '').trim(),
+      fechaInicio: request.query.fechaInicio ? String(request.query.fechaInicio) : null,
+      fechaFin: request.query.fechaFin ? String(request.query.fechaFin) : null,
+      hasEmployeeId: Number(request.query.employeeId ?? 0) > 0,
+      message: error instanceof Error ? error.message : String(error),
+    })
     handleError(response, error, 'No se pudo generar el archivo solicitado.')
   }
 })

@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { httpClient } from '@/services/http/client'
 
 export interface LegacyUserValidationPayload {
@@ -46,6 +47,32 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
   URL.revokeObjectURL(objectUrl)
 }
 
+async function readDownloadErrorMessage(error: unknown) {
+  if (!axios.isAxiosError(error)) {
+    return null
+  }
+
+  const responseData = error.response?.data
+  if (responseData instanceof Blob) {
+    const text = await responseData.text()
+    if (!text.trim()) {
+      return null
+    }
+
+    try {
+      const payload = JSON.parse(text) as { message?: unknown }
+      return typeof payload.message === 'string' && payload.message.trim()
+        ? payload.message.trim()
+        : text.trim()
+    } catch {
+      return text.trim()
+    }
+  }
+
+  const message = (responseData as { message?: unknown } | undefined)?.message
+  return typeof message === 'string' && message.trim() ? message.trim() : null
+}
+
 export async function validateLegacyExportUser(
   username: string,
   password: string,
@@ -69,17 +96,22 @@ export async function getExportCatalogOptions(catalog: string) {
 }
 
 export async function downloadLegacyExport(params: DownloadExportParams) {
-  const response = await httpClient.get<Blob>('/exports/download', {
-    params: {
-      catalog: params.catalog,
-      key: params.key,
-      fechaInicio: params.fechaInicio,
-      fechaFin: params.fechaFin,
-      employeeId: params.employeeId ?? 0,
-    },
-    responseType: 'blob',
-    timeout: 180000,
-  })
+  let response
+  try {
+    response = await httpClient.get<Blob>('/exports/download', {
+      params: {
+        catalog: params.catalog,
+        key: params.key,
+        fechaInicio: params.fechaInicio,
+        fechaFin: params.fechaFin,
+        employeeId: params.employeeId ?? 0,
+      },
+      responseType: 'blob',
+      timeout: 180000,
+    })
+  } catch (error) {
+    throw new Error((await readDownloadErrorMessage(error)) ?? 'No se pudo descargar el archivo.')
+  }
 
   const fileName = parseFileName(response.headers['content-disposition'])
   triggerBrowserDownload(response.data, fileName)
