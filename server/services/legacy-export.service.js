@@ -2864,7 +2864,7 @@ export async function executeConfiguredExport({
   }
 
   const rows = await executeProcedure(exportDefinition.procedure, params, {
-    timeoutMs: 120000,
+    timeoutMs: 180000,
     connection: exportDefinition.connection ?? resolveCatalogConnection(catalog),
   })
   const mappedRows =
