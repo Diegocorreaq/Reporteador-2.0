@@ -325,6 +325,23 @@ reportsRouter.get('/exports/download', requireAuth, exportLimiter, async (reques
 
     sendDownload(response, file)
   } catch (error) {
+    if (error?.statusCode === 400) {
+      logger.warn({
+        correlationId: request.correlationId,
+        event: 'exports:download:validation-error',
+        catalog: String(request.query.catalog ?? '').trim(),
+        key: String(request.query.key ?? '').trim(),
+        fechaInicio: request.query.fechaInicio ? String(request.query.fechaInicio) : null,
+        fechaFin: request.query.fechaFin ? String(request.query.fechaFin) : null,
+        hasEmployeeId: Number(request.query.employeeId ?? 0) > 0,
+        message: error instanceof Error ? error.message : String(error),
+      })
+      return response.status(400).json({
+        message: error.message,
+        correlationId: request.correlationId,
+      })
+    }
+
     logger.error({
       correlationId: request.correlationId,
       event: 'exports:download:error',

@@ -2780,10 +2780,54 @@ function getExportDefinition(key, catalog) {
   return selected[key] ?? null
 }
 
+export class ExportValidationError extends Error {
+  constructor(message) {
+    super(message)
+    this.name = 'ExportValidationError'
+    this.statusCode = 400
+  }
+}
+
+function isDateOnly(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value ?? ''))) {
+    return false
+  }
+
+  const date = new Date(`${value}T00:00:00.000Z`)
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+}
+
 function daysBetween(startDate, endDate) {
   const start = new Date(startDate)
   const end = new Date(endDate)
-  return Math.floor(Math.abs(end.getTime() - start.getTime()) / 86400000) + 1
+  return Math.floor((end.getTime() - start.getTime()) / 86400000) + 1
+}
+
+function requiresDateRange(catalog) {
+  return ['range', 'salud-mental', 'lavado'].includes(catalog)
+}
+
+function validateExportDateRange({ catalog, exportDefinition, startDate, endDate }) {
+  if (!requiresDateRange(catalog)) {
+    return
+  }
+
+  if (!startDate || !endDate) {
+    throw new ExportValidationError('Debe indicar fecha de inicio y fecha fin.')
+  }
+
+  if (!isDateOnly(startDate) || !isDateOnly(endDate)) {
+    throw new ExportValidationError('Las fechas deben tener formato YYYY-MM-DD.')
+  }
+
+  const diff = daysBetween(startDate, endDate)
+  if (diff <= 0) {
+    throw new ExportValidationError('La fecha de inicio no puede ser mayor que la fecha fin.')
+  }
+
+  if (exportDefinition.maxDays && diff > exportDefinition.maxDays) {
+    throw new ExportValidationError(`El rango de fechas no debe exceder ${exportDefinition.maxDays} dias.`)
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2801,15 +2845,10 @@ export async function executeConfiguredExport({
   const exportDefinition = getExportDefinition(key, catalog)
 
   if (!exportDefinition) {
-    throw new Error('No se encontro la configuracion del exporte solicitado.')
+    throw new ExportValidationError('No se encontro la configuracion del exporte solicitado.')
   }
 
-  if (exportDefinition.maxDays && startDate && endDate) {
-    const diff = daysBetween(startDate, endDate)
-    if (diff > exportDefinition.maxDays) {
-      throw new Error(`El rango de fechas no debe exceder ${exportDefinition.maxDays} dias.`)
-    }
-  }
+  validateExportDateRange({ catalog, exportDefinition, startDate, endDate })
 
   const params =
     catalog === 'range'

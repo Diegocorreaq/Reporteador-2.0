@@ -54,7 +54,7 @@ function buildDbConfig(prefix = '', overrides = {}) {
     database: process.env[dbKey] ?? overrides.defaultDatabase ?? 'SIGH_DEPURA',
     user: process.env[userKey] ?? '',
     password: process.env[passKey] ?? '',
-    requestTimeout: Math.max(toNumber(process.env[requestTimeoutKey], 180000), 30000),
+    requestTimeout: Math.max(toNumber(process.env[requestTimeoutKey], 180000), 180000),
     connectionTimeout: Math.max(toNumber(process.env[connectionTimeoutKey], 30000), 30000),
     options: {
       encrypt,
