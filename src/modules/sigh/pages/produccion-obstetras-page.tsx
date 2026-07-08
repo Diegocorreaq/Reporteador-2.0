@@ -2,7 +2,6 @@ import { ProduccionProfesionalReport } from '@/modules/sigh/components/produccio
 import {
   downloadProduccionObstetrasExcel,
   downloadProduccionObstetrasPdf,
-  getProduccionObstetrasDetalle,
   getProduccionObstetrasResumen,
   searchProduccionObstetras,
 } from '@/modules/sigh/services/sigh-reports.service'
@@ -16,7 +15,6 @@ export function ProduccionObstetrasPage() {
       getSummary={getProduccionObstetrasResumen}
       downloadPdf={downloadProduccionObstetrasPdf}
       downloadExcel={downloadProduccionObstetrasExcel}
-      getDetail={getProduccionObstetrasDetalle}
     />
   )
 }
