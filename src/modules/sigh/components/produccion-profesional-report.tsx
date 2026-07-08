@@ -11,6 +11,7 @@ import { SighTable, type SighTableColumn } from '@/modules/sigh/components/sigh-
 import {
   countDaysBetween,
   formatDateOnlyLabel,
+  formatTimeOnlyLabel,
   getTodayDate,
   resolveRowNumber,
   resolveRowText,
@@ -157,9 +158,17 @@ export function ProduccionProfesionalReport({
         align: 'center',
         render: (_, row) => formatDateOnlyLabel(resolveRowText(row, 'FECHA_REGISTRO', ['FECHA'])),
       },
-      { key: 'hora', label: 'Hora', render: (_, row) => resolveRowText(row, 'HORA_REGISTRO', ['HORA']) },
-      { key: 'cuenta', label: 'Cuenta', render: (_, row) => resolveRowText(row, 'NRO_CUENTA', ['CUENTA', 'idcuenta']) },
-      { key: 'paciente', label: 'Paciente', render: (_, row) => resolveRowText(row, 'NOMBRE_PACIENTE', ['paciente']) },
+      {
+        key: 'hora',
+        label: 'Hora',
+        align: 'center',
+        render: (_, row) => formatTimeOnlyLabel(resolveRowText(row, 'HORA_REGISTRO', ['HORA'])),
+      },
+      {
+        key: 'paciente',
+        label: 'Paciente',
+        render: (_, _row, rowIndex) => `Paciente ${String(rowIndex + 1).padStart(3, '0')}`,
+      },
     ],
     [],
   )

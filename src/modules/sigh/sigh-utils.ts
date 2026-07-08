@@ -6,6 +6,13 @@ const dateOnlyFormatter = new Intl.DateTimeFormat('es-PE', {
   year: 'numeric',
 })
 
+const timeOnlyFormatter = new Intl.DateTimeFormat('es-PE', {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+})
+
 export function getTodayDate() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -57,6 +64,28 @@ export function formatDateOnlyLabel(value: unknown) {
 
   const parsed = new Date(raw)
   return Number.isNaN(parsed.getTime()) ? raw : dateOnlyFormatter.format(parsed)
+}
+
+export function formatTimeOnlyLabel(value: unknown) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return ''
+
+  const time = raw.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/)
+  if (time) {
+    const hours = Number(time[1])
+    const minutes = Number(time[2])
+    const seconds = Number(time[3] ?? 0)
+    if (hours < 24 && minutes < 60 && seconds < 60) {
+      return [
+        String(hours).padStart(2, '0'),
+        String(minutes).padStart(2, '0'),
+        String(seconds).padStart(2, '0'),
+      ].join(':')
+    }
+  }
+
+  const parsed = new Date(raw)
+  return Number.isNaN(parsed.getTime()) ? raw : timeOnlyFormatter.format(parsed)
 }
 
 export function normalizeKeyToken(value: string) {
