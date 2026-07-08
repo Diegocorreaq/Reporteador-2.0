@@ -54,7 +54,7 @@ function buildDbConfig(prefix = '', overrides = {}) {
     database: process.env[dbKey] ?? overrides.defaultDatabase ?? 'SIGH_DEPURA',
     user: process.env[userKey] ?? '',
     password: process.env[passKey] ?? '',
-    requestTimeout: Math.max(toNumber(process.env[requestTimeoutKey], 180000), 180000),
+    requestTimeout: Math.max(toNumber(process.env[requestTimeoutKey], 900000), 900000),
     connectionTimeout: Math.max(toNumber(process.env[connectionTimeoutKey], 30000), 30000),
     options: {
       encrypt,
@@ -117,6 +117,11 @@ export const serverConfig = {
   isProduction,
   jwtSecret: process.env.JWT_SECRET ?? 'dev-insecure-secret-change-in-production',
   corsOrigins: parseCorsOrigins(),
+  http: {
+    requestTimeoutMs: Math.max(toNumber(process.env.HTTP_REQUEST_TIMEOUT_MS, 900000), 900000),
+    headersTimeoutMs: Math.max(toNumber(process.env.HTTP_HEADERS_TIMEOUT_MS, 905000), 905000),
+    keepAliveTimeoutMs: Math.max(toNumber(process.env.HTTP_KEEP_ALIVE_TIMEOUT_MS, 65000), 65000),
+  },
   db: {
     general: buildDbConfig(''),
     sigh1: buildDbConfig('SIGH_SQL1'),

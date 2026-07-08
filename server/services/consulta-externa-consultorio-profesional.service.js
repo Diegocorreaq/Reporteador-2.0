@@ -56,6 +56,7 @@ const ATTENTION_COLUMNS = [
   { key: 'DES_ESPECIALIDAD', label: 'DES_ESPECIALIDAD', width: 32 },
   { key: 'COD_CONSULTORIO', label: 'COD_CONSULTORIO', width: 18, numeric: true },
   { key: 'DES_CONSULTORIO', label: 'DES_CONSULTORIO', width: 34 },
+  { key: 'TipoEmpleado', label: 'TipoEmpleado', width: 20 },
   { key: 'TOTATENCIONES', label: 'TOTATENCIONES', width: 16, numeric: true },
 ]
 
@@ -324,8 +325,9 @@ function buildWorkbook({ rows, filters }) {
     'DES_ESPECIALIDAD',
     'COD_CONSULTORIO',
     'DES_CONSULTORIO',
+    'TipoEmpleado',
   ]
-  const professionalKeys = [...attentionKeys, 'MEDICO', 'TipoEmpleado']
+  const professionalKeys = [...attentionKeys, 'MEDICO']
 
   writeTableSheet(wb, {
     name: 'Base general',

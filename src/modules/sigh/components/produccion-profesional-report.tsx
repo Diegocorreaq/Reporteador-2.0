@@ -8,7 +8,13 @@ import { Alert } from '@/components/ui/alert'
 import { SighFilterPanel } from '@/modules/sigh/components/sigh-filter-panel'
 import { SighPageShell } from '@/modules/sigh/components/sigh-page-shell'
 import { SighTable, type SighTableColumn } from '@/modules/sigh/components/sigh-table'
-import { countDaysBetween, getTodayDate, resolveRowNumber, resolveRowText } from '@/modules/sigh/sigh-utils'
+import {
+  countDaysBetween,
+  formatDateOnlyLabel,
+  getTodayDate,
+  resolveRowNumber,
+  resolveRowText,
+} from '@/modules/sigh/sigh-utils'
 import type {
   ProduccionDetalleReport,
   ProduccionProfesional,
@@ -145,7 +151,12 @@ export function ProduccionProfesionalReport({
   const detailColumns = useMemo<SighTableColumn[]>(
     () => [
       { key: 'servicio', label: 'Servicio', render: (_, row) => resolveRowText(row, 'SERVICIO', ['servicio_actividad']) },
-      { key: 'fecha', label: 'Fecha', render: (_, row) => resolveRowText(row, 'FECHA_REGISTRO', ['FECHA']) },
+      {
+        key: 'fecha',
+        label: 'Fecha',
+        align: 'center',
+        render: (_, row) => formatDateOnlyLabel(resolveRowText(row, 'FECHA_REGISTRO', ['FECHA'])),
+      },
       { key: 'hora', label: 'Hora', render: (_, row) => resolveRowText(row, 'HORA_REGISTRO', ['HORA']) },
       { key: 'cuenta', label: 'Cuenta', render: (_, row) => resolveRowText(row, 'NRO_CUENTA', ['CUENTA', 'idcuenta']) },
       { key: 'paciente', label: 'Paciente', render: (_, row) => resolveRowText(row, 'NOMBRE_PACIENTE', ['paciente']) },
@@ -405,13 +416,17 @@ export function ProduccionProfesionalReport({
       </Card>
 
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="w-[min(95vw,1100px)] max-w-none">
-          <DialogHeader><DialogTitle>Detalle de actividad: {detailTitle || '-'}</DialogTitle></DialogHeader>
-          <SighTable
-            rows={detailRows}
-            columns={detailColumns}
-            emptyMessage={loadingDetail ? 'Cargando detalle...' : 'No se encontraron registros para esta actividad.'}
-          />
+        <DialogContent className="flex max-h-[85vh] w-[min(95vw,1100px)] max-w-none flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
+            <DialogTitle>Detalle de actividad: {detailTitle || '-'}</DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <SighTable
+              rows={detailRows}
+              columns={detailColumns}
+              emptyMessage={loadingDetail ? 'Cargando detalle...' : 'No se encontraron registros para esta actividad.'}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </SighPageShell>

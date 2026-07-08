@@ -1,5 +1,11 @@
 import type { SighCellValue, SighTableRow } from '@/modules/sigh/types'
 
+const dateOnlyFormatter = new Intl.DateTimeFormat('es-PE', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+})
+
 export function getTodayDate() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -18,6 +24,39 @@ export function countDaysBetween(startDate: string, endDate: string) {
   const start = new Date(`${startDate}T00:00:00`)
   const end = new Date(`${endDate}T00:00:00`)
   return Math.floor(Math.abs(end.getTime() - start.getTime()) / 86400000) + 1
+}
+
+function buildLocalDate(year: number, month: number, day: number) {
+  const date = new Date(year, month - 1, day)
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null
+  }
+
+  return date
+}
+
+export function formatDateOnlyLabel(value: unknown) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return ''
+
+  const ymd = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/)
+  if (ymd) {
+    const date = buildLocalDate(Number(ymd[1]), Number(ymd[2]), Number(ymd[3]))
+    return date ? dateOnlyFormatter.format(date) : raw
+  }
+
+  const dmy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+  if (dmy) {
+    const date = buildLocalDate(Number(dmy[3]), Number(dmy[2]), Number(dmy[1]))
+    return date ? dateOnlyFormatter.format(date) : raw
+  }
+
+  const parsed = new Date(raw)
+  return Number.isNaN(parsed.getTime()) ? raw : dateOnlyFormatter.format(parsed)
 }
 
 export function normalizeKeyToken(value: string) {

@@ -107,7 +107,7 @@ export async function downloadLegacyExport(params: DownloadExportParams) {
         employeeId: params.employeeId ?? 0,
       },
       responseType: 'blob',
-      timeout: 180000,
+      timeout: 900000,
     })
   } catch (error) {
     throw new Error((await readDownloadErrorMessage(error)) ?? 'No se pudo descargar el archivo.')

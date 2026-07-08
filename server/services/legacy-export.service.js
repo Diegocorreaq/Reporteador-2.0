@@ -2127,7 +2127,7 @@ const RANGE_EXPORTS = {
   exporta_d_xls_11: {
     procedure: 'SP_REPORTE_D_EXCEL11_A_2026',
     fileName: 'bai-morbilidad-materna-extrema.xlsx',
-    maxDays: 92,
+    maxDays: 31,
     connection: 'general',
     template: MORBILIDAD_MATERNA_TEMPLATE,
   },
@@ -2903,7 +2903,7 @@ export async function executeConfiguredExport({
   }
 
   const rows = await executeProcedure(exportDefinition.procedure, params, {
-    timeoutMs: 180000,
+    timeoutMs: 900000,
     connection: exportDefinition.connection ?? resolveCatalogConnection(catalog),
   })
   const mappedRows =

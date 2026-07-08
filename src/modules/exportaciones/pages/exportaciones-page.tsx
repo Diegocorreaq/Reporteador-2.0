@@ -38,7 +38,7 @@ const VISIBLE_REPORT_ROWS: LegacyVisibleReportRow[] = [
     ord: 1,
     key: 'exporta_d_xls_11',
     label: 'BAI - MORBILIDAD MATERNA EXTREMA',
-    fallbackMaxDays: 92,
+    fallbackMaxDays: 31,
     validationScope: 'zona-descarga/morbilidad-materna',
   },
   {

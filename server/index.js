@@ -89,9 +89,15 @@ const server = app.listen(serverConfig.port, () => {
     event: 'server:start',
     port: serverConfig.port,
     environment: serverConfig.isProduction ? 'production' : 'development',
+    httpTimeoutMs: serverConfig.http.requestTimeoutMs,
     message: `legacy-api escuchando en http://localhost:${serverConfig.port}`,
   })
 })
+
+server.requestTimeout = serverConfig.http.requestTimeoutMs
+server.timeout = serverConfig.http.requestTimeoutMs
+server.headersTimeout = serverConfig.http.headersTimeoutMs
+server.keepAliveTimeout = serverConfig.http.keepAliveTimeoutMs
 
 server.on('error', (error) => {
   logger.error({ event: 'server:listen-error', message: error.message, code: error.code })
