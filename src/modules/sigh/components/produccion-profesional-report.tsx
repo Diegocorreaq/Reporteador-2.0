@@ -164,11 +164,6 @@ export function ProduccionProfesionalReport({
         align: 'center',
         render: (_, row) => formatTimeOnlyLabel(resolveRowText(row, 'HORA_REGISTRO', ['HORA'])),
       },
-      {
-        key: 'paciente',
-        label: 'Paciente',
-        render: (_, _row, rowIndex) => `Paciente ${String(rowIndex + 1).padStart(3, '0')}`,
-      },
     ],
     [],
   )

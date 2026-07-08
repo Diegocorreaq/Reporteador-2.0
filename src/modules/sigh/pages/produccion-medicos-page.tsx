@@ -2,7 +2,6 @@ import { ProduccionProfesionalReport } from '@/modules/sigh/components/produccio
 import {
   downloadProduccionMedicosExcel,
   downloadProduccionMedicosPdf,
-  getProduccionMedicosDetalle,
   getProduccionMedicosResumen,
   searchProduccionMedicos,
 } from '@/modules/sigh/services/sigh-reports.service'
@@ -14,7 +13,6 @@ export function ProduccionMedicosPage() {
       professionalLabel="Médico"
       searchProfessionals={searchProduccionMedicos}
       getSummary={getProduccionMedicosResumen}
-      getDetail={getProduccionMedicosDetalle}
       downloadPdf={downloadProduccionMedicosPdf}
       downloadExcel={downloadProduccionMedicosExcel}
     />
