@@ -3,6 +3,7 @@ import { buildMonitoreoCamasSusaludWorkbook, buildMonitoreoCamasWorkbook, MIME_X
 import { buildSusaludExportPayload } from './susalud/susalud-pipeline.js'
 
 const REPORT_TIMEOUT_MS = 180000
+const SIN_ALTA_EFECTIVA_ESTADO_CAMA_ID = 7
 
 function normalizeRows(rows = []) {
   return rows.map((row) =>
@@ -308,6 +309,66 @@ function mapCamasRow(row) {
     veces:      pickNum(row, 'VECES', 'veces') || 1,
     veces1:     pickNum(row, 'VECES1', 'veces1') || 1,
   })
+}
+
+function buildTipoCamaKey(value) {
+  return normalizeLookupToken(value)
+}
+
+function buildCamasEstadoKey(idServicio, tipo) {
+  return `${Number(idServicio) || 0}|${buildTipoCamaKey(tipo)}`
+}
+
+async function getSinAltaEfectivaCamasCounts() {
+  const rows = await executeQuery(
+    `SELECT
+       SR.cod_Consultorio AS IDSERVICIO,
+       TCM.Descripcion AS TIPO,
+       COUNT(*) AS TOTAL
+     FROM SIGH..Camas CM
+     LEFT JOIN SIGH..TiposCama TCM ON TCM.IdTipoCama = CM.IdTiposCama
+     LEFT JOIN SIGH_EST..T_Upss_Consultorio SR ON SR.cod_Consultorio = CM.IdServicioPropietario
+     WHERE CM.IdEstadoCama = @idEstadoCama
+       AND SR.COD_ESTADO = 1
+       AND SR.cod_Consultorio NOT IN (11, 28, 196, 8, 461, 600)
+     GROUP BY SR.cod_Consultorio, TCM.Descripcion`,
+    [{ name: 'idEstadoCama', type: sql.Int, value: SIN_ALTA_EFECTIVA_ESTADO_CAMA_ID }],
+    { timeoutMs: REPORT_TIMEOUT_MS },
+  )
+
+  const byType = new Map()
+  const byService = new Map()
+
+  for (const row of rows) {
+    const idServicio = pickNum(row, 'IDSERVICIO', 'idservicio')
+    const total = pickNum(row, 'TOTAL', 'total')
+    const typeKey = buildCamasEstadoKey(idServicio, pick(row, 'TIPO', 'tipo'))
+    byType.set(typeKey, (byType.get(typeKey) ?? 0) + total)
+    byService.set(idServicio, (byService.get(idServicio) ?? 0) + total)
+  }
+
+  return { byType, byService }
+}
+
+function excludeSinAltaEfectivaFromOcupadas(rows, counts) {
+  return rows.map((row) => {
+    const typeCount = counts.byType.get(buildCamasEstadoKey(row.idservicio, row.tipo)) ?? 0
+    const serviceCount = counts.byService.get(row.idservicio) ?? 0
+
+    if (typeCount === 0 && serviceCount === 0) {
+      return row
+    }
+
+    return {
+      ...row,
+      cocup: Math.max(row.cocup - typeCount, 0),
+      tocupa: Math.max(row.tocupa - serviceCount, 0),
+    }
+  })
+}
+
+function isSinAltaEfectivaRow(row) {
+  return normalizeLookupToken(pick(row, 'ESTADOCAMA', 'ESTADO', 'estadocama')) === 'sinaltaefectiva'
 }
 
 function safePercentValue(numerator, denominator) {
@@ -761,8 +822,11 @@ export function getGestionEstanciaMovimientoDxCqx(orden) {
 }
 
 export async function getMonitoreoCamasReport() {
-  const rows = await executeProcedure('SP_CAMA_RESUMEN', [], { timeoutMs: REPORT_TIMEOUT_MS })
-  return rows.map(mapCamasRow)
+  const [rows, sinAltaEfectivaCounts] = await Promise.all([
+    executeProcedure('SP_CAMA_RESUMEN', [], { timeoutMs: REPORT_TIMEOUT_MS }),
+    getSinAltaEfectivaCamasCounts(),
+  ])
+  return excludeSinAltaEfectivaFromOcupadas(rows.map(mapCamasRow), sinAltaEfectivaCounts)
 }
 
 export async function getMonitoreoCamasCorteReport() {
@@ -1116,6 +1180,7 @@ export async function getCamasDetalle(tipoDetalle, filters) {
 
   let rows = await executeProcedure(definition.procedure, params, { timeoutMs: REPORT_TIMEOUT_MS })
   if (key === '2') {
+    rows = rows.filter((row) => !isSinAltaEfectivaRow(row))
     const reservas = await getCamasReservadasSopDetalle(filters.idServicio, filters.tipo)
     rows = mergeCamasOcupadasConReservas(rows, reservas)
   }

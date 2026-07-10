@@ -12,10 +12,46 @@ const MONTHS_ES = [
 
 const PPR_IMPORT_SOURCES = [
   {
+    id: 'ppr_0002_salud_materno_neonatal',
+    label: '0002 - Salud materno neonatal',
+    procedureName: 'dbo.usp_PPR_0002',
+    description: 'Avance de metas fisicas del PP 0002 segun criterios de programacion 2026.',
+  },
+  {
+    id: 'ppr_0018_enfermedades_no_transmisibles',
+    label: '0018 - Enfermedades no transmisibles',
+    procedureName: 'dbo.usp_PPR_0018',
+    description: 'Avance de metas fisicas del PP 0018 segun criterios de programacion 2026.',
+  },
+  {
+    id: 'ppr_0024_prevencion_control_cancer',
+    label: '0024 - Prevencion y control del cancer',
+    procedureName: 'dbo.usp_PPR_0024',
+    description: 'Avance de metas fisicas del PP 0024 segun criterios de programacion 2026.',
+  },
+  {
+    id: 'ppr_0104_reduccion_mortalidad_emergencias',
+    label: '0104 - Reduccion de mortalidad por emergencias y urgencias medicas',
+    procedureName: 'dbo.usp_PPR_0104',
+    description: 'Avance de metas fisicas del PP 0104 de emergencias y urgencias medicas.',
+  },
+  {
+    id: 'ppr_1001_desarrollo_infantil_temprano',
+    label: '1001 - Desarrollo infantil temprano',
+    procedureName: 'dbo.usp_PPR_1001',
+    description: 'Avance de metas fisicas del PPOR 1001 segun criterios de programacion 2026.',
+  },
+  {
     id: 'ppr_0129_condiciones_secundarias',
     label: '0129 - Condiciones secundarias de salud',
     procedureName: 'dbo.usp_PPR_0129',
-    description: 'Prevención y manejo de condiciones secundarias de salud en personas con discapacidad.',
+    description: 'Prevencion y manejo de condiciones secundarias de salud en personas con discapacidad.',
+  },
+  {
+    id: 'ppr_0131_control_prevencion_salud_mental',
+    label: '0131 - Control y prevencion en salud mental',
+    procedureName: 'dbo.usp_PPR_0131',
+    description: 'Avance de metas fisicas del PP 0131 de control y prevencion en salud mental.',
   },
 ]
 
