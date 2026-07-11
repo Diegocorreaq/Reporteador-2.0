@@ -331,10 +331,10 @@ export function PprActividadesPage() {
   const [confirmSignOpen, setConfirmSignOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function refreshValidationSummary(periodId = periodo?.id) {
-    if (!periodId) return
+  async function refreshValidationSummary(periodId = periodo?.id, selectedProgramId = programaId) {
+    if (!periodId || !selectedProgramId) return
     try {
-      const summary = await fetchValidationSummary(pprUser.employeeId, periodId)
+      const summary = await fetchValidationSummary(pprUser.employeeId, periodId, selectedProgramId)
       setValidationSummary(summary)
     } catch {
       setValidationSummary(null)
@@ -359,10 +359,10 @@ export function PprActividadesPage() {
   }, [pprUser.employeeId])
 
   useEffect(() => {
-    if (!periodo) return
-    refreshValidationSummary(periodo.id)
+    if (!periodo || !programaId) return
+    refreshValidationSummary(periodo.id, programaId)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodo?.id, pprUser.employeeId])
+  }, [periodo?.id, programaId, pprUser.employeeId])
 
   useEffect(() => {
     if (!programaId || !periodo) return

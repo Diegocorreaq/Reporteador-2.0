@@ -190,11 +190,12 @@ pprRouter.post('/ppr/valores/validar', requireAuth, async (request, response) =>
 pprRouter.get('/ppr/validacion/resumen', requireAuth, async (request, response) => {
   const employeeId = Number(request.query.employeeId)
   const periodId = Number(request.query.periodId)
+  const programId = request.query.programId != null ? Number(request.query.programId) : null
   if (!employeeId || !periodId) {
     return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere employeeId y periodId.' })
   }
   try {
-    const resumen = await getResumenValidacion(employeeId, periodId)
+    const resumen = await getResumenValidacion(employeeId, periodId, programId)
     response.json({ resumen })
   } catch (error) {
     logger.error({ correlationId: request.correlationId, event: 'ppr:validacion:resumen:error', message: String(error) })

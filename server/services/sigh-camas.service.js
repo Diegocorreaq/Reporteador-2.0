@@ -4,6 +4,7 @@ import { buildSusaludExportPayload } from './susalud/susalud-pipeline.js'
 
 const REPORT_TIMEOUT_MS = 180000
 const SIN_ALTA_EFECTIVA_ESTADO_CAMA_ID = 7
+const RESERVA_CQ_ORIGEN_UPSS = [3, 6]
 
 function normalizeRows(rows = []) {
   return rows.map((row) =>
@@ -319,6 +320,21 @@ function buildCamasEstadoKey(idServicio, tipo) {
   return `${Number(idServicio) || 0}|${buildTipoCamaKey(tipo)}`
 }
 
+function buildCamasCountsMaps(rows = []) {
+  const byType = new Map()
+  const byService = new Map()
+
+  for (const row of rows) {
+    const idServicio = pickNum(row, 'IDSERVICIO', 'idservicio')
+    const total = pickNum(row, 'TOTAL', 'total')
+    const typeKey = buildCamasEstadoKey(idServicio, pick(row, 'TIPO', 'tipo'))
+    byType.set(typeKey, (byType.get(typeKey) ?? 0) + total)
+    byService.set(idServicio, (byService.get(idServicio) ?? 0) + total)
+  }
+
+  return { byType, byService }
+}
+
 async function getSinAltaEfectivaCamasCounts() {
   const rows = await executeQuery(
     `SELECT
@@ -336,18 +352,66 @@ async function getSinAltaEfectivaCamasCounts() {
     { timeoutMs: REPORT_TIMEOUT_MS },
   )
 
-  const byType = new Map()
-  const byService = new Map()
+  return buildCamasCountsMaps(rows)
+}
 
-  for (const row of rows) {
-    const idServicio = pickNum(row, 'IDSERVICIO', 'idservicio')
-    const total = pickNum(row, 'TOTAL', 'total')
-    const typeKey = buildCamasEstadoKey(idServicio, pick(row, 'TIPO', 'tipo'))
-    byType.set(typeKey, (byType.get(typeKey) ?? 0) + total)
-    byService.set(idServicio, (byService.get(idServicio) ?? 0) + total)
-  }
+async function getNonReservableCamasSopCounts() {
+  const rows = await executeQuery(
+    `WITH MOV_CQ AS (
+      SELECT
+        A.IdAtencion,
+        H.IdEstanciaHospitalaria,
+        H.Secuencia,
+        H.FechaOcupacion,
+        H.IdServicio,
+        H.IdCama,
+        H.LlegoAlServicio,
+        S.cod_Upss,
+        ROW_NUMBER() OVER (
+          PARTITION BY A.IdAtencion
+          ORDER BY H.Secuencia DESC, H.FechaOcupacion DESC, H.IdEstanciaHospitalaria DESC
+        ) fila_actual
+      FROM SIGH..Atenciones A
+      INNER JOIN SIGH..AtencionesEstanciaHospitalaria H ON H.IdAtencion = A.IdAtencion
+      LEFT JOIN SIGH_EST..T_Upss_Consultorio S ON S.cod_Consultorio = H.IdServicio
+      WHERE A.FechaEgreso IS NULL
+      AND H.LlegoAlServicio = 1
+    ),
+    ACTUAL_CQ AS (
+      SELECT *
+      FROM MOV_CQ
+      WHERE fila_actual = 1
+      AND cod_Upss = 4
+      AND FechaOcupacion >= DATEADD(day, -1, CONVERT(date, GETDATE()))
+    ),
+    ORIGEN_CQ AS (
+      SELECT
+        M.*,
+        ROW_NUMBER() OVER (
+          PARTITION BY M.IdAtencion
+          ORDER BY M.Secuencia DESC, M.FechaOcupacion DESC, M.IdEstanciaHospitalaria DESC
+        ) fila_origen
+      FROM MOV_CQ M
+      INNER JOIN ACTUAL_CQ CQ ON CQ.IdAtencion = M.IdAtencion
+      WHERE ISNULL(M.cod_Upss, 0) <> 4
+      AND M.IdCama IS NOT NULL
+    )
+    SELECT
+      O.IdServicio AS IDSERVICIO,
+      TCM.Descripcion AS TIPO,
+      COUNT(DISTINCT O.IdCama) AS TOTAL
+    FROM ACTUAL_CQ CQ
+    INNER JOIN ORIGEN_CQ O ON O.IdAtencion = CQ.IdAtencion AND O.fila_origen = 1
+    INNER JOIN SIGH..Camas CM ON CM.IdCama = O.IdCama AND CM.IdServicioPropietario = O.IdServicio
+    LEFT JOIN SIGH..TiposCama TCM ON TCM.IdTipoCama = CM.IdTiposCama
+    WHERE CM.IdEstadoCama IN (1, 4)
+    AND ISNULL(O.cod_Upss, 0) NOT IN (${RESERVA_CQ_ORIGEN_UPSS.join(', ')})
+    GROUP BY O.IdServicio, TCM.Descripcion`,
+    [],
+    { timeoutMs: REPORT_TIMEOUT_MS },
+  )
 
-  return { byType, byService }
+  return buildCamasCountsMaps(rows)
 }
 
 function excludeSinAltaEfectivaFromOcupadas(rows, counts) {
@@ -363,6 +427,22 @@ function excludeSinAltaEfectivaFromOcupadas(rows, counts) {
       ...row,
       cocup: Math.max(row.cocup - typeCount, 0),
       tocupa: Math.max(row.tocupa - serviceCount, 0),
+    }
+  })
+}
+
+function excludeNonReservableCamasSopFromOcupadas(rows, counts) {
+  return rows.map((row) => {
+    const typeCount = counts.byType.get(buildCamasEstadoKey(row.idservicio, row.tipo)) ?? 0
+
+    if (typeCount === 0) {
+      return row
+    }
+
+    return {
+      ...row,
+      cocup: Math.max(row.cocup - typeCount, 0),
+      clibr: row.clibr + typeCount,
     }
   })
 }
@@ -822,11 +902,14 @@ export function getGestionEstanciaMovimientoDxCqx(orden) {
 }
 
 export async function getMonitoreoCamasReport() {
-  const [rows, sinAltaEfectivaCounts] = await Promise.all([
+  const [rows, sinAltaEfectivaCounts, nonReservableCqCounts] = await Promise.all([
     executeProcedure('SP_CAMA_RESUMEN', [], { timeoutMs: REPORT_TIMEOUT_MS }),
     getSinAltaEfectivaCamasCounts(),
+    getNonReservableCamasSopCounts(),
   ])
-  return excludeSinAltaEfectivaFromOcupadas(rows.map(mapCamasRow), sinAltaEfectivaCounts)
+  const normalizedRows = rows.map(mapCamasRow)
+  const withoutSinAltaEfectiva = excludeSinAltaEfectivaFromOcupadas(normalizedRows, sinAltaEfectivaCounts)
+  return excludeNonReservableCamasSopFromOcupadas(withoutSinAltaEfectiva, nonReservableCqCounts)
 }
 
 export async function getMonitoreoCamasCorteReport() {
@@ -1024,6 +1107,7 @@ async function getCamasReservadasSopDetalle(idServicio, tipo) {
     LEFT JOIN SIGH_EST..T_Upss_Consultorio SR2 ON SR2.cod_Consultorio = CQ.IdServicio
     WHERE CM.IdEstadoCama IN (1, 4)
     AND O.IdServicio = @idservicio
+    AND O.cod_Upss IN (${RESERVA_CQ_ORIGEN_UPSS.join(', ')})
     AND TCM.Descripcion = @tipo
     ORDER BY CM.Codigo`,
     [

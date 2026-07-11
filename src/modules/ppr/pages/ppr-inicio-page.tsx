@@ -20,7 +20,6 @@ import type { PprPeriodo, PprPeriodoItem, PprPrograma } from '@/modules/ppr/type
 import {
   PprAvatar,
   PprPill,
-  PprProgressBar,
   PprSkeleton,
   PprSkeletonCard,
   pctBarColor,
@@ -89,14 +88,21 @@ function StatCard({
 }
 
 // ─── Programa mini card ───────────────────────────────────────────────────────
-function ProgramaMiniCard({ programa, currentMonth }: { programa: PprPrograma; currentMonth: number }) {
+function ProgramaMiniCard({ programa, activeMonth }: { programa: PprPrograma; activeMonth: number }) {
   const navigate = useNavigate()
-  const mesesCompletos = currentMonth - 1
-  const pct = programa.sumMetaEsperada > 0
+  const mesesCompletos = Math.max(activeMonth - 1, 0)
+  const pctCorte = programa.sumMetaEsperada > 0
     ? Math.round((programa.sumLogrado / programa.sumMetaEsperada) * 100)
     : null
+  const pctAnual = programa.sumMetaAnual > 0
+    ? Math.round((programa.sumLogrado / programa.sumMetaAnual) * 100)
+    : null
+  const pctEsperadoAnual = mesesCompletos > 0
+    ? Math.round((mesesCompletos / 12) * 100)
+    : 0
 
-  const mesLabel = mesesCompletos > 0 ? `Avance a ${MESES[mesesCompletos - 1]}` : 'Sin períodos cerrados'
+  const mesLabel = mesesCompletos > 0 ? `Avance anual a ${MESES[mesesCompletos - 1]}` : 'Sin períodos cerrados'
+  const corteLabel = mesesCompletos > 0 ? `Corte: ${pctCorte != null ? `${pctCorte}%` : '-'} de meta a ${MESES[mesesCompletos - 1]}` : 'Sin corte mensual'
 
   return (
     <button
@@ -111,19 +117,25 @@ function ProgramaMiniCard({ programa, currentMonth }: { programa: PprPrograma; c
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-semibold text-slate-900">{programa.name}</p>
         <div className="mt-1.5 flex items-center gap-2">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+          <div className="relative h-1.5 flex-1 overflow-visible rounded-full bg-slate-100">
             <div
               className={cn('h-full rounded-full transition-all duration-500',
-                pct != null ? pctBarColor(pct) : 'bg-slate-200')}
-              style={{ width: `${Math.min(pct ?? 0, 100)}%` }}
+                pctCorte != null ? pctBarColor(pctCorte) : 'bg-slate-200')}
+              style={{ width: `${Math.min(pctAnual ?? 0, 100)}%` }}
             />
+            {mesesCompletos > 0 && (
+              <div
+                className="absolute top-1/2 h-3 w-0.5 -translate-y-1/2 rounded-full bg-slate-600"
+                style={{ left: `${Math.min(pctEsperadoAnual, 100)}%` }}
+              />
+            )}
           </div>
           <span className={cn('shrink-0 text-[11px] font-bold tabular-nums',
-            pct != null ? pctTextColor(pct) : 'text-slate-300')}>
-            {pct != null ? `${pct}%` : '—'}
+            pctCorte != null ? pctTextColor(pctCorte) : 'text-slate-300')}>
+            {pctAnual != null ? `${pctAnual}%` : '—'}
           </span>
         </div>
-        <p className="mt-1 text-[9px] text-slate-400">{mesLabel}</p>
+        <p className="mt-1 text-[9px] text-slate-400">{mesLabel} · {corteLabel}</p>
       </div>
       <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-indigo-500" />
     </button>
@@ -157,16 +169,33 @@ export function PprInicioPage() {
   }, [pprUser.employeeId])
 
   // Derived stats
-  const mesesCompletos = currentMonth - 1
   const periodosDelAnio = periodos.filter((p) => p.year === currentYear)
-  const periodosFirmados = periodosDelAnio.filter((p) => p.isSigned).length
-  const periodosPendientes = Math.max(0, mesesCompletos - periodosFirmados)
+  const activeMonth = periodo?.month ?? currentMonth
+  const mesesCompletos = Math.max(activeMonth - 1, 0)
+  const firstSignedMonth = periodosDelAnio
+    .filter((p) => p.isSigned)
+    .reduce((min, p) => Math.min(min, p.month), activeMonth)
+  const periodosCompletadosConAvance = periodosDelAnio.filter((p) =>
+    !p.isOpen
+      && p.month >= firstSignedMonth
+      && p.month < activeMonth
+      && (p.isSigned || (p.totalActividades > 0 && p.completadas >= p.totalActividades)),
+  )
+  const periodosFirmados = periodosCompletadosConAvance.filter((p) => p.isSigned).length
+  const periodosPendientes = periodosCompletadosConAvance.filter((p) => !p.isSigned).length
 
   const totalLogrado = programas.reduce((s, p) => s + p.sumLogrado, 0)
   const totalMetaEsperada = programas.reduce((s, p) => s + p.sumMetaEsperada, 0)
-  const pctGlobal = totalMetaEsperada > 0
+  const totalMetaAnual = programas.reduce((s, p) => s + p.sumMetaAnual, 0)
+  const pctCorte = totalMetaEsperada > 0
     ? Math.round((totalLogrado / totalMetaEsperada) * 100)
     : null
+  const pctAnual = totalMetaAnual > 0
+    ? Math.round((totalLogrado / totalMetaAnual) * 100)
+    : null
+  const pctEsperadoAnual = mesesCompletos > 0
+    ? Math.round((mesesCompletos / 12) * 100)
+    : 0
 
   const programasAdelantados = programas.filter((p) =>
     p.sumMetaEsperada > 0 && (p.sumLogrado / p.sumMetaEsperada) >= 1,
@@ -331,19 +360,19 @@ export function PprInicioPage() {
               accent="indigo"
             />
             <StatCard
-              label={mesesCompletos > 0 ? `Avance a ${MESES[mesesCompletos - 1]}` : 'Avance anual'}
-              value={pctGlobal != null ? `${pctGlobal}%` : '—'}
-              sub={`${fmtNum(totalLogrado)} de ${fmtNum(totalMetaEsperada)}`}
-              icon={pctGlobal != null && pctGlobal >= 80 ? TrendingUp : TrendingDown}
-              accent={pctGlobal == null ? 'slate' : pctGlobal >= 100 ? 'emerald' : pctGlobal >= 80 ? 'amber' : 'rose'}
-              trend={pctGlobal == null ? null : pctGlobal >= 80 ? 'up' : 'down'}
+              label={mesesCompletos > 0 ? `Avance anual a ${MESES[mesesCompletos - 1]}` : 'Avance anual'}
+              value={pctAnual != null ? `${pctAnual}%` : '—'}
+              sub={`${pctEsperadoAnual}% esperado al corte`}
+              icon={pctCorte != null && pctCorte >= 80 ? TrendingUp : TrendingDown}
+              accent={pctCorte == null ? 'slate' : pctCorte >= 100 ? 'emerald' : pctCorte >= 80 ? 'amber' : 'rose'}
+              trend={pctCorte == null ? null : pctCorte >= 80 ? 'up' : 'down'}
             />
             <StatCard
               label="Períodos firmados"
-              value={`${periodosFirmados} / ${mesesCompletos}`}
+              value={`${periodosFirmados} / ${periodosCompletadosConAvance.length}`}
               sub={String(currentYear)}
               icon={CheckCircle2}
-              accent={periodosFirmados === mesesCompletos && mesesCompletos > 0 ? 'emerald' : 'amber'}
+              accent={periodosFirmados === periodosCompletadosConAvance.length && periodosCompletadosConAvance.length > 0 ? 'emerald' : 'amber'}
             />
             <StatCard
               label="Período activo"
@@ -355,25 +384,44 @@ export function PprInicioPage() {
           </div>
 
           {/* ── Annual progress strip ── */}
-          {pctGlobal != null && (
+          {pctAnual != null && (
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
               <div className="mb-2 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                    Avance acumulado anual
+                    Avance anual al último envío
                   </p>
-                  <p className={cn('mt-1 text-2xl font-bold tabular-nums', pctTextColor(pctGlobal))}>
-                    {pctGlobal}%
+                  <p className={cn('mt-1 text-3xl font-bold tabular-nums', pctTextColor(pctCorte ?? 0))}>
+                    {pctAnual}%
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {mesesCompletos > 0 ? `${pctEsperadoAnual}% esperado a ${MESES[mesesCompletos - 1]}` : 'Sin corte mensual'}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-slate-400">Logrado vs Esperado</p>
+                  <p className="text-[10px] text-slate-400">Cumplimiento del corte</p>
                   <p className="text-sm font-semibold text-slate-900">
-                    {fmtNum(totalLogrado)} <span className="text-slate-400">/</span> {fmtNum(totalMetaEsperada)}
+                    {pctCorte != null ? `${pctCorte}%` : '—'}
+                  </p>
+                  <p className="mt-1 text-[10px] text-slate-400">
+                    {fmtNum(totalLogrado)} de {fmtNum(totalMetaEsperada)} al corte
                   </p>
                 </div>
               </div>
-              <PprProgressBar value={pctGlobal} size="lg" />
+              <div className="relative mt-3 h-3 overflow-visible rounded-full bg-slate-100">
+                <div
+                  className={cn('h-full rounded-full transition-all duration-500', pctBarColor(pctCorte ?? 0))}
+                  style={{ width: `${Math.min(pctAnual, 100)}%` }}
+                />
+                <div
+                  className="absolute top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-full bg-slate-700"
+                  style={{ left: `${Math.min(pctEsperadoAnual, 100)}%` }}
+                />
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400">
+                <span>Avanzado: {fmtNum(totalLogrado)} de {fmtNum(totalMetaAnual)}</span>
+                <span>Marca esperada: {pctEsperadoAnual}%</span>
+              </div>
             </div>
           )}
 
@@ -402,7 +450,7 @@ export function PprInicioPage() {
               ) : (
                 <div className="ppr-stagger space-y-2">
                   {programasSorted.slice(0, 6).map((p) => (
-                    <ProgramaMiniCard key={p.id} programa={p} currentMonth={currentMonth} />
+                    <ProgramaMiniCard key={p.id} programa={p} activeMonth={activeMonth} />
                   ))}
                   {programasSorted.length > 6 && (
                     <button
@@ -464,8 +512,9 @@ export function PprInicioPage() {
                     {Array.from({ length: 12 }, (_, i) => {
                       const m = i + 1
                       const per = periodosDelAnio.find((p) => p.month === m)
-                      const isClosed  = m < currentMonth
-                      const isCurrent = m === currentMonth
+                      const hasProgress = (per?.completadas ?? 0) > 0 || Boolean(per?.isSigned)
+                      const isClosed  = Boolean(per) && !per?.isOpen && hasProgress
+                      const isCurrent = Boolean(per?.isOpen) || m === activeMonth
                       const isSigned  = per?.isSigned ?? false
                       return (
                         <div

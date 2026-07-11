@@ -16,48 +16,72 @@ const PPR_IMPORT_SOURCES = [
     label: '0002 - Salud materno neonatal',
     procedureName: 'dbo.usp_PPR_0002',
     description: 'Avance de metas fisicas del PP 0002 segun criterios de programacion 2026.',
+    programCodes: ['2', '0002'],
   },
   {
     id: 'ppr_0018_enfermedades_no_transmisibles',
     label: '0018 - Enfermedades no transmisibles',
     procedureName: 'dbo.usp_PPR_0018',
     description: 'Avance de metas fisicas del PP 0018 segun criterios de programacion 2026.',
+    programCodes: ['18', '0018'],
   },
   {
     id: 'ppr_0024_prevencion_control_cancer',
     label: '0024 - Prevencion y control del cancer',
     procedureName: 'dbo.usp_PPR_0024',
     description: 'Avance de metas fisicas del PP 0024 segun criterios de programacion 2026.',
+    programCodes: ['24', '0024'],
   },
   {
     id: 'ppr_0104_reduccion_mortalidad_emergencias',
     label: '0104 - Reduccion de mortalidad por emergencias y urgencias medicas',
     procedureName: 'dbo.usp_PPR_0104',
     description: 'Avance de metas fisicas del PP 0104 de emergencias y urgencias medicas.',
+    programCodes: ['104', '0104'],
   },
   {
     id: 'ppr_1001_desarrollo_infantil_temprano',
     label: '1001 - Desarrollo infantil temprano',
     procedureName: 'dbo.usp_PPR_1001',
     description: 'Avance de metas fisicas del PPOR 1001 segun criterios de programacion 2026.',
+    programCodes: ['1001'],
   },
   {
     id: 'ppr_0129_condiciones_secundarias',
     label: '0129 - Condiciones secundarias de salud',
     procedureName: 'dbo.usp_PPR_0129',
     description: 'Prevencion y manejo de condiciones secundarias de salud en personas con discapacidad.',
+    programCodes: ['129', '0129'],
   },
   {
     id: 'ppr_0131_control_prevencion_salud_mental',
     label: '0131 - Control y prevencion en salud mental',
     procedureName: 'dbo.usp_PPR_0131',
     description: 'Avance de metas fisicas del PP 0131 de control y prevencion en salud mental.',
+    programCodes: ['131', '0131'],
+  },
+  {
+    id: 'ppr_9002_apnop',
+    label: '9002 - APNOP / otros centros de costo',
+    procedureName: 'dbo.usp_PPR_9002',
+    description: 'Avance de metas fisicas del PP 9002/APNOP para actividades con soporte automatico; los centros manuales firman en submodulos separados.',
+    programCodes: ['9002'],
   },
 ]
 
 function extractActivitySourceKey(value) {
   const match = String(value ?? '').match(/\b(\d{7})\b/)
   return match?.[1] ?? null
+}
+
+function normalizeActivityName(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function periodLabel(year, month) {
@@ -83,6 +107,11 @@ function readRowValue(row, keys) {
     if (found) return found[1]
   }
   return null
+}
+
+function normalizeProgramCode(value) {
+  const normalized = String(value ?? '').trim().replace(/^0+/, '')
+  return normalized || '0'
 }
 
 async function ensurePprImportInfrastructure() {
@@ -351,7 +380,7 @@ export async function validarValor({ activityId, periodId, employeeId }) {
   return row.validated_at ?? new Date().toISOString()
 }
 
-export async function getResumenValidacion(employeeId, periodId) {
+export async function getResumenValidacion(employeeId, periodId, programId = null) {
   const rows = await executeQuery(`
     SELECT
       COUNT(DISTINCT a.id) AS total_actividades,
@@ -368,10 +397,12 @@ export async function getResumenValidacion(employeeId, periodId) {
       ON mv.activity_id = a.id
       AND mv.period_id = @period_id
     WHERE up.employee_id = @employee_id
-      AND up.is_active = 1;
+      AND up.is_active = 1
+      AND (@program_id IS NULL OR a.program_id = @program_id);
   `, [
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
     { name: 'period_id', type: sql.Int, value: Number(periodId) },
+    { name: 'program_id', type: sql.Int, value: programId == null ? null : Number(programId) },
   ])
   const r = rows[0] ?? {}
   const total = Number(r.total_actividades ?? 0)
@@ -412,8 +443,8 @@ async function firmarPeriodoForTesting({ employeeId, periodId }) {
   return rows[0]?.signed_at ?? new Date().toISOString()
 }
 
-export async function firmarPeriodo({ employeeId, periodId, forceForTesting = false }) {
-  const resumen = await getResumenValidacion(employeeId, periodId)
+export async function firmarPeriodo({ employeeId, periodId, programId = null, forceForTesting = false }) {
+  const resumen = await getResumenValidacion(employeeId, periodId, programId)
   if (!resumen.canSign) {
     if (forceForTesting) {
       return firmarPeriodoForTesting({ employeeId, periodId })
@@ -451,7 +482,8 @@ async function getProgramActivitiesForImport(programId) {
     id: Number(r.id),
     code: String(r.code ?? ''),
     name: String(r.name ?? ''),
-    sourceKey: extractActivitySourceKey(r.name),
+    sourceKey: extractActivitySourceKey(r.name) ?? String(r.code ?? '').trim() ?? null,
+    sourceNameKey: normalizeActivityName(r.name),
   }))
 }
 
@@ -473,6 +505,26 @@ async function ensureProgramPeriodNotSigned(programId, periodId) {
       error.code = 'PPR_PERIOD_SIGNED'
       throw error
     }
+  }
+}
+
+async function ensureSourceMatchesProgram(source, programId) {
+  if (!Array.isArray(source.programCodes) || source.programCodes.length === 0) return
+
+  const rows = await executeQuery(`
+    SELECT TOP 1 code
+    FROM dbo.ppr_programs
+    WHERE id = @program_id;
+  `, [
+    { name: 'program_id', type: sql.Int, value: Number(programId) },
+  ])
+
+  const programCode = normalizeProgramCode(rows[0]?.code)
+  const allowedCodes = source.programCodes.map(normalizeProgramCode)
+  if (!allowedCodes.includes(programCode)) {
+    const error = new Error('La fuente seleccionada no corresponde al programa PPR elegido.')
+    error.code = 'PPR_SOURCE_PROGRAM_MISMATCH'
+    throw error
   }
 }
 
@@ -655,6 +707,7 @@ export async function runPprImport({ programId, sourceId, adminId }) {
     throw error
   }
 
+  await ensureSourceMatchesProgram(source, programId)
   await ensureProgramPeriodNotSigned(programId, periodo.id)
 
   const { startDate, endDate } = monthDateRange(periodo.year, periodo.month)
@@ -663,35 +716,67 @@ export async function runPprImport({ programId, sourceId, adminId }) {
     { name: 'FechaFin', type: sql.Date, value: endDate },
   ], { timeoutMs: 120000 })
 
-  const sourceTotals = new Map()
+  const sourceTotalsByKey = new Map()
+  const sourceTotalsByName = new Map()
+  const sourceNameLabels = new Map()
   for (const row of rawRows) {
     const activityLabel = readRowValue(row, ['ACTIVIDAD', 'actividad'])
     const total = Number(readRowValue(row, ['TOTAL', 'total']) ?? 0)
-    const sourceKey = extractActivitySourceKey(activityLabel)
-    if (!sourceKey) continue
-    sourceTotals.set(sourceKey, (sourceTotals.get(sourceKey) ?? 0) + total)
+    const explicitSourceKey = readRowValue(row, ['SOURCE_KEY', 'source_key', 'CODIGO', 'codigo', 'CODE', 'code'])
+    const sourceKey = String(explicitSourceKey ?? extractActivitySourceKey(activityLabel) ?? '').trim()
+    if (sourceKey) {
+      sourceTotalsByKey.set(sourceKey, (sourceTotalsByKey.get(sourceKey) ?? 0) + total)
+      continue
+    }
+
+    const sourceNameKey = normalizeActivityName(activityLabel)
+    if (!sourceNameKey) continue
+    sourceTotalsByName.set(sourceNameKey, (sourceTotalsByName.get(sourceNameKey) ?? 0) + total)
+    sourceNameLabels.set(sourceNameKey, String(activityLabel ?? sourceNameKey))
   }
 
   const activities = await getProgramActivitiesForImport(programId)
   const matchedRows = []
   const matchedKeys = new Set()
+  const matchedNames = new Set()
   for (const activity of activities) {
-    if (!activity.sourceKey || !sourceTotals.has(activity.sourceKey)) continue
-    matchedKeys.add(activity.sourceKey)
+    let sourceKey = activity.sourceKey
+    let sourceValue = null
+
+    if (activity.sourceKey && sourceTotalsByKey.has(activity.sourceKey)) {
+      sourceValue = sourceTotalsByKey.get(activity.sourceKey)
+      matchedKeys.add(activity.sourceKey)
+    } else if (activity.sourceNameKey && sourceTotalsByName.has(activity.sourceNameKey)) {
+      sourceValue = sourceTotalsByName.get(activity.sourceNameKey)
+      sourceKey = activity.sourceKey || `NAME:${activity.id}`
+      matchedNames.add(activity.sourceNameKey)
+    }
+
+    if (sourceValue == null) continue
     matchedRows.push({
       activityId: activity.id,
       activityName: activity.name,
-      sourceKey: activity.sourceKey,
-      sourceValue: Number(sourceTotals.get(activity.sourceKey) ?? 0),
+      sourceKey,
+      sourceValue: Number(sourceValue ?? 0),
     })
   }
 
-  const unmatchedSourceRows = Array.from(sourceTotals.entries())
+  const unmatchedSourceRows = Array.from(sourceTotalsByKey.entries())
     .filter(([sourceKey]) => !matchedKeys.has(sourceKey))
     .map(([sourceKey, sourceValue]) => ({ sourceKey, sourceValue: Number(sourceValue) }))
+    .concat(Array.from(sourceTotalsByName.entries())
+      .filter(([sourceNameKey]) => !matchedNames.has(sourceNameKey))
+      .map(([sourceNameKey, sourceValue]) => ({
+        sourceKey: sourceNameLabels.get(sourceNameKey)?.slice(0, 50) ?? sourceNameKey.slice(0, 50),
+        sourceValue: Number(sourceValue),
+      })))
 
   const manualActivities = activities
-    .filter((activity) => !activity.sourceKey || !sourceTotals.has(activity.sourceKey))
+    .filter((activity) => {
+      const hasKeyMatch = activity.sourceKey && sourceTotalsByKey.has(activity.sourceKey)
+      const hasNameMatch = activity.sourceNameKey && sourceTotalsByName.has(activity.sourceNameKey)
+      return !hasKeyMatch && !hasNameMatch
+    })
     .map((activity) => ({
       activityId: activity.id,
       activityName: activity.name,
@@ -761,18 +846,32 @@ export async function getPeriodosUsuario(employeeId) {
       signedAt: isSigned ? (row.signed_at ?? null) : null,
     }]
   }))
-  return rows.map((r) => ({
-    id: Number(r.id),
-    year: Number(r.year),
-    month: Number(r.month),
-    label: periodLabel(r.year, r.month),
-    isOpen: Boolean(r.is_open),
-    deadline: r.deadline ?? null,
-    isSigned: signatureMap.get(Number(r.id))?.isSigned ?? false,
-    signedAt: signatureMap.get(Number(r.id))?.signedAt ?? null,
-    completadas: Number(r.completadas ?? 0),
-    totalActividades: Number(r.total_actividades ?? 0),
-  }))
+  const periodMap = new Map()
+  for (const r of rows) {
+    const id = Number(r.id)
+    const current = periodMap.get(id)
+    const completadas = Number(r.completadas ?? 0)
+    const totalActividades = Number(r.total_actividades ?? 0)
+    if (!current) {
+      const signature = signatureMap.get(id)
+      periodMap.set(id, {
+        id,
+        year: Number(r.year),
+        month: Number(r.month),
+        label: periodLabel(r.year, r.month),
+        isOpen: Boolean(r.is_open),
+        deadline: r.deadline ?? null,
+        isSigned: signature?.isSigned ?? false,
+        signedAt: signature?.signedAt ?? null,
+        completadas,
+        totalActividades,
+      })
+      continue
+    }
+    current.completadas = Math.max(current.completadas, completadas)
+    current.totalActividades = Math.max(current.totalActividades, totalActividades)
+  }
+  return Array.from(periodMap.values()).sort((a, b) => (a.year - b.year) || (a.month - b.month))
 }
 
 // ─── Admin functions ──────────────────────────────────────────────────────────

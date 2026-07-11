@@ -83,6 +83,10 @@ Ese despliegue sirve `dist/`, redirige HTTP a HTTPS, reenvia `/legacy-api` a Nod
 
 No subir certificados, `private.key`, passwords ni credenciales reales al repositorio. Node.js debe mantenerse interno con `SERVER_PORT=8787`; Apache maneja los puertos `80`/`443`.
 
+## Documentacion PPR
+
+- [Flujo manual previo a la automatizacion](docs/ppr-flujo-manual-previo-automatizacion.md): registro historico del proceso mensual PPR antes del modulo actual, con puntos de dolor, casos especiales y decisiones que justifican la automatizacion.
+
 ## Despliegue Windows Server + Apache HTTP puerto 80
 
 Este despliegue es para uso local/intranet por HTTP. Apache expone la aplicacion en el puerto 80, sirve el frontend compilado desde `dist/` y reenvia `/legacy-api` hacia Node.js en `http://127.0.0.1:8787`.

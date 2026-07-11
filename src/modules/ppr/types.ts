@@ -133,6 +133,7 @@ export interface PprImportSource {
   label: string
   procedureName: string
   description: string
+  programCodes?: string[]
 }
 
 export interface PprImportResult {

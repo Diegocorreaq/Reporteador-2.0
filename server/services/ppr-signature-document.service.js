@@ -178,6 +178,7 @@ async function readSigningSnapshot(transaction, employeeId, periodId, programId 
   }
 
   const summaryRequest = addEmployeePeriodInputs(new sql.Request(transaction), employeeId, periodId)
+  summaryRequest.input('program_id', sql.Int, programId == null ? null : Number(programId))
   const summaryResult = await summaryRequest.query(`
     SELECT
       COUNT(DISTINCT a.id) AS total_activities,
@@ -191,7 +192,8 @@ async function readSigningSnapshot(transaction, employeeId, periodId, programId 
       ON mv.activity_id = a.id
       AND mv.period_id = @period_id
     WHERE up.employee_id = @employee_id
-      AND up.is_active = 1;
+      AND up.is_active = 1
+      AND (@program_id IS NULL OR up.program_id = @program_id);
   `)
   const summaryRow = summaryResult.recordset[0] ?? {}
   const summary = {

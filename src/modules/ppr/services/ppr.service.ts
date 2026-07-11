@@ -110,9 +110,10 @@ export async function validarValor(payload: {
 export async function fetchValidationSummary(
   employeeId: number,
   periodId: number,
+  programId?: number | null,
 ): Promise<PprValidationSummary> {
   const res = await httpClient.get<{ resumen: PprValidationSummary }>('/ppr/validacion/resumen', {
-    params: { employeeId, periodId },
+    params: { employeeId, periodId, programId },
   })
   return res.data.resumen
 }

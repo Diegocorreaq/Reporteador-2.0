@@ -19,6 +19,18 @@ function errorMessage(error: unknown, fallback: string) {
   return fallback
 }
 
+function normalizeProgramCode(value: string | number | null | undefined) {
+  const normalized = String(value ?? '').trim().replace(/^0+/, '')
+  return normalized || '0'
+}
+
+function sourceMatchesProgram(source: PprImportSource, programa: PprProgramaAdmin | null) {
+  if (!programa) return false
+  if (!source.programCodes || source.programCodes.length === 0) return true
+  const programCode = normalizeProgramCode(programa.code)
+  return source.programCodes.map(normalizeProgramCode).includes(programCode)
+}
+
 export function PprAdminCargaPage() {
   const { pprUser } = usePprContext()
   const [periodo, setPeriodo] = useState<PprPeriodo | null>(null)
@@ -54,8 +66,22 @@ export function PprAdminCargaPage() {
     () => programas.find((programa) => programa.id === programId) ?? null,
     [programas, programId],
   )
-  const selectedSource = sources.find((source) => source.id === sourceId) ?? null
+  const compatibleSources = useMemo(
+    () => sources.filter((source) => sourceMatchesProgram(source, selectedProgram)),
+    [selectedProgram, sources],
+  )
+  const selectedSource = compatibleSources.find((source) => source.id === sourceId) ?? null
   const canRun = Boolean(periodo?.isOpen && selectedProgram && selectedSource && !running)
+
+  useEffect(() => {
+    if (compatibleSources.length === 0) {
+      setSourceId('')
+      return
+    }
+    if (!compatibleSources.some((source) => source.id === sourceId)) {
+      setSourceId(compatibleSources[0].id)
+    }
+  }, [compatibleSources, sourceId])
 
   async function handleRun() {
     if (!selectedProgram || !selectedSource) return
@@ -140,13 +166,24 @@ export function PprAdminCargaPage() {
                   onChange={(event) => setSourceId(event.target.value)}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-[#0c2340] outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
                 >
-                  {sources.map((source) => (
+                  {compatibleSources.map((source) => (
                     <option key={source.id} value={source.id}>
                       {source.label}
                     </option>
                   ))}
                 </select>
               </label>
+
+              {!selectedSource && selectedProgram && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                  <p className="text-[11px] font-semibold text-amber-800">
+                    Este programa aún no tiene fuente automática registrada.
+                  </p>
+                  <p className="mt-1 text-[11px] text-amber-700">
+                    Se puede mantener la carga manual o crear su procedimiento `usp_PPR_*`.
+                  </p>
+                </div>
+              )}
 
               {selectedSource && (
                 <div className="rounded-xl bg-slate-50 px-3 py-2">

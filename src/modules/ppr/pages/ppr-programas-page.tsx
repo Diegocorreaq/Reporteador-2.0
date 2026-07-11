@@ -8,9 +8,9 @@ import {
   PprAlert,
   PprEmptyState,
   PprPill,
-  PprProgressBar,
   PprSectionHeader,
   PprSkeletonCard,
+  pctBarColor,
   pctTextColor,
 } from '@/modules/ppr/components/ui-primitives'
 import { cn } from '@/lib/utils'
@@ -32,24 +32,30 @@ interface ProgramaCardProps {
 function ProgramaCard({ programa, onVerActividades, onVerDashboard }: ProgramaCardProps) {
   const { mesesCompletos, sumLogrado, sumMetaEsperada, sumMetaAnual, conDatos, totalActividades } = programa
 
-  const pct = sumMetaEsperada > 0
+  const pctCorte = sumMetaEsperada > 0
     ? Math.round((sumLogrado / sumMetaEsperada) * 100)
     : null
+  const pctAnual = sumMetaAnual > 0
+    ? Math.round((sumLogrado / sumMetaAnual) * 100)
+    : null
+  const pctEsperadoAnual = mesesCompletos > 0
+    ? Math.round((mesesCompletos / 12) * 100)
+    : 0
 
   const mesAnterior = mesesCompletos > 0 ? MESES_ES[mesesCompletos - 1] : null
-  const labelPeriodo = mesAnterior ? `Avance a ${mesAnterior}` : 'Sin períodos cerrados'
+  const labelPeriodo = mesAnterior ? `Avance anual a ${mesAnterior}` : 'Sin períodos cerrados'
 
   // Glow color por estado (semáforo)
   const accentColor =
-    pct == null   ? 'from-slate-50 to-slate-100/50'   :
-    pct >= 100    ? 'from-emerald-50 to-emerald-100/40' :
-    pct >= 80     ? 'from-amber-50 to-amber-100/40'    :
+    pctCorte == null ? 'from-slate-50 to-slate-100/50'   :
+    pctCorte >= 100  ? 'from-emerald-50 to-emerald-100/40' :
+    pctCorte >= 80   ? 'from-amber-50 to-amber-100/40'    :
     'from-rose-50 to-rose-100/40'
 
   const ringColor =
-    pct == null   ? 'ring-slate-200/40' :
-    pct >= 100    ? 'ring-emerald-200/40' :
-    pct >= 80     ? 'ring-amber-200/40' :
+    pctCorte == null ? 'ring-slate-200/40' :
+    pctCorte >= 100  ? 'ring-emerald-200/40' :
+    pctCorte >= 80   ? 'ring-amber-200/40' :
     'ring-rose-200/40'
 
   return (
@@ -83,18 +89,29 @@ function ProgramaCard({ programa, onVerActividades, onVerDashboard }: ProgramaCa
       <div className="relative">
         <div className="mb-1.5 flex items-center justify-between text-xs">
           <span className="text-slate-500">{labelPeriodo}</span>
-          {pct != null ? (
-            <span className={cn('text-base font-bold tabular-nums', pctTextColor(pct))}>{pct}%</span>
+          {pctAnual != null ? (
+            <span className={cn('text-base font-bold tabular-nums', pctTextColor(pctCorte ?? 0))}>{pctAnual}%</span>
           ) : (
             <span className="text-slate-300">—</span>
           )}
         </div>
-        <PprProgressBar value={pct ?? 0} size="md" />
+        <div className="relative h-1.5 w-full overflow-visible rounded-full bg-slate-100">
+          <div
+            className={cn('h-full rounded-full transition-all duration-500', pctBarColor(pctCorte ?? 0))}
+            style={{ width: `${Math.min(pctAnual ?? 0, 100)}%` }}
+          />
+          {mesesCompletos > 0 && (
+            <div
+              className="absolute top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-slate-700"
+              style={{ left: `${Math.min(pctEsperadoAnual, 100)}%` }}
+            />
+          )}
+        </div>
         <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-slate-500">
-          <span>{fmtNum(sumLogrado)} de {fmtNum(sumMetaEsperada)} esperado</span>
+          <span>Corte: {pctCorte != null ? `${pctCorte}%` : '—'} · {fmtNum(sumLogrado)} de {fmtNum(sumMetaEsperada)}</span>
           <span className="flex items-center gap-1">
             <Target className="h-2.5 w-2.5" />
-            {fmtNum(sumMetaAnual)}
+            {pctEsperadoAnual}% esperado
           </span>
         </div>
       </div>
