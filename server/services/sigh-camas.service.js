@@ -5,6 +5,11 @@ import { buildSusaludExportPayload } from './susalud/susalud-pipeline.js'
 const REPORT_TIMEOUT_MS = 180000
 const SIN_ALTA_EFECTIVA_ESTADO_CAMA_ID = 7
 const RESERVA_CQ_ORIGEN_UPSS = [3, 6]
+const CAMAS_APROBADAS_OVERRIDES = new Map([
+  [197, { camas: 1 }],
+  [421, { camas: 6, servicio: 'SALA DE DILATACION' }],
+  [422, { camas: 4, servicio: 'SALA DE PUERPERIO' }],
+])
 
 function normalizeRows(rows = []) {
   return rows.map((row) =>
@@ -37,6 +42,12 @@ function normalizeLookupToken(value) {
 
 function normalizeServiceName(value) {
   return normalizeLookupToken(value)
+}
+
+const ARCHITECTURAL_BED_TYPE_KEYS = new Set(['cama', 'cuna', 'incubadora'])
+
+function isArchitecturalBedType(tipo) {
+  return ARCHITECTURAL_BED_TYPE_KEYS.has(normalizeLookupToken(tipo))
 }
 
 function consensusResourceEntry(monitor = 0, ventilador = 0) {
@@ -116,6 +127,18 @@ function applyConsensusCamasResources(row) {
     monitor_inoperativos: 0,
     fvopera: consensus.monitor,
     fvinopera: 0,
+  }
+}
+
+function applyMonitoreoCamasOverrides(row) {
+  const override = CAMAS_APROBADAS_OVERRIDES.get(row.idservicio)
+  if (!override) {
+    return row
+  }
+
+  return {
+    ...row,
+    ...override,
   }
 }
 
@@ -268,7 +291,7 @@ export function normalizeCamasDetalleRows(tipoDetalle, rows = []) {
 }
 
 function mapCamasRow(row) {
-  return applyConsensusCamasResources({
+  return applyConsensusCamasResources(applyMonitoreoCamasOverrides({
     idservicio: pickNum(row, 'IDSERVICIO', 'idservicio'),
     piso:       String(pick(row, 'PISO', 'piso') ?? '').trim(),
     servicio:   String(pick(row, 'CONSULTORIO', 'SERVICIO', 'servicio') ?? '').trim(),
@@ -309,7 +332,7 @@ function mapCamasRow(row) {
     fvinopera: pickNum(row, 'MONITOR_FV_I', 'FVINOPERA', 'fvinopera'),
     veces:      pickNum(row, 'VECES', 'veces') || 1,
     veces1:     pickNum(row, 'VECES1', 'veces1') || 1,
-  })
+  }))
 }
 
 function buildTipoCamaKey(value) {
@@ -481,6 +504,7 @@ function emptyMonitoreoSums() {
   return {
     camas: 0,
     totcamas: 0,
+    brechaBase: 0,
     tocupa: 0,
     demanda: 0,
     total: 0,
@@ -511,6 +535,10 @@ function computeServiceMetrics(rows) {
   const camas = rows.reduce((max, row) => Math.max(max, row.camas), 0)
   const totalFilas = rows.reduce((sum, row) => sum + row.total, 0)
   const totcamas = rows.reduce((max, row) => Math.max(max, row.totcamas), totalFilas)
+  const brechaBase = rows.reduce(
+    (sum, row) => sum + (isArchitecturalBedType(row.tipo) ? row.chabi : 0),
+    0,
+  )
   const tocupaPorTipos = rows.reduce((sum, row) => sum + row.cocup, 0)
   const tocupaSp = rows.reduce((max, row) => Math.max(max, row.tocupa), 0)
   const tocupa = Math.max(tocupaPorTipos, tocupaSp)
@@ -534,7 +562,9 @@ function computeServiceMetrics(rows) {
   return {
     camas,
     totcamas,
+    brechaBase,
     tocupa,
+    diferencia: brechaBase - camas,
     demanda,
     porcentaje: clampPercent(safePercentValue(ocupacionBase, camas)),
     c_vm,
@@ -584,6 +614,7 @@ function buildServiceGroups(rows) {
 function addGroupToSums(sums, group) {
   sums.camas += group.metrics.camas
   sums.totcamas += group.metrics.totcamas
+  sums.brechaBase += group.metrics.brechaBase
   sums.tocupa += group.metrics.tocupa
   sums.demanda += group.metrics.demanda
 

@@ -58,6 +58,7 @@ interface CamasRow {
 interface Sums {
   camas: number
   totcamas: number
+  brechaBase: number
   tocupa: number
   demanda: number
   total: number
@@ -108,6 +109,7 @@ type TableItem = DataItem | SubtotalItem | TotalItem
 interface ServiceMetrics {
   camas: number
   totcamas: number
+  brechaBase: number
   tocupa: number
   diferencia: number
   demanda: number
@@ -215,13 +217,28 @@ function sortCamasRowsNullsLast(rows: CamasRow[]): CamasRow[] {
 
 function emptySums(): Sums {
   return {
-    camas: 0, totcamas: 0, tocupa: 0, demanda: 0,
+    camas: 0, totcamas: 0, brechaBase: 0, tocupa: 0, demanda: 0,
     total: 0, chabi: 0, cocup: 0, clibr: 0,
     ctran: 0, cinah: 0, pcr: 0, espera_ant: 0, espera_mol: 0,
     c_vm: 0, totalvm: 0, vmopera: 0, vminopera: 0,
     c_fl: 0, totalaf: 0, afopera: 0, afinopera: 0,
     monitor_total: 0, monitor_operativos: 0, monitor_inoperativos: 0,
   }
+}
+
+const ARCHITECTURAL_BED_TYPE_KEYS = new Set(['cama', 'cuna', 'incubadora'])
+
+function normalizeResourceType(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '')
+}
+
+function isArchitecturalBedType(tipo: string): boolean {
+  return ARCHITECTURAL_BED_TYPE_KEYS.has(normalizeResourceType(tipo))
 }
 
 function safePercentValue(numerator: number, denominator: number): number {
@@ -254,6 +271,10 @@ function computeServiceMetrics(rows: CamasRow[]): ServiceMetrics {
   const camas = rows.reduce((max, row) => Math.max(max, row.camas), 0)
   const totalFilas = rows.reduce((sum, row) => sum + row.total, 0)
   const totcamas = rows.reduce((max, row) => Math.max(max, row.totcamas), totalFilas)
+  const brechaBase = rows.reduce(
+    (sum, row) => sum + (isArchitecturalBedType(row.tipo) ? row.chabi : 0),
+    0,
+  )
   const tocupaPorTipos = rows.reduce((sum, row) => sum + row.cocup, 0)
   const tocupaSp = rows.reduce((max, row) => Math.max(max, row.tocupa), 0)
   const tocupa = Math.max(tocupaPorTipos, tocupaSp)
@@ -276,8 +297,9 @@ function computeServiceMetrics(rows: CamasRow[]): ServiceMetrics {
   return {
     camas,
     totcamas,
+    brechaBase,
     tocupa,
-    diferencia: totcamas - camas,
+    diferencia: brechaBase - camas,
     demanda,
     porcentaje: clampPercent(safePercentValue(ocupacionBase, camas)),
     c_vm,
@@ -327,6 +349,7 @@ function buildServiceGroups(rows: CamasRow[]): ServiceGroup[] {
 function addGroupToSums(sums: Sums, group: ServiceGroup) {
   sums.camas += group.metrics.camas
   sums.totcamas += group.metrics.totcamas
+  sums.brechaBase += group.metrics.brechaBase
   sums.tocupa += group.metrics.tocupa
   sums.demanda += group.metrics.demanda
 
@@ -805,7 +828,7 @@ function SubtotalRow({ sums, bg }: { sums: Sums; bg: string }) {
       </td>
       {/* Escenario (1) */}
       <td className={tdSubtotal}>{sums.camas}</td>
-      <td className={tdSubtotal}>{sums.totcamas - sums.camas}</td>
+      <td className={tdSubtotal}>{sums.brechaBase - sums.camas}</td>
       <td className={tdSubtotal}>{occupancyPctText(Math.min(sums.tocupa, sums.camas), sums.camas)}</td>
       <td className={tdSubtotal}>{sums.demanda}</td>
       {/* Camas según condición */}
@@ -852,7 +875,7 @@ function TotalGeneralRow({ sums }: { sums: Sums }) {
         Total General
       </td>
       <td className={tdTotal}>{sums.camas}</td>
-      <td className={tdTotal}>{sums.totcamas - sums.camas}</td>
+      <td className={tdTotal}>{sums.brechaBase - sums.camas}</td>
       <td className={tdTotal}>{occupancyPctText(Math.min(sums.tocupa, sums.camas), sums.camas)}</td>
       <td className={tdTotal}>{sums.demanda}</td>
       <td className={tdTotal}>{sums.total}</td>
