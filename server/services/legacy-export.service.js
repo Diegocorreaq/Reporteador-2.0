@@ -63,7 +63,7 @@ const HOSPITALIZADOS_CORTE_TEMPLATE = {
     { key: 'FECULTEVO',            label: 'FECHA ULTIMA EVOLUCION',    width: 20, headerColor: '75ABFD', format: 'excel-datetime', align: 'center' },
     { key: 'GRADODEPENDENCIA',     label: 'GRADO DEPENDENCIA',         width: 20, headerColor: '75ABFD', align: 'center' },
     { key: 'FECHA_REG_ENFERMERIA', label: 'FECHA REG ENFERM',          width: 20, headerColor: '75ABFD', format: 'excel-datetime', align: 'center' },
-    { key: 'FECHACORTE',           label: 'FECHA DE CORTE',            width: 18, headerColor: '75ABFD', format: 'excel-datetime', align: 'center', dataColor: 'BAEAFF' },
+    { key: 'FECHACORTE',           label: 'FECHA DE CORTE',            width: 18, headerColor: '75ABFD', asText: true, align: 'center', dataColor: 'BAEAFF' },
   ],
 }
 
@@ -629,14 +629,23 @@ async function buildDxEvolutionRankByAtencion(rows, connectionName) {
   return rankByAtencion
 }
 
-async function loadSqlServerCurrentDateTime(connectionName) {
-  const rows = await executeQuery(
-    "SELECT CONVERT(varchar(19), GETDATE(), 120) AS CurrentDateTime",
-    [],
-    { connection: connectionName, timeoutMs: 30000 },
+function getLimaCutoffDateTime(date = new Date()) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Lima',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    })
+      .formatToParts(date)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value]),
   )
 
-  return normalizeExportCell(rows[0]?.CurrentDateTime)
+  return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}`
 }
 
 function mapHospitalizadosCorteRow(row, dxRankByAtencion = null, cutoffDateTime = '') {
@@ -669,10 +678,8 @@ function mapHospitalizadosCorteRow(row, dxRankByAtencion = null, cutoffDateTime 
 }
 
 async function mapHospitalizadosCorteRows(rows, { connectionName }) {
-  const [dxRankByAtencion, cutoffDateTime] = await Promise.all([
-    buildDxEvolutionRankByAtencion(rows, connectionName),
-    loadSqlServerCurrentDateTime(connectionName),
-  ])
+  const dxRankByAtencion = await buildDxEvolutionRankByAtencion(rows, connectionName)
+  const cutoffDateTime = getLimaCutoffDateTime()
 
   return rows.map((row) => mapHospitalizadosCorteRow(row, dxRankByAtencion, cutoffDateTime))
 }
