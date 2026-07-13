@@ -629,7 +629,17 @@ async function buildDxEvolutionRankByAtencion(rows, connectionName) {
   return rankByAtencion
 }
 
-function mapHospitalizadosCorteRow(row, dxRankByAtencion = null) {
+async function loadSqlServerCurrentDateTime(connectionName) {
+  const rows = await executeQuery(
+    "SELECT CONVERT(varchar(19), GETDATE(), 120) AS CurrentDateTime",
+    [],
+    { connection: connectionName, timeoutMs: 30000 },
+  )
+
+  return normalizeExportCell(rows[0]?.CurrentDateTime)
+}
+
+function mapHospitalizadosCorteRow(row, dxRankByAtencion = null, cutoffDateTime = '') {
   const [dxevo1, dxevo2, dxevo3] = normalizeDxEvolutionValues(row, dxRankByAtencion)
 
   return {
@@ -654,13 +664,17 @@ function mapHospitalizadosCorteRow(row, dxRankByAtencion = null) {
     FECULTEVO: normalizeExportCell(col(row, 'FECULTEVO')),
     GRADODEPENDENCIA: normalizeExportCell(col(row, 'GRADODEPENDENCIA')),
     FECHA_REG_ENFERMERIA: normalizeExportCell(col(row, 'FECHA_REG_ENFERMERIA')),
-    FECHACORTE: normalizeExportCell(col(row, 'FECHACORTE')),
+    FECHACORTE: cutoffDateTime || normalizeExportCell(col(row, 'FECHACORTE')),
   }
 }
 
 async function mapHospitalizadosCorteRows(rows, { connectionName }) {
-  const dxRankByAtencion = await buildDxEvolutionRankByAtencion(rows, connectionName)
-  return rows.map((row) => mapHospitalizadosCorteRow(row, dxRankByAtencion))
+  const [dxRankByAtencion, cutoffDateTime] = await Promise.all([
+    buildDxEvolutionRankByAtencion(rows, connectionName),
+    loadSqlServerCurrentDateTime(connectionName),
+  ])
+
+  return rows.map((row) => mapHospitalizadosCorteRow(row, dxRankByAtencion, cutoffDateTime))
 }
 
 function mapDiarioHospRow(row) {
