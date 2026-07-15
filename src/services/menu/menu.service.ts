@@ -49,6 +49,9 @@ function hasAccess(user: AuthUser | null | undefined, access?: NavigationAccessR
   }
 
   const dniMatch = userMatchesAllowedDnis(user, access.allowedDnis)
+  const employeeIdMatch =
+    !access.employeeIds?.length ||
+    (user.employeeId !== null && user.employeeId !== undefined && access.employeeIds.includes(user.employeeId))
   const roleMatch = !access.roles?.length || access.roles.includes(user.role)
   const permissionMatch =
     !access.permissions?.length ||
@@ -57,7 +60,7 @@ function hasAccess(user: AuthUser | null | undefined, access?: NavigationAccessR
     !access.pprRoles?.length ||
     (user.pprRole !== null && user.pprRole !== undefined && access.pprRoles.includes(user.pprRole))
 
-  return dniMatch && roleMatch && permissionMatch && pprRoleMatch
+  return dniMatch && employeeIdMatch && roleMatch && permissionMatch && pprRoleMatch
 }
 
 function filterEntry(entry: NavigationEntry, user: AuthUser | null | undefined) {

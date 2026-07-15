@@ -2,21 +2,15 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   AlertCircle,
-  BarChart2,
   Calendar,
-  CheckCircle2,
   ChevronRight,
-  ClipboardList,
   Layers,
-  Settings2,
-  Sparkles,
   TrendingDown,
   TrendingUp,
-  Users,
 } from 'lucide-react'
 import { usePprContext } from '@/modules/ppr/context/ppr-context'
-import { fetchPeriodoActivo, fetchPeriodos, fetchProgramas } from '@/modules/ppr/services/ppr.service'
-import type { PprPeriodo, PprPeriodoItem, PprPrograma } from '@/modules/ppr/types'
+import { fetchPeriodoActivo, fetchProgramas } from '@/modules/ppr/services/ppr.service'
+import type { PprPeriodo, PprPrograma } from '@/modules/ppr/types'
 import {
   PprAvatar,
   PprPill,
@@ -55,19 +49,19 @@ function StatCard({
   trend?: 'up' | 'down' | null
 }) {
   const palettes = {
-    indigo:  { bg: 'bg-indigo-500/10',  text: 'text-indigo-600',  ring: 'ring-indigo-500/20'  },
-    sky:     { bg: 'bg-sky-500/10',     text: 'text-sky-600',     ring: 'ring-sky-500/20'     },
+    indigo:  { bg: 'bg-teal-50',        text: 'text-teal-700',    ring: 'ring-teal-200'       },
+    sky:     { bg: 'bg-cyan-50',        text: 'text-cyan-700',    ring: 'ring-cyan-200'       },
     amber:   { bg: 'bg-amber-500/10',   text: 'text-amber-600',   ring: 'ring-amber-500/20'   },
     slate:   { bg: 'bg-slate-100',      text: 'text-slate-500',   ring: 'ring-slate-200/40'   },
     rose:    { bg: 'bg-rose-500/10',    text: 'text-rose-600',    ring: 'ring-rose-500/20'    },
     emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-600', ring: 'ring-emerald-500/20' },
   }[accent]
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:border-slate-300 hover:shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:border-slate-300">
       <div className="flex items-start gap-3">
         <div
           className={cn(
-            'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 transition-transform group-hover:scale-110',
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1',
             palettes.bg, palettes.ring,
           )}
         >
@@ -107,19 +101,19 @@ function ProgramaMiniCard({ programa, activeMonth }: { programa: PprPrograma; ac
   return (
     <button
       onClick={() => navigate(`/ppr/programas/${programa.id}`)}
-      className="group flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 text-left transition-all hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5"
+      className="group flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-white p-3.5 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:border-teal-300 hover:bg-teal-50/30"
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100">
-        <span className="font-mono text-[10px] font-bold text-indigo-700">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100">
+        <span className="font-mono text-[10px] font-bold text-teal-700">
           {programa.code || '—'}
         </span>
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-semibold text-slate-900">{programa.name}</p>
         <div className="mt-1.5 flex items-center gap-2">
-          <div className="relative h-1.5 flex-1 overflow-visible rounded-full bg-slate-100">
+          <div className="relative h-1.5 flex-1 overflow-visible rounded bg-slate-100">
             <div
-              className={cn('h-full rounded-full transition-all duration-500',
+              className={cn('h-full rounded transition-all duration-500',
                 pctCorte != null ? pctBarColor(pctCorte) : 'bg-slate-200')}
               style={{ width: `${Math.min(pctAnual ?? 0, 100)}%` }}
             />
@@ -137,53 +131,232 @@ function ProgramaMiniCard({ programa, activeMonth }: { programa: PprPrograma; ac
         </div>
         <p className="mt-1 text-[9px] text-slate-400">{mesLabel} · {corteLabel}</p>
       </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-indigo-500" />
+      <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-teal-600" />
     </button>
   )
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
+function CoordinatorInicioView({
+  programa,
+  programCount,
+  periodo,
+  activeMonth,
+}: {
+  programa: PprPrograma | null
+  programCount: number
+  periodo: PprPeriodo | null
+  activeMonth: number
+}) {
+  if (!programa) {
+    return (
+      <div className="rounded-lg border border-dashed border-slate-300 bg-white px-5 py-10 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-slate-100">
+          <Layers className="h-6 w-6 text-slate-400" />
+        </div>
+        <h2 className="mt-4 text-sm font-bold text-slate-950">Sin programa asignado</h2>
+        <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-slate-500">
+          Aún no tienes un programa PPR activo en tu perfil. Cuando el administrador te asigne uno, aquí aparecerá tu avance y acceso de registro.
+        </p>
+      </div>
+    )
+  }
+
+  const mesesCompletos = Math.max(activeMonth - 1, 0)
+  const pctEsperadoAnual = mesesCompletos > 0 ? Math.round((mesesCompletos / 12) * 100) : 0
+  const pctCorte = programa.sumMetaEsperada > 0
+    ? Math.round((programa.sumLogrado / programa.sumMetaEsperada) * 100)
+    : null
+  const pctAnual = programa.sumMetaAnual > 0
+    ? Math.round((programa.sumLogrado / programa.sumMetaAnual) * 100)
+    : null
+  const registroPct = programa.totalActividades > 0
+    ? Math.round((programa.conDatos / programa.totalActividades) * 100)
+    : null
+  const groups = programa.activityScope?.length ? programa.activityScope : programa.activityGroups ?? []
+  const status = pctCorte == null
+    ? { label: 'Sin corte', tone: 'slate' as const, text: 'text-slate-600', bar: 'bg-slate-300' }
+    : pctCorte >= 100
+      ? { label: 'En meta', tone: 'emerald' as const, text: 'text-emerald-700', bar: 'bg-emerald-500' }
+      : pctCorte >= 80
+        ? { label: 'En seguimiento', tone: 'amber' as const, text: 'text-amber-700', bar: 'bg-amber-500' }
+        : { label: 'Crítico', tone: 'rose' as const, text: 'text-rose-700', bar: 'bg-rose-500' }
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              {programa.code && (
+                <span className="rounded bg-slate-100 px-2 py-1 font-mono text-[11px] font-bold text-teal-700">
+                  {programa.code}
+                </span>
+              )}
+              <PprPill tone={status.tone}>{status.label}</PprPill>
+              {programCount > 1 && (
+                <PprPill tone="sky">{programCount} programas asignados</PprPill>
+              )}
+            </div>
+            <h2 className="mt-3 text-xl font-bold leading-tight text-slate-950">
+              {programa.name}
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              {periodo?.isOpen
+                ? `Periodo ${periodo.label} abierto para registrar avance.`
+                : periodo
+                  ? `Periodo ${periodo.label} cerrado.`
+                  : 'Sin periodo activo disponible.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:w-auto sm:min-w-[280px]">
+            <Link
+              to="/ppr/actividades"
+              state={{ programaId: programa.id }}
+              className={cn(
+                'flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-semibold transition',
+                periodo?.isOpen
+                  ? 'bg-teal-700 text-white hover:bg-teal-800'
+                  : 'pointer-events-none bg-slate-100 text-slate-400',
+              )}
+            >
+              Registrar
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+            <Link
+              to={`/ppr/programas/${programa.id}`}
+              className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
+            >
+              Detalle
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+          <div>
+            <div className="mb-2 flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                  Avance del corte
+                </p>
+                <p className={cn('mt-1 text-3xl font-bold tabular-nums', pctCorte != null ? status.text : 'text-slate-400')}>
+                  {pctCorte != null ? `${pctCorte}%` : '—'}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-slate-400">Logrado / esperado</p>
+                <p className="text-xs font-semibold text-slate-900">
+                  {fmtNum(programa.sumLogrado)} / {fmtNum(programa.sumMetaEsperada)}
+                </p>
+              </div>
+            </div>
+            <div className="h-3 overflow-hidden rounded bg-slate-100">
+              <div
+                className={cn('h-full rounded transition-all duration-500', pctCorte != null ? status.bar : 'bg-slate-300')}
+                style={{ width: `${Math.min(pctCorte ?? 0, 100)}%` }}
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400">
+              <span>{mesesCompletos > 0 ? `Corte a ${MESES[mesesCompletos - 1]}` : 'Sin corte mensual'}</span>
+              <span>Referencia anual: {pctEsperadoAnual}%</span>
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-slate-50 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+              Registro del mes
+            </p>
+            <div className="mt-2 flex items-end justify-between gap-3">
+              <div>
+                <p className="text-2xl font-bold text-slate-950">
+                  {programa.conDatos}/{programa.totalActividades}
+                </p>
+                <p className="text-[11px] text-slate-500">actividades con valor</p>
+              </div>
+              <p className="text-sm font-bold text-teal-700">
+                {registroPct != null ? `${registroPct}%` : '—'}
+              </p>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded bg-white">
+              <div
+                className="h-full rounded bg-teal-600 transition-all duration-500"
+                style={{ width: `${Math.min(registroPct ?? 0, 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Meta anual</p>
+          <p className="mt-2 text-2xl font-bold text-slate-950">{pctAnual != null ? `${pctAnual}%` : '—'}</p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            {fmtNum(programa.sumLogrado)} de {fmtNum(programa.sumMetaAnual)}
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Periodo activo</p>
+          <p className="mt-2 text-lg font-bold text-slate-950">{periodo?.label ?? '—'}</p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            {periodo?.isOpen ? 'Disponible para registro mensual' : 'No disponible para registro'}
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Actividades</p>
+          <p className="mt-2 text-2xl font-bold text-slate-950">{programa.totalActividades}</p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            {groups.length > 0 ? `${groups.length} grupos de trabajo` : 'Sin grupos definidos'}
+          </p>
+        </div>
+      </div>
+
+      {groups.length > 0 && (
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+            Grupos incluidos
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {groups.map((group) => (
+              <span key={group.code} className="rounded bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700">
+                {group.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function PprInicioPage() {
   const { pprUser } = usePprContext()
   const navigate = useNavigate()
   const now = new Date()
   const currentMonth = now.getMonth() + 1
-  const currentYear  = now.getFullYear()
   const todayLabel   = now.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
   const [periodo, setPeriodo] = useState<PprPeriodo | null>(null)
   const [programas, setProgramas] = useState<PprPrograma[]>([])
-  const [periodos, setPeriodos] = useState<PprPeriodoItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
       fetchPeriodoActivo().catch(() => null),
       fetchProgramas(pprUser.employeeId).catch(() => []),
-      fetchPeriodos(pprUser.employeeId).catch(() => []),
-    ]).then(([per, progs, pers]) => {
+    ]).then(([per, progs]) => {
       setPeriodo(per)
       setProgramas(progs)
-      setPeriodos(pers)
     }).finally(() => setLoading(false))
   }, [pprUser.employeeId])
 
   // Derived stats
-  const periodosDelAnio = periodos.filter((p) => p.year === currentYear)
   const activeMonth = periodo?.month ?? currentMonth
   const mesesCompletos = Math.max(activeMonth - 1, 0)
-  const firstSignedMonth = periodosDelAnio
-    .filter((p) => p.isSigned)
-    .reduce((min, p) => Math.min(min, p.month), activeMonth)
-  const periodosCompletadosConAvance = periodosDelAnio.filter((p) =>
-    !p.isOpen
-      && p.month >= firstSignedMonth
-      && p.month < activeMonth
-      && (p.isSigned || (p.totalActividades > 0 && p.completadas >= p.totalActividades)),
-  )
-  const periodosFirmados = periodosCompletadosConAvance.filter((p) => p.isSigned).length
-  const periodosPendientes = periodosCompletadosConAvance.filter((p) => !p.isSigned).length
-
   const totalLogrado = programas.reduce((s, p) => s + p.sumLogrado, 0)
   const totalMetaEsperada = programas.reduce((s, p) => s + p.sumMetaEsperada, 0)
   const totalMetaAnual = programas.reduce((s, p) => s + p.sumMetaAnual, 0)
@@ -200,9 +373,44 @@ export function PprInicioPage() {
   const programasAdelantados = programas.filter((p) =>
     p.sumMetaEsperada > 0 && (p.sumLogrado / p.sumMetaEsperada) >= 1,
   ).length
-  const programasAtrasados = programas.filter((p) =>
-    p.sumMetaEsperada > 0 && (p.sumLogrado / p.sumMetaEsperada) < 0.8,
-  ).length
+  const programasConCorte = programas.filter((p) => p.sumMetaEsperada > 0)
+  const programasAtrasados = programasConCorte.filter((p) => (p.sumLogrado / p.sumMetaEsperada) < 0.8).length
+  const programasEnSeguimiento = programasConCorte.filter((p) => {
+    const ratio = p.sumLogrado / p.sumMetaEsperada
+    return ratio >= 0.8 && ratio < 1
+  }).length
+  const programasSinCorte = programas.length - programasConCorte.length
+  const programasConAvance = programas.filter((p) => p.sumLogrado > 0).length
+  const corteItems = [
+    {
+      label: 'En meta',
+      value: programasAdelantados,
+      detail: '100% o más del corte',
+      dot: 'bg-emerald-500',
+      text: 'text-emerald-700',
+    },
+    {
+      label: 'En seguimiento',
+      value: programasEnSeguimiento,
+      detail: '80% a 99% del corte',
+      dot: 'bg-amber-500',
+      text: 'text-amber-700',
+    },
+    {
+      label: 'Críticos',
+      value: programasAtrasados,
+      detail: 'Menos del 80% del corte',
+      dot: 'bg-rose-500',
+      text: 'text-rose-700',
+    },
+    {
+      label: 'Sin corte',
+      value: programasSinCorte,
+      detail: 'Sin meta esperada cargada',
+      dot: 'bg-slate-300',
+      text: 'text-slate-600',
+    },
+  ]
 
   // Sorted: atrasados primero
   const programasSorted = [...programas].sort((a, b) => {
@@ -213,41 +421,25 @@ export function PprInicioPage() {
 
   const isAdmin = pprUser.role === 'admin'
 
-  const quickLinks = [
-    { to: '/ppr/actividades', icon: ClipboardList, label: 'Mis Actividades', sub: 'Registrar avance del mes',  accent: 'indigo' as const },
-    { to: '/ppr/programas',   icon: Layers,        label: 'Programas',        sub: 'Ver progreso por programa', accent: 'indigo' as const },
-    { to: '/ppr/periodos',    icon: Calendar,      label: 'Períodos',         sub: 'Historial y firma mensual', accent: 'sky'    as const },
-    { to: '/ppr/reportes',    icon: BarChart2,     label: 'Resumen Anual',    sub: 'Matriz de avance por mes',  accent: 'sky'    as const },
-    ...(isAdmin
-      ? [
-          { to: '/ppr/admin/coordinadores', icon: Users,     label: 'Coordinadores',   sub: 'Gestión de accesos',         accent: 'amber' as const },
-          { to: '/ppr/admin/actividades',   icon: Settings2, label: 'Actividades PPR', sub: 'Alta, baja y edición anual', accent: 'amber' as const },
-        ]
-      : []),
-  ]
-
   return (
     <div className="space-y-6">
       {/* ── Hero header ── */}
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-white to-indigo-50/30 px-6 py-6 shadow-sm">
-        {/* Decorative accent */}
-        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gradient-to-br from-indigo-100 to-sky-100 opacity-50 blur-3xl" />
-
-        <div className="relative flex flex-wrap items-start justify-between gap-4">
+      <div className="rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:px-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-4">
             <PprAvatar
               name={pprUser.employeeName}
               size="lg"
-              tone={isAdmin ? 'amber' : 'indigo'}
+              tone={isAdmin ? 'amber' : 'green'}
             />
             <div>
               <p className="text-[11px] capitalize text-slate-400">{todayLabel}</p>
-              <h1 className="mt-0.5 text-2xl font-bold text-slate-900">
+              <h1 className="mt-0.5 text-xl font-bold leading-tight text-slate-950">
                 {greeting()}, {pprUser.employeeName.split(' ')[0]}
               </h1>
               <p className="text-xs text-slate-500">{pprUser.employeeName}</p>
               <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                <PprPill tone={isAdmin ? 'amber' : 'indigo'} icon={Sparkles}>
+                <PprPill tone={isAdmin ? 'amber' : 'indigo'}>
                   {isAdmin ? 'Administrador PPR' : 'Coordinador PPR'}
                 </PprPill>
                 {periodo && (
@@ -257,10 +449,7 @@ export function PprInicioPage() {
                 )}
                 {periodo?.isOpen && (
                   <PprPill tone="emerald">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    </span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                     Abierto para registro
                   </PprPill>
                 )}
@@ -275,9 +464,9 @@ export function PprInicioPage() {
           {/* KPI skeletons */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+              <div key={i} className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
                 <div className="flex gap-3">
-                  <PprSkeleton className="h-11 w-11 rounded-xl" />
+                  <PprSkeleton className="h-10 w-10 rounded-lg" />
                   <div className="flex-1 space-y-2">
                     <PprSkeleton className="h-2 w-2/3" />
                     <PprSkeleton className="h-5 w-1/2" />
@@ -296,39 +485,24 @@ export function PprInicioPage() {
             <div className="space-y-2">
               <PprSkeleton className="h-3 w-32" />
               {Array.from({ length: 4 }).map((_, i) => (
-                <PprSkeleton key={i} className="h-16 w-full rounded-xl" />
+                <PprSkeleton key={i} className="h-16 w-full rounded-lg" />
               ))}
             </div>
           </div>
         </>
+      ) : !isAdmin ? (
+        <CoordinatorInicioView
+          programa={programasSorted[0] ?? null}
+          programCount={programas.length}
+          periodo={periodo}
+          activeMonth={activeMonth}
+        />
       ) : (
         <>
           {/* ── Alerts ── */}
           <div className="space-y-2">
-            {periodosPendientes > 0 && (
-              <div className="animate-ppr-fade flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100">
-                  <AlertCircle className="h-4 w-4 text-amber-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-semibold text-amber-800">
-                    {periodosPendientes} período{periodosPendientes > 1 ? 's' : ''} sin firmar
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-amber-700">
-                    Tienes meses completados que aún no has firmado.
-                  </p>
-                </div>
-                <Link
-                  to="/ppr/periodos"
-                  className="shrink-0 self-center rounded-lg bg-amber-600 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-amber-700"
-                >
-                  Ir a Períodos
-                </Link>
-              </div>
-            )}
-
             {programasAtrasados > 0 && (
-              <div className="animate-ppr-fade flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3.5">
+              <div className="animate-ppr-fade flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3.5">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100">
                   <TrendingDown className="h-4 w-4 text-rose-600" />
                 </div>
@@ -355,7 +529,7 @@ export function PprInicioPage() {
             <StatCard
               label="Programas asignados"
               value={programas.length}
-              sub={`${programasAdelantados} al día`}
+              sub={`${programasConAvance} con avance`}
               icon={Layers}
               accent="indigo"
             />
@@ -368,11 +542,11 @@ export function PprInicioPage() {
               trend={pctCorte == null ? null : pctCorte >= 80 ? 'up' : 'down'}
             />
             <StatCard
-              label="Períodos firmados"
-              value={`${periodosFirmados} / ${periodosCompletadosConAvance.length}`}
-              sub={String(currentYear)}
-              icon={CheckCircle2}
-              accent={periodosFirmados === periodosCompletadosConAvance.length && periodosCompletadosConAvance.length > 0 ? 'emerald' : 'amber'}
+              label="Programas críticos"
+              value={programasAtrasados}
+              sub="Bajo 80% del corte"
+              icon={AlertCircle}
+              accent={programasAtrasados > 0 ? 'rose' : 'emerald'}
             />
             <StatCard
               label="Período activo"
@@ -385,7 +559,7 @@ export function PprInicioPage() {
 
           {/* ── Annual progress strip ── */}
           {pctAnual != null && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
               <div className="mb-2 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
@@ -408,9 +582,9 @@ export function PprInicioPage() {
                   </p>
                 </div>
               </div>
-              <div className="relative mt-3 h-3 overflow-visible rounded-full bg-slate-100">
+              <div className="relative mt-3 h-3 overflow-visible rounded bg-slate-100">
                 <div
-                  className={cn('h-full rounded-full transition-all duration-500', pctBarColor(pctCorte ?? 0))}
+                  className={cn('h-full rounded transition-all duration-500', pctBarColor(pctCorte ?? 0))}
                   style={{ width: `${Math.min(pctAnual, 100)}%` }}
                 />
                 <div
@@ -425,7 +599,7 @@ export function PprInicioPage() {
             </div>
           )}
 
-          {/* ── Body: programas + accesos ── */}
+          {/* ── Body: programas + corte ── */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {/* Programas */}
             <div className="lg:col-span-2">
@@ -435,7 +609,7 @@ export function PprInicioPage() {
                 </h2>
                 <Link
                   to="/ppr/programas"
-                  className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 transition hover:text-indigo-600"
+                  className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 transition hover:text-teal-700"
                 >
                   Ver todos
                   <ChevronRight className="h-3 w-3" />
@@ -443,7 +617,7 @@ export function PprInicioPage() {
               </div>
 
               {programas.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white py-10 text-center">
+                <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-white py-10 text-center">
                   <Layers className="h-7 w-7 text-slate-300" />
                   <p className="text-xs text-slate-400">Sin programas asignados</p>
                 </div>
@@ -455,7 +629,7 @@ export function PprInicioPage() {
                   {programasSorted.length > 6 && (
                     <button
                       onClick={() => navigate('/ppr/programas')}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-[11px] font-semibold text-slate-500 transition hover:border-indigo-300 hover:bg-indigo-50/40 hover:text-indigo-700"
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 py-2.5 text-[11px] font-semibold text-slate-500 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
                     >
                       Ver {programasSorted.length - 6} más
                       <ChevronRight className="h-3 w-3" />
@@ -465,97 +639,67 @@ export function PprInicioPage() {
               )}
             </div>
 
-            {/* Quick links + period status */}
+            {/* Cut summary */}
             <div className="space-y-5">
-              <div>
-                <h2 className="mb-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                  Accesos rápidos
-                </h2>
-                <div className="ppr-stagger space-y-2">
-                  {quickLinks.map((link) => {
-                    const palettes = {
-                      indigo: { bg: 'bg-indigo-500/10', text: 'text-indigo-600' },
-                      sky:    { bg: 'bg-sky-500/10',    text: 'text-sky-600' },
-                      amber:  { bg: 'bg-amber-500/10',  text: 'text-amber-600' },
-                      slate:  { bg: 'bg-slate-100',     text: 'text-slate-500' },
-                    }[link.accent]
-                    return (
-                      <Link
-                        key={link.to}
-                        to={link.to}
-                        className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 transition-all hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5"
-                      >
-                        <div className={cn(
-                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-110',
-                          palettes.bg,
-                        )}>
-                          <link.icon className={cn('h-4 w-4', palettes.text)} />
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                      Situación del corte
+                    </h2>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      Distribución de programas según meta esperada.
+                    </p>
+                  </div>
+                  <PprPill tone={pctCorte == null ? 'slate' : pctCorte >= 100 ? 'emerald' : pctCorte >= 80 ? 'amber' : 'rose'}>
+                    {pctCorte != null ? `${pctCorte}%` : 'Sin corte'}
+                  </PprPill>
+                </div>
+
+                <div className="space-y-3">
+                  {corteItems.map((item) => (
+                    <div key={item.label} className="flex items-center gap-3">
+                      <div className={cn('h-2.5 w-2.5 rounded-full', item.dot)} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs font-semibold text-slate-800">{item.label}</p>
+                          <p className={cn('text-sm font-bold tabular-nums', item.text)}>{item.value}</p>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-slate-900">{link.label}</p>
-                          <p className="text-[10px] text-slate-400">{link.sub}</p>
-                        </div>
-                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-indigo-500" />
-                      </Link>
-                    )
-                  })}
+                        <p className="text-[10px] text-slate-400">{item.detail}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Mini period status calendar */}
-              {periodosDelAnio.length > 0 && (
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                    Estado de firmas {currentYear}
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                  Prioridad operativa
+                </h2>
+                <div className="mt-3 rounded-lg bg-slate-50 p-3">
+                  <p className="text-xs font-semibold text-slate-900">
+                    {programasAtrasados > 0
+                      ? 'Revisar primero los programas críticos'
+                      : programasEnSeguimiento > 0
+                        ? 'Mantener seguimiento del corte'
+                        : 'El corte se mantiene estable'}
                   </p>
-                  <div className="grid grid-cols-6 gap-1.5">
-                    {Array.from({ length: 12 }, (_, i) => {
-                      const m = i + 1
-                      const per = periodosDelAnio.find((p) => p.month === m)
-                      const hasProgress = (per?.completadas ?? 0) > 0 || Boolean(per?.isSigned)
-                      const isClosed  = Boolean(per) && !per?.isOpen && hasProgress
-                      const isCurrent = Boolean(per?.isOpen) || m === activeMonth
-                      const isSigned  = per?.isSigned ?? false
-                      return (
-                        <div
-                          key={m}
-                          title={`${MESES[i]}: ${isCurrent ? 'mes actual' : !isClosed ? 'no disponible' : isSigned ? 'firmado' : 'pendiente'}`}
-                          className={cn(
-                            'flex aspect-square items-center justify-center rounded-lg text-[9px] font-bold transition',
-                            isCurrent
-                              ? 'bg-sky-100 text-sky-700 ring-2 ring-sky-300'
-                              : !isClosed
-                                ? 'bg-slate-50 text-slate-300'
-                                : isSigned
-                                  ? 'bg-emerald-100 text-emerald-700'
-                                  : 'bg-amber-100 text-amber-700',
-                          )}
-                        >
-                          {['E','F','M','A','M','J','J','A','S','O','N','D'][i]}
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-x-2 gap-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-2 w-2 rounded-full bg-emerald-400" />
-                      <span className="text-[9px] text-slate-500">Firmado</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-2 w-2 rounded-full bg-amber-400" />
-                      <span className="text-[9px] text-slate-500">Pendiente</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-2 w-2 rounded-full bg-sky-400" />
-                      <span className="text-[9px] text-slate-500">Actual</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-2 w-2 rounded-full bg-slate-200" />
-                      <span className="text-[9px] text-slate-500">No disp.</span>
-                    </div>
-                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                    {programasAtrasados > 0
+                      ? `${programasAtrasados} programa${programasAtrasados > 1 ? 's están' : ' está'} bajo el 80%.`
+                      : programasEnSeguimiento > 0
+                        ? `${programasEnSeguimiento} programa${programasEnSeguimiento > 1 ? 's están' : ' está'} entre 80% y 99%.`
+                        : 'No hay programas críticos según la meta esperada actual.'}
+                  </p>
                 </div>
-              )}
+                <Link
+                  to="/ppr/programas"
+                  className="mt-3 flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-[11px] font-semibold text-slate-600 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
+                >
+                  Revisar detalle por programa
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
           </div>
         </>

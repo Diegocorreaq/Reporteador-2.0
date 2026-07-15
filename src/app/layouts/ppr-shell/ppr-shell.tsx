@@ -46,29 +46,21 @@ function ValidationOverlay({ onAuthorized }: ValidationOverlayProps) {
   }
 
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center overflow-hidden bg-slate-950">
-      {/* Decorative background */}
-      <div className="absolute inset-0 opacity-30">
-        <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-indigo-500/30 blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-sky-500/20 blur-3xl" />
-      </div>
-
-      {/* Card */}
-      <div className="relative w-full max-w-sm animate-ppr-scale rounded-3xl border border-white/10 bg-gradient-to-b from-slate-800 to-slate-900 p-8 shadow-2xl">
+    <div className="absolute inset-0 z-30 flex items-center justify-center overflow-hidden bg-slate-100 p-4">
+      <div className="relative w-full max-w-sm animate-ppr-scale rounded-lg border border-slate-200 bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.16)]">
         {/* Top branding */}
         <div className="mb-7 flex flex-col items-center gap-4 text-center">
           <div className="relative">
-            <div className="absolute inset-0 animate-ppr-pulse rounded-2xl bg-indigo-500/30 blur-md" />
-            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-lg shadow-indigo-500/40">
-              <ShieldCheck className="h-8 w-8 text-white" />
+            <div className="relative flex h-12 w-12 items-center justify-center rounded-lg bg-slate-900">
+              <ShieldCheck className="h-6 w-6 text-white" />
             </div>
           </div>
           <div className="space-y-1">
             <div className="flex items-center justify-center gap-2">
-              <span className="rounded-md bg-indigo-600 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">
+              <span className="rounded bg-teal-700 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">
                 PPR
               </span>
-              <h2 className="text-base font-bold text-white">Portal PPR</h2>
+              <h2 className="text-base font-bold text-slate-950">Portal PPR</h2>
             </div>
             <p className="text-xs text-slate-400">
               Verificación de acceso requerida
@@ -79,17 +71,17 @@ function ValidationOverlay({ onAuthorized }: ValidationOverlayProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Username */}
           <div className="space-y-1.5">
-            <label className="block text-[11px] font-medium text-slate-300">
+            <label className="block text-[11px] font-semibold text-slate-600">
               Usuario (DNI)
             </label>
             <div className="relative">
-              <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-slate-500 transition focus:border-indigo-500/60 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/15"
                 placeholder="Ingrese su DNI"
                 required
               />
@@ -98,17 +90,17 @@ function ValidationOverlay({ onAuthorized }: ValidationOverlayProps) {
 
           {/* Password */}
           <div className="space-y-1.5">
-            <label className="block text-[11px] font-medium text-slate-300">
+            <label className="block text-[11px] font-semibold text-slate-600">
               Contraseña
             </label>
             <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-10 text-sm text-white placeholder:text-slate-500 transition focus:border-indigo-500/60 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-10 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/15"
                 placeholder="Contraseña"
                 required
               />
@@ -116,7 +108,7 @@ function ValidationOverlay({ onAuthorized }: ValidationOverlayProps) {
                 type="button"
                 tabIndex={-1}
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition hover:text-slate-300"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -125,7 +117,7 @@ function ValidationOverlay({ onAuthorized }: ValidationOverlayProps) {
 
           {/* Error */}
           {error && (
-            <div className="animate-ppr-fade rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2.5 text-xs text-rose-300">
+            <div className="animate-ppr-fade rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-700">
               {error}
             </div>
           )}
@@ -134,15 +126,14 @@ function ValidationOverlay({ onAuthorized }: ValidationOverlayProps) {
           <button
             type="submit"
             disabled={loading || !username.trim() || !password.trim()}
-            className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-700 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:shadow-xl hover:shadow-indigo-500/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-teal-700 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
           >
-            <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform group-hover:translate-x-full" />
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <ShieldCheck className="h-4 w-4" />
             )}
-            <span className="relative">
+            <span>
               {loading ? 'Verificando…' : 'Verificar acceso'}
             </span>
           </button>
@@ -166,7 +157,7 @@ export function PprShell() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="relative flex h-screen overflow-hidden bg-slate-50">
+    <div className="ppr-portal relative flex h-screen overflow-hidden bg-slate-100 text-slate-900">
       {/* Sidebar — always visible even during validation */}
       {pprUser ? (
         <PprContext.Provider value={{ pprUser }}>
@@ -174,10 +165,10 @@ export function PprShell() {
         </PprContext.Provider>
       ) : (
         /* Skeleton sidebar shown while validating */
-        <aside className="hidden w-60 shrink-0 bg-gradient-to-b from-slate-900 to-[#0b1224] lg:block">
+        <aside className="hidden w-64 shrink-0 bg-slate-950 lg:block">
           <div className="px-5 py-5">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-lg shadow-indigo-500/30">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700">
                 <span className="text-[10px] font-black uppercase tracking-tighter text-white">PPR</span>
               </div>
               <div>
@@ -192,16 +183,16 @@ export function PprShell() {
       {/* Content area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile topbar */}
-        <header className="flex h-14 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur-md lg:hidden">
+        <header className="flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-4 lg:hidden">
           <button
-            className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
             onClick={() => setMobileOpen(true)}
             aria-label="Abrir menú"
           >
             <Menu className="h-4 w-4" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-sm shadow-indigo-500/30">
+            <div className="flex h-7 w-7 items-center justify-center rounded bg-teal-700">
               <span className="text-[9px] font-black uppercase tracking-tighter text-white">PPR</span>
             </div>
             <span className="text-sm font-bold text-slate-900">Portal PPR</span>
@@ -210,7 +201,7 @@ export function PprShell() {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto ppr-scroll">
-          <div className="mx-auto max-w-7xl p-5 lg:p-8 animate-ppr-fade">
+          <div className="mx-auto max-w-[1500px] p-4 animate-ppr-fade sm:p-5 lg:p-6">
             {pprUser && (
               <PprContext.Provider value={{ pprUser }}>
                 <Outlet />

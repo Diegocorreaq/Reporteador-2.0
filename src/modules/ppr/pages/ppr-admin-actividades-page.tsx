@@ -111,16 +111,16 @@ function ActividadModal({ mode, initial, activityGroups, onSave, onClose, saving
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl bg-white shadow-2xl"
+        className="w-full max-w-md rounded-lg bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100">
-              <ClipboardList className="h-3.5 w-3.5 text-amber-600" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50">
+              <ClipboardList className="h-3.5 w-3.5 text-teal-700" />
             </div>
-            <h2 className="text-sm font-bold text-[#0c2340]">
+            <h2 className="text-sm font-bold text-slate-950">
               {mode === 'add' ? 'Nueva actividad' : 'Editar actividad'}
             </h2>
           </div>
@@ -135,7 +135,7 @@ function ActividadModal({ mode, initial, activityGroups, onSave, onClose, saving
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
           {/* Warning for edit mode */}
           {mode === 'edit' && (
-            <div className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2.5">
+            <div className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2.5">
               <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0 text-amber-500" />
               <p className="text-[11px] text-amber-700">
                 Cambiar nombre o unidad no afecta los datos históricos ya registrados.
@@ -155,7 +155,7 @@ function ActividadModal({ mode, initial, activityGroups, onSave, onClose, saving
               onChange={(e) => set('code', e.target.value)}
               maxLength={20}
               placeholder="ej. A1.1"
-              className="w-full rounded-xl border border-[#e2e8f0] px-3 py-2 text-xs text-[#0c2340] placeholder-slate-300 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-950 placeholder-slate-300 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
             />
           </div>
 
@@ -163,7 +163,7 @@ function ActividadModal({ mode, initial, activityGroups, onSave, onClose, saving
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-600">
               Nombre de la actividad{' '}
-              <span className="text-red-400">*</span>
+              <span className="text-rose-400">*</span>
             </label>
             <textarea
               value={form.name}
@@ -171,7 +171,7 @@ function ActividadModal({ mode, initial, activityGroups, onSave, onClose, saving
               maxLength={300}
               rows={3}
               placeholder="Descripción completa de la actividad operativa…"
-              className="w-full resize-none rounded-xl border border-[#e2e8f0] px-3 py-2 text-xs text-[#0c2340] placeholder-slate-300 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+              className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-950 placeholder-slate-300 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
               required
             />
             <p className="mt-0.5 text-right text-[10px] text-slate-300">{form.name.length}/300</p>
@@ -180,12 +180,12 @@ function ActividadModal({ mode, initial, activityGroups, onSave, onClose, saving
           {activityGroups.length > 0 && (
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-600">
-                Grupo del programa <span className="text-red-400">*</span>
+                Grupo del programa <span className="text-rose-400">*</span>
               </label>
               <select
                 value={form.activityGroupCode}
                 onChange={(e) => set('activityGroupCode', e.target.value)}
-                className="w-full rounded-xl border border-[#e2e8f0] bg-white px-3 py-2 text-xs text-[#0c2340] outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-950 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
                 required
               >
                 <option value="">Seleccionar grupo...</option>
@@ -204,7 +204,7 @@ function ActividadModal({ mode, initial, activityGroups, onSave, onClose, saving
           {/* Unit with autocomplete */}
           <div className="relative" ref={dropRef}>
             <label className="mb-1.5 block text-xs font-semibold text-slate-600">
-              Unidad de medida <span className="text-red-400">*</span>
+              Unidad de medida <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
@@ -217,13 +217,13 @@ function ActividadModal({ mode, initial, activityGroups, onSave, onClose, saving
               onFocus={() => setShowUnitDrop(true)}
               placeholder="ej. Atención, Caso, Examen…"
               maxLength={50}
-              className="w-full rounded-xl border border-[#e2e8f0] px-3 py-2 text-xs text-[#0c2340] placeholder-slate-300 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-950 placeholder-slate-300 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
               required
             />
 
             {/* Suggestion dropdown */}
             {showUnitDrop && filteredUnits.length > 0 && (
-              <div className="absolute z-20 mt-1 w-full rounded-xl border border-[#e2e8f0] bg-white p-2 shadow-xl">
+              <div className="absolute z-20 mt-1 w-full rounded-lg border border-slate-200 bg-white p-2 shadow-xl">
                 <p className="mb-2 text-[9px] font-semibold uppercase tracking-wider text-slate-400">
                   Unidades comunes
                 </p>
@@ -236,8 +236,8 @@ function ActividadModal({ mode, initial, activityGroups, onSave, onClose, saving
                       className={cn(
                         'rounded-lg px-2.5 py-1 text-[11px] font-medium transition',
                         form.unit === u
-                          ? 'bg-amber-500 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-700',
+                          ? 'bg-teal-700 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-teal-50 hover:text-teal-700',
                       )}
                     >
                       {u}
@@ -262,7 +262,7 @@ function ActividadModal({ mode, initial, activityGroups, onSave, onClose, saving
                 value={form.annualGoal}
                 onChange={(e) => set('annualGoal', e.target.value)}
                 placeholder="ej. 1200"
-                className="w-full rounded-xl border border-[#e2e8f0] px-3 py-2 text-xs text-[#0c2340] placeholder-slate-300 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-950 placeholder-slate-300 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
               />
             </div>
             <div>
@@ -275,7 +275,7 @@ function ActividadModal({ mode, initial, activityGroups, onSave, onClose, saving
                 step={1}
                 value={form.sortOrder}
                 onChange={(e) => set('sortOrder', e.target.value)}
-                className="w-full rounded-xl border border-[#e2e8f0] px-3 py-2 text-xs text-[#0c2340] placeholder-slate-300 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-950 placeholder-slate-300 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
               />
             </div>
           </div>
@@ -286,12 +286,12 @@ function ActividadModal({ mode, initial, activityGroups, onSave, onClose, saving
               type="button"
               onClick={() => set('isActive', !form.isActive)}
               className={cn(
-                'flex w-full items-center justify-between rounded-xl px-3 py-2.5 transition',
+                'flex w-full items-center justify-between rounded-lg px-3 py-2.5 transition',
                 form.isActive ? 'bg-emerald-50 ring-1 ring-emerald-200' : 'bg-slate-50 ring-1 ring-slate-200',
               )}
             >
               <div className="text-left">
-                <p className="text-xs font-semibold text-[#0c2340]">
+                <p className="text-xs font-semibold text-slate-950">
                   {form.isActive ? 'Activa' : 'Inactiva'}
                 </p>
                 <p className="text-[10px] text-slate-400">
@@ -313,14 +313,14 @@ function ActividadModal({ mode, initial, activityGroups, onSave, onClose, saving
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-[#e2e8f0] py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+              className="flex-1 rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={!isValid || saving}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-amber-500 py-2 text-xs font-semibold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-teal-700 py-2 text-xs font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {mode === 'add' ? 'Crear actividad' : 'Guardar cambios'}
@@ -475,13 +475,13 @@ export function PprAdminActividadesPage() {
       {/* ── Page header ── */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-bold text-[#0c2340]">Gestión de Actividades</h1>
+          <h1 className="text-lg font-bold text-slate-950">Gestión de Actividades</h1>
           <p className="text-xs text-slate-400">
             Alta, baja y edición de actividades operativas por programa
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-xl border border-[#e2e8f0] bg-white px-3 py-1.5 text-xs font-semibold text-[#0c2340]">
+          <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-950">
             {programas.length} programa{programas.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -489,7 +489,7 @@ export function PprAdminActividadesPage() {
 
       {/* ── Banners ── */}
       {error && (
-        <div className="flex shrink-0 items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
+        <div className="flex shrink-0 items-center justify-between rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs text-rose-700">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             {error}
@@ -500,7 +500,7 @@ export function PprAdminActividadesPage() {
         </div>
       )}
       {success && (
-        <div className="flex shrink-0 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-700">
+        <div className="flex shrink-0 items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-700">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
           {success}
         </div>
@@ -509,8 +509,8 @@ export function PprAdminActividadesPage() {
       {/* ── Two-panel body ── */}
       <div className="flex min-h-0 flex-1 gap-4">
         {/* ── Left: Program list ── */}
-        <div className="flex w-56 shrink-0 flex-col overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white">
-          <div className="shrink-0 border-b border-[#e2e8f0] p-3">
+        <div className="flex w-56 shrink-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <div className="shrink-0 border-b border-slate-200 p-3">
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
               Programas ({programas.length})
             </p>
@@ -521,7 +521,7 @@ export function PprAdminActividadesPage() {
                 placeholder="Filtrar programas…"
                 value={programSearch}
                 onChange={(e) => setProgramSearch(e.target.value)}
-                className="w-full rounded-lg border border-[#e2e8f0] py-1.5 pl-7 pr-2 text-xs text-[#0c2340] placeholder-slate-300 outline-none focus:border-amber-300 focus:ring-1 focus:ring-amber-100"
+                className="w-full rounded-lg border border-slate-300 py-1.5 pl-7 pr-2 text-xs text-slate-950 placeholder-slate-300 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
               />
             </div>
           </div>
@@ -529,7 +529,7 @@ export function PprAdminActividadesPage() {
           <div className="min-h-0 flex-1 overflow-y-auto p-2">
             {loadingProgramas ? (
               <div className="flex justify-center py-10">
-                <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
+                <Loader2 className="h-5 w-5 animate-spin text-teal-700" />
               </div>
             ) : filteredProgramas.length === 0 ? (
               <p className="py-8 text-center text-xs text-slate-400">Sin programas</p>
@@ -542,16 +542,16 @@ export function PprAdminActividadesPage() {
                     key={p.id}
                     onClick={() => setSelectedId(p.id)}
                     className={cn(
-                      'mb-0.5 flex w-full items-start gap-2.5 rounded-xl px-3 py-2.5 text-left transition',
+                      'mb-0.5 flex w-full items-start gap-2.5 rounded-lg px-3 py-2.5 text-left transition',
                       isSelected
-                        ? 'bg-amber-50 ring-1 ring-amber-200'
+                        ? 'bg-teal-50 ring-1 ring-teal-200'
                         : 'hover:bg-slate-50',
                     )}
                   >
                     <div
                       className={cn(
                         'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md font-mono text-[9px] font-bold',
-                        isSelected ? 'bg-amber-500 text-white' : 'bg-[#e8f0f8] text-[#3a6fa0]',
+                        isSelected ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-700',
                       )}
                     >
                       {(p.code || '?').substring(0, 4)}
@@ -560,13 +560,13 @@ export function PprAdminActividadesPage() {
                       <p
                         className={cn(
                           'text-[11px] font-semibold leading-snug',
-                          isSelected ? 'text-amber-800' : 'text-[#0c2340]',
+                          isSelected ? 'text-teal-900' : 'text-slate-950',
                         )}
                       >
                         {p.name}
                       </p>
                       {cnt != null && (
-                        <p className="mt-0.5 text-[9px] text-amber-600">
+                        <p className="mt-0.5 text-[9px] text-teal-700">
                           {cnt} actividad{cnt !== 1 ? 'es' : ''}
                         </p>
                       )}
@@ -577,7 +577,7 @@ export function PprAdminActividadesPage() {
                               key={group.code}
                               className={cn(
                                 'rounded px-1.5 py-0.5 text-[9px] font-semibold',
-                                isSelected ? 'bg-amber-100 text-amber-700' : 'bg-sky-50 text-sky-700',
+                                isSelected ? 'bg-teal-100 text-teal-700' : 'bg-cyan-50 text-cyan-700',
                               )}
                             >
                               {group.name}
@@ -594,11 +594,11 @@ export function PprAdminActividadesPage() {
         </div>
 
         {/* ── Right: Activity table ── */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           {!selectedPrograma ? (
             /* Empty state */
             <div className="flex flex-1 flex-col items-center justify-center gap-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+              <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-slate-100">
                 <Layers className="h-7 w-7 text-slate-300" />
               </div>
               <p className="text-sm font-semibold text-slate-400">Selecciona un programa</p>
@@ -610,20 +610,20 @@ export function PprAdminActividadesPage() {
           ) : (
             <>
               {/* Table header bar */}
-              <div className="flex shrink-0 items-center justify-between border-b border-[#e2e8f0] px-5 py-3">
+              <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="rounded bg-[#e8f0f8] px-1.5 py-0.5 font-mono text-[10px] text-[#3a6fa0]">
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
                       {selectedPrograma.code}
                     </span>
-                    <h2 className="text-xs font-bold text-[#0c2340]">{selectedPrograma.name}</h2>
+                    <h2 className="text-xs font-bold text-slate-950">{selectedPrograma.name}</h2>
                   </div>
                   {selectedActivityGroups.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {selectedActivityGroups.map((group) => (
                         <span
                           key={group.code}
-                          className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700"
+                          className="rounded bg-cyan-50 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-700"
                         >
                           {group.name}
                         </span>
@@ -642,7 +642,7 @@ export function PprAdminActividadesPage() {
                 </div>
                 <button
                   onClick={() => setModal({ mode: 'add', actividad: null })}
-                  className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-amber-600 active:scale-95"
+                  className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-800 active:scale-95"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Nueva actividad
@@ -652,7 +652,7 @@ export function PprAdminActividadesPage() {
               {/* Table body */}
               {loadingActividades ? (
                 <div className="flex flex-1 items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
+                  <Loader2 className="h-6 w-6 animate-spin text-teal-700" />
                 </div>
               ) : actividades.length === 0 ? (
                 <div className="flex flex-1 flex-col items-center justify-center gap-3">
@@ -663,7 +663,7 @@ export function PprAdminActividadesPage() {
                   </p>
                   <button
                     onClick={() => setModal({ mode: 'add', actividad: null })}
-                    className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-600"
+                    className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-4 py-2 text-xs font-semibold text-white hover:bg-teal-800"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Agregar primera actividad
@@ -673,7 +673,7 @@ export function PprAdminActividadesPage() {
                 <div className="min-h-0 flex-1 overflow-auto">
                   <table className="w-full min-w-[640px] text-xs">
                     <thead>
-                      <tr className="border-b border-[#e2e8f0] bg-slate-50">
+                      <tr className="border-b border-slate-200 bg-slate-50">
                         <th className="w-10 px-3 py-3 text-center text-[10px] font-semibold text-slate-400">
                           Ord.
                         </th>
@@ -707,8 +707,8 @@ export function PprAdminActividadesPage() {
                         <tr
                           key={a.id}
                           className={cn(
-                            'border-b border-[#f0f4f8] transition-colors last:border-0',
-                            !a.isActive ? 'opacity-45' : 'hover:bg-[#fafcff]',
+                            'border-b border-slate-100 transition-colors last:border-0',
+                            !a.isActive ? 'opacity-45' : 'hover:bg-slate-50',
                           )}
                         >
                           {/* Sort order */}
@@ -721,7 +721,7 @@ export function PprAdminActividadesPage() {
                           {/* Code */}
                           <td className="px-2 py-3">
                             {a.code ? (
-                              <span className="rounded bg-[#e8f0f8] px-1.5 py-0.5 font-mono text-[10px] text-[#3a6fa0]">
+                              <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
                                 {a.code}
                               </span>
                             ) : (
@@ -733,7 +733,7 @@ export function PprAdminActividadesPage() {
                           <td className="px-2 py-3">
                             <p
                               className={cn(
-                                'text-[11px] leading-snug text-[#0c2340]',
+                                'text-[11px] leading-snug text-slate-950',
                                 !a.isActive && 'line-through decoration-slate-400',
                               )}
                               title={a.name}
@@ -745,7 +745,7 @@ export function PprAdminActividadesPage() {
                           {selectedActivityGroups.length > 0 && (
                             <td className="px-2 py-3">
                               {a.activityGroup ? (
-                                <span className="rounded bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+                                <span className="rounded bg-cyan-50 px-2 py-0.5 text-[10px] font-semibold text-cyan-700">
                                   {a.activityGroup.name}
                                 </span>
                               ) : (
@@ -758,7 +758,7 @@ export function PprAdminActividadesPage() {
 
                           {/* Unit */}
                           <td className="px-2 py-3">
-                            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
+                            <span className="rounded-md bg-cyan-50 px-2 py-0.5 text-[10px] font-medium text-cyan-700">
                               {a.unit}
                             </span>
                           </td>
@@ -766,7 +766,7 @@ export function PprAdminActividadesPage() {
                           {/* Annual goal */}
                           <td className="px-2 py-3 text-right">
                             {a.annualGoal != null ? (
-                              <span className="text-[11px] font-semibold text-[#0c2340]">
+                              <span className="text-[11px] font-semibold text-slate-950">
                                 {a.annualGoal.toLocaleString('es-PE')}
                               </span>
                             ) : (
@@ -794,7 +794,7 @@ export function PprAdminActividadesPage() {
                               <button
                                 onClick={() => setModal({ mode: 'edit', actividad: a })}
                                 title="Editar"
-                                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-amber-50 hover:text-amber-600"
+                                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-teal-50 hover:text-teal-700"
                               >
                                 <Edit2 className="h-3.5 w-3.5" />
                               </button>
@@ -805,7 +805,7 @@ export function PprAdminActividadesPage() {
                                 className={cn(
                                   'rounded-lg p-1.5 transition disabled:opacity-40',
                                   a.isActive
-                                    ? 'text-slate-400 hover:bg-red-50 hover:text-red-500'
+                                    ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600'
                                     : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600',
                                 )}
                               >
@@ -823,14 +823,14 @@ export function PprAdminActividadesPage() {
 
                     {/* Footer summary */}
                     <tfoot>
-                      <tr className="border-t-2 border-[#e2e8f0] bg-slate-50">
+                      <tr className="border-t-2 border-slate-200 bg-slate-50">
                         <td
                           colSpan={selectedActivityGroups.length > 0 ? 5 : 4}
                           className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400"
                         >
                           Total · {actividades.length} actividad{actividades.length !== 1 ? 'es' : ''}
                         </td>
-                        <td className="px-2 py-2.5 text-right text-[11px] font-bold text-[#0c2340]">
+                        <td className="px-2 py-2.5 text-right text-[11px] font-bold text-slate-950">
                           {actividades.reduce((s, a) => s + (a.annualGoal ?? 0), 0).toLocaleString('es-PE')}
                         </td>
                         <td />

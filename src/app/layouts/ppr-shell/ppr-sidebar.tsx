@@ -62,11 +62,11 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
   }
 
   const sidebarContent = (
-    <div className="sidebar-scroll flex h-full flex-col overflow-y-auto bg-gradient-to-b from-slate-900 via-slate-900 to-[#0b1224]">
+    <div className="sidebar-scroll flex h-full flex-col overflow-y-auto border-r border-slate-800 bg-slate-950">
       {/* ── Brand ── */}
       <div className="flex items-center justify-between px-5 py-5">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-lg shadow-indigo-500/30">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700">
             <span className="text-[10px] font-black uppercase tracking-tighter text-white">PPR</span>
           </div>
           <div className="space-y-0">
@@ -85,7 +85,7 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
       </div>
 
       {/* ── User card ── */}
-      <div className="mx-3 mb-5 rounded-2xl border border-white/10 bg-white/[0.04] p-3 backdrop-blur-sm">
+      <div className="mx-3 mb-5 rounded-lg border border-white/10 bg-white/[0.05] p-3">
         <div className="flex items-center gap-2.5">
           <PprAvatar
             name={pprUser.employeeName}
@@ -100,7 +100,7 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
               {isAdmin && <ShieldCheck className="h-2.5 w-2.5 text-amber-400" />}
               <p className={cn(
                 'text-[10px] font-medium',
-                isAdmin ? 'text-amber-300' : 'text-indigo-300',
+                isAdmin ? 'text-amber-300' : 'text-teal-300',
               )}>
                 {isAdmin ? 'Administrador' : 'Coordinador'}
               </p>
@@ -123,9 +123,9 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
             onClick={onCloseMobile}
             className={({ isActive }) =>
               cn(
-                'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all',
+                'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-medium transition',
                 isActive
-                  ? 'bg-gradient-to-r from-indigo-500/20 to-indigo-500/5 text-indigo-200 shadow-sm shadow-indigo-500/10'
+                  ? 'bg-white text-slate-950 shadow-sm'
                   : 'text-slate-300 hover:bg-white/[0.06] hover:text-white',
               )
             }
@@ -134,12 +134,12 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
               <>
                 {/* Active indicator bar */}
                 {isActive && (
-                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-indigo-400" />
+                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-teal-500" />
                 )}
                 <item.icon
                   className={cn(
-                    'h-4 w-4 shrink-0 transition-transform group-hover:scale-110',
-                    isActive ? 'text-indigo-300' : 'text-slate-400',
+                    'h-4 w-4 shrink-0 transition',
+                    isActive ? 'text-teal-700' : 'text-slate-400',
                   )}
                 />
                 <span className="flex-1">{item.label}</span>
@@ -156,7 +156,7 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
               <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-amber-300/80">
                 Administración
               </p>
-              <div className="h-px flex-1 bg-gradient-to-r from-amber-500/30 to-transparent" />
+              <div className="h-px flex-1 bg-amber-500/20" />
             </div>
             {ADMIN_ITEMS.map((item) => (
               <NavLink
@@ -165,9 +165,9 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
                 onClick={onCloseMobile}
                 className={({ isActive }) =>
                   cn(
-                    'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all',
+                    'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-medium transition',
                     isActive
-                      ? 'bg-gradient-to-r from-amber-500/20 to-amber-500/5 text-amber-300 shadow-sm shadow-amber-500/10'
+                      ? 'bg-amber-400/15 text-amber-200 ring-1 ring-inset ring-amber-300/20'
                       : 'text-slate-300 hover:bg-white/[0.06] hover:text-white',
                   )
                 }
@@ -179,7 +179,7 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
                     )}
                     <item.icon
                       className={cn(
-                        'h-4 w-4 shrink-0 transition-transform group-hover:scale-110',
+                        'h-4 w-4 shrink-0 transition',
                         isActive ? 'text-amber-400' : 'text-slate-400',
                       )}
                     />
@@ -193,20 +193,20 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
       </nav>
 
       {/* ── Footer actions ── */}
-      <div className="border-t border-white/5 p-2 space-y-0.5">
+      <div className="space-y-0.5 border-t border-white/5 p-2">
         <a
           href="/app"
           target="_self"
-          className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
+          className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-medium text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
         >
-          <ExternalLink className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          <ExternalLink className="h-4 w-4 shrink-0" />
           <span>Volver al Reporteador</span>
         </a>
         <button
           onClick={handleLogout}
-          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-400 transition hover:bg-rose-500/10 hover:text-rose-300"
+          className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-medium text-slate-400 transition hover:bg-rose-500/10 hover:text-rose-300"
         >
-          <LogOut className="h-4 w-4 shrink-0 transition-transform group-hover:-translate-x-0.5" />
+          <LogOut className="h-4 w-4 shrink-0" />
           <span>Cerrar sesión</span>
         </button>
         {/* Brand line */}
@@ -222,7 +222,7 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden w-60 shrink-0 lg:block">{sidebarContent}</aside>
+      <aside className="hidden w-64 shrink-0 lg:block">{sidebarContent}</aside>
 
       {/* Mobile overlay */}
       {mobileOpen && (
@@ -231,7 +231,7 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
             className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
             onClick={onCloseMobile}
           />
-          <aside className="fixed inset-y-0 left-0 z-50 w-60 lg:hidden animate-ppr-slide">
+          <aside className="fixed inset-y-0 left-0 z-50 w-72 animate-ppr-slide lg:hidden">
             {sidebarContent}
           </aside>
         </>

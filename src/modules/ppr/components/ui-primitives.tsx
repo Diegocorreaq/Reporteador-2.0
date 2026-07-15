@@ -29,9 +29,9 @@ export function PprCard({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-slate-200 bg-white transition-all',
+        'rounded-lg border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]',
         padCls,
-        hoverable && 'hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5',
+        hoverable && 'transition hover:border-teal-300 hover:shadow-[0_8px_24px_rgba(15,23,42,0.08)]',
         className,
       )}
     >
@@ -69,17 +69,17 @@ export function PprPill({
   size?: 'sm' | 'md'
 }) {
   const tones: Record<PillTone, string> = {
-    indigo:  'bg-indigo-100 text-indigo-700 border-indigo-200',
-    emerald: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    amber:   'bg-amber-100 text-amber-700 border-amber-200',
-    rose:    'bg-rose-100 text-rose-700 border-rose-200',
-    sky:     'bg-sky-100 text-sky-700 border-sky-200',
-    slate:   'bg-slate-100 text-slate-600 border-slate-200',
-    navy:    'bg-[#0f172a] text-white border-[#0f172a]',
+    indigo:  'bg-blue-50 text-blue-700 ring-blue-200',
+    emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+    amber:   'bg-amber-50 text-amber-800 ring-amber-200',
+    rose:    'bg-rose-50 text-rose-700 ring-rose-200',
+    sky:     'bg-cyan-50 text-cyan-700 ring-cyan-200',
+    slate:   'bg-slate-100 text-slate-600 ring-slate-200',
+    navy:    'bg-slate-900 text-white ring-slate-900',
     // Aliases
-    green:   'bg-indigo-100 text-indigo-700 border-indigo-200',
-    red:     'bg-rose-100 text-rose-700 border-rose-200',
-    blue:    'bg-sky-100 text-sky-700 border-sky-200',
+    green:   'bg-emerald-50 text-emerald-700 ring-emerald-200',
+    red:     'bg-rose-50 text-rose-700 ring-rose-200',
+    blue:    'bg-cyan-50 text-cyan-700 ring-cyan-200',
   }
   const sizeCls = size === 'md'
     ? 'px-2.5 py-1 text-[11px]'
@@ -87,7 +87,7 @@ export function PprPill({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full border font-semibold',
+        'inline-flex items-center gap-1 rounded-md font-semibold ring-1 ring-inset',
         tones[tone],
         sizeCls,
         className,
@@ -120,15 +120,15 @@ export function PprProgressBar({
   const heightCls = { sm: 'h-1', md: 'h-1.5', lg: 'h-2.5' }[size]
   const barColor =
     pct >= 100 ? 'bg-emerald-500'
-    : pct >= 80 ? 'bg-amber-500'
-    : pct >= 60 ? 'bg-amber-400'
+    : pct >= 80 ? 'bg-teal-500'
+    : pct >= 60 ? 'bg-amber-500'
     : 'bg-rose-500'
   return (
     <div className={cn('w-full', className)}>
-      <div className={cn('w-full overflow-hidden rounded-full bg-slate-100', heightCls)}>
+      <div className={cn('w-full overflow-hidden rounded bg-slate-100 ring-1 ring-inset ring-slate-200/70', heightCls)}>
         <div
           className={cn(
-            'h-full rounded-full',
+            'h-full rounded',
             barColor,
             animated && 'transition-all duration-500 ease-out',
           )}
@@ -162,17 +162,17 @@ export function PprEmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[#cbd5e1] bg-white py-12 px-6 text-center',
+        'flex flex-col items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-white px-6 py-12 text-center',
         className,
       )}
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
-        <Icon className="h-6 w-6 text-slate-400" />
+      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100">
+        <Icon className="h-5 w-5 text-slate-400" />
       </div>
       <div className="space-y-1">
-        <p className="text-sm font-semibold text-[#0c2340]">{title}</p>
+        <p className="text-sm font-semibold text-slate-900">{title}</p>
         {description && (
-          <p className="mx-auto max-w-sm text-xs text-slate-500">{description}</p>
+          <p className="mx-auto max-w-sm text-xs leading-5 text-slate-500">{description}</p>
         )}
       </div>
       {action && <div className="mt-2">{action}</div>}
@@ -183,7 +183,7 @@ export function PprEmptyState({
 // ─── Loading State ────────────────────────────────────────────────────────────
 
 export function PprLoading({
-  label = 'Cargando…',
+  label = 'Cargando...',
   className,
 }: {
   label?: string
@@ -196,8 +196,8 @@ export function PprLoading({
         className,
       )}
     >
-      <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
-      <p className="text-xs text-slate-400">{label}</p>
+      <Loader2 className="h-5 w-5 animate-spin text-teal-600" />
+      <p className="text-xs text-slate-500">{label}</p>
     </div>
   )
 }
@@ -208,7 +208,7 @@ export function PprSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'animate-pulse rounded-md bg-gradient-to-r from-slate-100 via-slate-200 to-slate-100 bg-[length:200%_100%]',
+        'animate-pulse rounded bg-gradient-to-r from-slate-100 via-slate-200 to-slate-100 bg-[length:200%_100%]',
         className,
       )}
       style={{ animation: 'ppr-shimmer 1.4s ease-in-out infinite' }}
@@ -218,9 +218,9 @@ export function PprSkeleton({ className }: { className?: string }) {
 
 export function PprSkeletonCard() {
   return (
-    <div className="rounded-2xl border border-[#e2e8f0] bg-white p-5 space-y-3">
+    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex items-center gap-3">
-        <PprSkeleton className="h-10 w-10 rounded-xl" />
+        <PprSkeleton className="h-9 w-9 rounded-lg" />
         <div className="flex-1 space-y-2">
           <PprSkeleton className="h-3 w-2/3" />
           <PprSkeleton className="h-2 w-1/3" />
@@ -251,19 +251,24 @@ export function PprSectionHeader({
   className?: string
 }) {
   return (
-    <div className={cn('flex flex-wrap items-end justify-between gap-3', className)}>
-      <div className="space-y-1">
+    <div
+      className={cn(
+        'flex flex-col gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:flex-row sm:items-end sm:justify-between',
+        className,
+      )}
+    >
+      <div className="min-w-0 space-y-1">
         {eyebrow && (
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-700">
             {eyebrow}
           </p>
         )}
-        <h1 className="text-xl font-bold text-[#0c2340]">{title}</h1>
+        <h1 className="text-lg font-bold leading-tight text-slate-950">{title}</h1>
         {description && (
-          <p className="text-xs text-slate-500">{description}</p>
+          <p className="text-xs leading-5 text-slate-500">{description}</p>
         )}
       </div>
-      {right && <div className="flex flex-wrap items-center gap-2">{right}</div>}
+      {right && <div className="flex flex-wrap items-center gap-2 sm:justify-end">{right}</div>}
     </div>
   )
 }
@@ -284,13 +289,13 @@ export function PprAlert({
   icon?: React.ElementType
 }) {
   const tones = {
-    info:    'border-sky-200 bg-sky-50 text-sky-800',
+    info:    'border-cyan-200 bg-cyan-50 text-cyan-800',
     warning: 'border-amber-200 bg-amber-50 text-amber-800',
     error:   'border-rose-200 bg-rose-50 text-rose-700',
     success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
   }
   const iconCls = {
-    info:    'text-sky-500',
+    info:    'text-cyan-600',
     warning: 'text-amber-500',
     error:   'text-rose-500',
     success: 'text-emerald-500',
@@ -298,14 +303,14 @@ export function PprAlert({
   return (
     <div
       className={cn(
-        'flex items-start gap-3 rounded-2xl border px-4 py-3',
+        'flex items-start gap-3 rounded-lg border px-4 py-3',
         tones[tone],
       )}
     >
       {Icon && (
         <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', iconCls[tone])} />
       )}
-      <div className="flex-1 text-xs">
+      <div className="flex-1 text-xs leading-5">
         {title && <p className="font-semibold">{title}</p>}
         {children}
       </div>
@@ -343,18 +348,18 @@ export function PprAvatar({
   const sizeCls = {
     sm: 'h-7 w-7 text-[10px]',
     md: 'h-9 w-9 text-xs',
-    lg: 'h-12 w-12 text-sm',
+    lg: 'h-11 w-11 text-sm',
   }[size]
   const toneCls = {
-    indigo: 'bg-gradient-to-br from-indigo-500 to-indigo-700 text-white',
-    amber:  'bg-gradient-to-br from-amber-400 to-amber-600 text-white',
-    navy:   'bg-gradient-to-br from-slate-700 to-slate-900 text-white',
-    green:  'bg-gradient-to-br from-indigo-500 to-indigo-700 text-white', // alias
+    indigo: 'bg-blue-700 text-white',
+    amber:  'bg-amber-600 text-white',
+    navy:   'bg-slate-900 text-white',
+    green:  'bg-teal-700 text-white',
   }[tone]
   return (
     <div
       className={cn(
-        'flex shrink-0 items-center justify-center rounded-xl font-bold shadow-sm',
+        'flex shrink-0 items-center justify-center rounded-lg font-bold',
         sizeCls,
         toneCls,
         className,
@@ -369,21 +374,21 @@ export function PprAvatar({
 
 export function pctTone(pct: number): PillTone {
   if (pct >= 100) return 'emerald'
-  if (pct >= 80)  return 'amber'
+  if (pct >= 80)  return 'sky'
   if (pct >= 60)  return 'amber'
   return 'rose'
 }
 
 export function pctTextColor(pct: number) {
-  if (pct >= 100) return 'text-emerald-600'
-  if (pct >= 80)  return 'text-amber-600'
-  if (pct >= 60)  return 'text-amber-600'
-  return 'text-rose-600'
+  if (pct >= 100) return 'text-emerald-700'
+  if (pct >= 80)  return 'text-teal-700'
+  if (pct >= 60)  return 'text-amber-700'
+  return 'text-rose-700'
 }
 
 export function pctBarColor(pct: number) {
   if (pct >= 100) return 'bg-emerald-500'
-  if (pct >= 80)  return 'bg-amber-500'
-  if (pct >= 60)  return 'bg-amber-400'
+  if (pct >= 80)  return 'bg-teal-500'
+  if (pct >= 60)  return 'bg-amber-500'
   return 'bg-rose-500'
 }

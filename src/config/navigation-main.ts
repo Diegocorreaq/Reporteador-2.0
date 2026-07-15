@@ -639,6 +639,14 @@ export const mainSections: NavigationSection[] = [
 
 export const mainQuickLinks: WorkspaceQuickLink[] = [
   {
+    key: 'portal-ppr',
+    label: 'Portal PPR',
+    to: '/ppr',
+    description: 'Acceso directo al portal de validacion PPR.',
+    icon: ClipboardList,
+    access: { employeeIds: [5713] },
+  },
+  {
     key: 'manuales',
     label: 'Ver manuales y tutoriales',
     href: 'https://recursos.heves.gob.pe/',

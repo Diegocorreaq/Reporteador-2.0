@@ -115,6 +115,8 @@ function resolveErrorMessage(error: unknown, fallback: string) {
   return fallback
 }
 
+type ActivityView = 'all' | 'pending' | 'filled' | 'validated'
+
 function ActividadRow({ actividad, disabled, onChange, onValidate, validating }: ActividadRowProps) {
   const [val, setVal] = useState(actividad.value != null ? String(actividad.value) : '')
   const [notes, setNotes] = useState(actividad.notes ?? '')
@@ -141,14 +143,14 @@ function ActividadRow({ actividad, disabled, onChange, onValidate, validating }:
   return (
     <tr className={cn(
       'border-b border-slate-100 transition-colors last:border-0',
-      isFilled ? 'bg-indigo-50/30 hover:bg-indigo-50/50' : 'hover:bg-slate-50',
+      isFilled ? 'bg-teal-50/30 hover:bg-teal-50/50' : 'hover:bg-slate-50',
     )}>
       <td className="py-3 pl-4 pr-2 text-xs text-slate-900">
         <div className="flex items-start gap-2">
           {isFilled && <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500" />}
           <div className="min-w-0">
             {actividad.code && (
-              <span className="mr-1.5 rounded bg-indigo-50 px-1.5 py-0.5 font-mono text-[10px] text-indigo-700">
+              <span className="mr-1.5 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
                 {actividad.code}
               </span>
             )}
@@ -171,8 +173,8 @@ function ActividadRow({ actividad, disabled, onChange, onValidate, validating }:
           className={cn(
             'w-24 rounded-lg border px-2 py-1.5 text-right text-xs tabular-nums transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-50',
             isFilled
-              ? 'border-indigo-300 bg-indigo-50/40 focus:border-indigo-500 focus:ring-indigo-500/20'
-              : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500/20',
+              ? 'border-teal-300 bg-teal-50/40 focus:border-teal-600 focus:ring-teal-600/15'
+              : 'border-slate-300 focus:border-teal-600 focus:ring-teal-600/15',
           )}
           placeholder="0"
         />
@@ -183,7 +185,7 @@ function ActividadRow({ actividad, disabled, onChange, onValidate, validating }:
           value={notes}
           disabled={disabled}
           onChange={(e) => handleChange(val, e.target.value)}
-          className="w-44 rounded-lg border border-slate-300 px-2 py-1.5 text-xs transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:bg-slate-50"
+          className="w-44 rounded-lg border border-slate-300 px-2 py-1.5 text-xs transition focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/15 disabled:cursor-not-allowed disabled:bg-slate-50"
           placeholder="Observaciones…"
         />
       </td>
@@ -207,7 +209,7 @@ function ActividadRow({ actividad, disabled, onChange, onValidate, validating }:
             'inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition',
             actividad.validationStatus === 'validated'
               ? 'bg-emerald-50 text-emerald-700'
-              : 'bg-indigo-600 text-white hover:bg-indigo-700',
+              : 'bg-teal-700 text-white hover:bg-teal-800',
             (!canValidateActivity(actividad, disabled) || validating) && 'cursor-not-allowed opacity-45',
           )}
         >
@@ -245,16 +247,16 @@ function ActividadCard({ actividad, disabled, onChange, onValidate, validating }
 
   return (
     <div className={cn(
-      'rounded-2xl border bg-white p-4 transition-all',
+      'rounded-lg border bg-white p-4 transition',
       isFilled
-        ? 'border-indigo-200 shadow-sm shadow-indigo-100/60'
+        ? 'border-teal-200 shadow-sm shadow-teal-100/60'
         : 'border-slate-200',
     )}>
       <div className="mb-3 flex items-start gap-2">
         {isFilled && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />}
         <div className="min-w-0 flex-1">
           {actividad.code && (
-            <span className="mr-1.5 inline-block rounded bg-indigo-50 px-1.5 py-0.5 font-mono text-[10px] text-indigo-700">
+            <span className="mr-1.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-700">
               {actividad.code}
             </span>
           )}
@@ -285,8 +287,8 @@ function ActividadCard({ actividad, disabled, onChange, onValidate, validating }
             className={cn(
               'w-full rounded-lg border px-2 py-2 text-right text-sm tabular-nums transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-50',
               isFilled
-                ? 'border-indigo-300 bg-indigo-50/40 focus:border-indigo-500 focus:ring-indigo-500/20'
-                : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500/20',
+                ? 'border-teal-300 bg-teal-50/40 focus:border-teal-600 focus:ring-teal-600/15'
+                : 'border-slate-300 focus:border-teal-600 focus:ring-teal-600/15',
             )}
             placeholder="0"
           />
@@ -300,7 +302,7 @@ function ActividadCard({ actividad, disabled, onChange, onValidate, validating }
             value={notes}
             disabled={disabled}
             onChange={(e) => handleChange(val, e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-2 py-2 text-xs transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:bg-slate-50"
+            className="w-full rounded-lg border border-slate-300 px-2 py-2 text-xs transition focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/15 disabled:cursor-not-allowed disabled:bg-slate-50"
             placeholder="—"
           />
         </label>
@@ -317,7 +319,7 @@ function ActividadCard({ actividad, disabled, onChange, onValidate, validating }
             'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition',
             actividad.validationStatus === 'validated'
               ? 'bg-emerald-50 text-emerald-700'
-              : 'bg-indigo-600 text-white hover:bg-indigo-700',
+              : 'bg-teal-700 text-white hover:bg-teal-800',
             (!canValidateActivity(actividad, disabled) || validating) && 'cursor-not-allowed opacity-45',
           )}
         >
@@ -359,6 +361,7 @@ export function PprActividadesPage() {
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false)
   const [confirmSignOpen, setConfirmSignOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [activityView, setActivityView] = useState<ActivityView>('all')
 
   async function refreshValidationSummary(periodId = periodo?.id, selectedProgramId = programaId) {
     if (!periodId || !selectedProgramId) return
@@ -564,6 +567,13 @@ export function PprActividadesPage() {
 
   const validadasActuales = actividades.filter((a) => a.validationStatus === 'validated').length
   const conValorActuales = actividades.filter((a) => a.value != null).length
+  const pendientesActuales = actividades.filter((a) => a.value == null).length
+  const visibleActividades = actividades.filter((a) => {
+    if (activityView === 'pending') return a.value == null
+    if (activityView === 'filled') return a.value != null && a.validationStatus !== 'validated'
+    if (activityView === 'validated') return a.validationStatus === 'validated'
+    return true
+  })
   const total = validationSummary?.total ?? actividades.length
   const completadas = validationSummary?.validated ?? validadasActuales
   const conValor = validationSummary?.withValue ?? conValorActuales
@@ -578,7 +588,13 @@ export function PprActividadesPage() {
   const programaActualGroups = programaActual?.activityScope?.length
     ? programaActual.activityScope
     : programaActual?.activityGroups ?? []
-  const actividadGroups = groupActividades(actividades)
+  const actividadGroups = groupActividades(visibleActividades)
+  const activityViewOptions: Array<{ value: ActivityView; label: string; count: number }> = [
+    { value: 'all', label: 'Todas', count: actividades.length },
+    { value: 'pending', label: 'Pendientes', count: pendientesActuales },
+    { value: 'filled', label: 'Con valor', count: Math.max(conValorActuales - validadasActuales, 0) },
+    { value: 'validated', label: 'Validadas', count: validadasActuales },
+  ]
 
   return (
     <div className="space-y-5">
@@ -586,7 +602,7 @@ export function PprActividadesPage() {
       {periodoFromNav && (
         <Link
           to="/ppr/periodos"
-          className="inline-flex items-center gap-1.5 text-xs text-slate-400 transition hover:text-indigo-600"
+          className="inline-flex items-center gap-1.5 text-xs text-slate-400 transition hover:text-teal-700"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Volver a Períodos
@@ -595,7 +611,7 @@ export function PprActividadesPage() {
       {!periodoFromNav && programaIdFromNav && (
         <Link
           to="/ppr/programas"
-          className="inline-flex items-center gap-1.5 text-xs text-slate-400 transition hover:text-indigo-600"
+          className="inline-flex items-center gap-1.5 text-xs text-slate-400 transition hover:text-teal-700"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Volver a Programas
@@ -630,7 +646,7 @@ export function PprActividadesPage() {
                 <button
                   onClick={handleDownloadSignedPdf}
                   disabled={downloadingPdf}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {downloadingPdf
                     ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -645,10 +661,10 @@ export function PprActividadesPage() {
               disabled={!signEnabled || signing || loadingDraft}
               title={!signEnabled ? 'Valide todas las actividades para preparar el documento' : 'Revisar documento'}
               className={cn(
-                'group flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-md transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none',
+                'flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none',
                 canForceTestSign
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-600 shadow-amber-500/30 hover:shadow-amber-500/40'
-                  : 'bg-gradient-to-r from-indigo-500 to-indigo-700 shadow-indigo-500/30 hover:shadow-indigo-500/40',
+                  ? 'bg-amber-600 hover:bg-amber-700'
+                  : 'bg-teal-700 hover:bg-teal-800',
               )}
             >
               {loadingDraft
@@ -669,9 +685,9 @@ export function PprActividadesPage() {
 
       {loadingInit ? (
         <div className="space-y-4">
-          <PprSkeleton className="h-10 w-full rounded-2xl" />
-          <PprSkeleton className="h-16 w-full rounded-2xl" />
-          <PprSkeleton className="h-96 w-full rounded-2xl" />
+          <PprSkeleton className="h-10 w-full rounded-lg" />
+          <PprSkeleton className="h-16 w-full rounded-lg" />
+          <PprSkeleton className="h-96 w-full rounded-lg" />
         </div>
       ) : (
         <>
@@ -687,10 +703,10 @@ export function PprActividadesPage() {
                     key={p.id}
                     onClick={() => setProgramaId(p.id)}
                     className={cn(
-                      'rounded-xl border px-3 py-1.5 text-xs font-medium transition',
+                      'rounded-lg border px-3 py-1.5 text-xs font-medium transition',
                       programaId === p.id
-                        ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-500/30'
-                        : 'border-slate-200 bg-white text-slate-900 hover:border-indigo-300 hover:bg-indigo-50/30',
+                        ? 'border-teal-700 bg-teal-700 text-white shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-900 hover:border-teal-300 hover:bg-teal-50',
                     )}
                   >
                     <span>
@@ -702,7 +718,7 @@ export function PprActividadesPage() {
                         key={group.code}
                         className={cn(
                           'ml-1 rounded px-1.5 py-0.5 text-[10px] font-semibold',
-                          programaId === p.id ? 'bg-white/20 text-white' : 'bg-sky-50 text-sky-700',
+                          programaId === p.id ? 'bg-white/20 text-white' : 'bg-cyan-50 text-cyan-700',
                         )}
                       >
                         {group.name}
@@ -725,7 +741,7 @@ export function PprActividadesPage() {
 
           {/* Progress summary */}
           {total > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+            <div className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
               <div className="mb-2 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
@@ -740,13 +756,13 @@ export function PprActividadesPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {savedFlash && (
-                    <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-600 animate-ppr-fade">
+                    <div className="flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-600 animate-ppr-fade">
                       <CheckCircle2 className="h-3 w-3" />
                       Guardado
                     </div>
                   )}
                   {saving && (
-                    <div className="flex items-center gap-1 rounded-full bg-sky-50 px-2 py-1 text-[10px] font-semibold text-sky-600">
+                    <div className="flex items-center gap-1 rounded-md bg-cyan-50 px-2 py-1 text-[10px] font-semibold text-cyan-700">
                       <Save className="h-3 w-3 animate-pulse" />
                       Guardando…
                     </div>
@@ -757,13 +773,33 @@ export function PprActividadesPage() {
             </div>
           )}
 
+          {actividades.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 rounded-lg border border-slate-200 bg-white p-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+              {activityViewOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setActivityView(option.value)}
+                  className={cn(
+                    'rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition',
+                    activityView === option.value
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-teal-50 hover:text-teal-700',
+                  )}
+                >
+                  {option.label}
+                  <span className="ml-1 opacity-70">{option.count}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Activities — table on lg+, cards on mobile */}
           {programaId !== null && (
             <>
               {loadingActs ? (
                 <div className="space-y-3">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <PprSkeleton key={i} className="h-16 w-full rounded-2xl" />
+                    <PprSkeleton key={i} className="h-16 w-full rounded-lg" />
                   ))}
                 </div>
               ) : actividades.length === 0 ? (
@@ -772,6 +808,12 @@ export function PprActividadesPage() {
                   title="Sin actividades registradas"
                   description="No hay actividades para este programa y período."
                 />
+              ) : visibleActividades.length === 0 ? (
+                <PprEmptyState
+                  icon={ClipboardCheck}
+                  title="Sin actividades en este filtro"
+                  description="Cambia el filtro para revisar otras actividades del programa."
+                />
               ) : (
                 <>
                   {/* Mobile cards */}
@@ -779,9 +821,9 @@ export function PprActividadesPage() {
                     {actividadGroups.map((group) => (
                       <div key={group.key} className="space-y-2.5">
                         {group.name && (
-                          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                             <span className="text-xs font-bold text-slate-700">{group.name}</span>
-                            <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                            <span className="rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">
                               {group.actividades.length}
                             </span>
                           </div>
@@ -801,7 +843,7 @@ export function PprActividadesPage() {
                   </div>
 
                   {/* Desktop table */}
-                  <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white lg:block">
+                  <div className="hidden overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] lg:block">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
@@ -824,7 +866,7 @@ export function PprActividadesPage() {
                                   <td colSpan={8} className="px-4 py-2">
                                     <div className="flex items-center justify-between">
                                       <span className="text-xs font-bold text-slate-700">{group.name}</span>
-                                      <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                                      <span className="rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">
                                         {group.actividades.length} actividades
                                       </span>
                                     </div>
@@ -869,7 +911,7 @@ export function PprActividadesPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
             {draftPdfUrl ? (
               <iframe
                 src={draftPdfUrl}

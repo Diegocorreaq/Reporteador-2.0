@@ -102,7 +102,7 @@ export function PprAdminCargaPage() {
     return (
       <div className="flex flex-col items-center gap-3 py-20 text-center">
         <ShieldAlert className="h-10 w-10 text-slate-300" />
-        <p className="text-sm font-semibold text-[#0c2340]">Acceso restringido</p>
+        <p className="text-sm font-semibold text-slate-950">Acceso restringido</p>
         <p className="max-w-xs text-xs text-slate-400">
           Esta sección es exclusiva para administradores del Portal PPR.
         </p>
@@ -133,12 +133,12 @@ export function PprAdminCargaPage() {
 
       {loading ? (
         <div className="grid gap-4 lg:grid-cols-[18rem_1fr]">
-          <PprSkeleton className="h-64 rounded-2xl" />
-          <PprSkeleton className="h-64 rounded-2xl" />
+          <PprSkeleton className="h-64 rounded-lg" />
+          <PprSkeleton className="h-64 rounded-lg" />
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[18rem_1fr]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
               Parámetros
             </p>
@@ -149,7 +149,7 @@ export function PprAdminCargaPage() {
                 <select
                   value={programId ?? ''}
                   onChange={(event) => setProgramId(Number(event.target.value) || null)}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-[#0c2340] outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-950 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
                 >
                   {programas.map((programa) => (
                     <option key={programa.id} value={programa.id}>
@@ -164,7 +164,7 @@ export function PprAdminCargaPage() {
                 <select
                   value={sourceId}
                   onChange={(event) => setSourceId(event.target.value)}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-[#0c2340] outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-950 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
                 >
                   {compatibleSources.map((source) => (
                     <option key={source.id} value={source.id}>
@@ -175,7 +175,7 @@ export function PprAdminCargaPage() {
               </label>
 
               {!selectedSource && selectedProgram && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
                   <p className="text-[11px] font-semibold text-amber-800">
                     Este programa aún no tiene fuente automática registrada.
                   </p>
@@ -186,7 +186,7 @@ export function PprAdminCargaPage() {
               )}
 
               {selectedSource && (
-                <div className="rounded-xl bg-slate-50 px-3 py-2">
+                <div className="rounded-lg bg-slate-50 px-3 py-2">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                     Procedimiento
                   </p>
@@ -201,9 +201,9 @@ export function PprAdminCargaPage() {
                 onClick={handleRun}
                 disabled={!canRun}
                 className={cn(
-                  'flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-semibold text-white transition',
+                  'flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold text-white transition',
                   canRun
-                    ? 'bg-amber-500 hover:bg-amber-600'
+                    ? 'bg-teal-700 hover:bg-teal-800'
                     : 'cursor-not-allowed bg-slate-300',
                 )}
               >
@@ -213,7 +213,7 @@ export function PprAdminCargaPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             {!periodo?.isOpen ? (
               <PprEmptyState
                 icon={AlertCircle}
@@ -222,11 +222,11 @@ export function PprAdminCargaPage() {
               />
             ) : !result ? (
               <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50">
-                  <Database className="h-7 w-7 text-amber-500" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-teal-50">
+                  <Database className="h-7 w-7 text-teal-700" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-[#0c2340]">Lista para ejecutar</p>
+                  <p className="text-sm font-semibold text-slate-950">Lista para ejecutar</p>
                   <p className="mt-1 max-w-md text-xs text-slate-500">
                     La carga sobrescribirá los valores del período activo para el programa seleccionado y los dejará pendientes de validación.
                   </p>
@@ -238,7 +238,7 @@ export function PprAdminCargaPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                      <p className="text-sm font-bold text-[#0c2340]">Carga completada</p>
+                      <p className="text-sm font-bold text-slate-950">Carga completada</p>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
                       {result.periodLabel} · {result.sourceLabel}
@@ -260,7 +260,7 @@ export function PprAdminCargaPage() {
                     { label: 'Actualizadas', value: result.rowsUpdated, tone: 'text-amber-600' },
                     { label: 'No cruzadas', value: result.rowsUnmatched, tone: 'text-rose-600' },
                   ].map((item) => (
-                    <div key={item.label} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div key={item.label} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                       <p className={cn('text-2xl font-bold tabular-nums', item.tone)}>{item.value}</p>
                       <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                         {item.label}
@@ -270,9 +270,9 @@ export function PprAdminCargaPage() {
                 </div>
 
                 <div className="grid gap-3 lg:grid-cols-2">
-                  <div className="rounded-xl border border-slate-200">
+                  <div className="rounded-lg border border-slate-200">
                     <div className="border-b border-slate-200 px-3 py-2">
-                      <p className="text-xs font-semibold text-[#0c2340]">Filas del SP no cruzadas</p>
+                      <p className="text-xs font-semibold text-slate-950">Filas del SP no cruzadas</p>
                     </div>
                     <div className="max-h-48 overflow-y-auto p-3">
                       {result.unmatchedSourceRows.length === 0 ? (
@@ -290,9 +290,9 @@ export function PprAdminCargaPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200">
+                  <div className="rounded-lg border border-slate-200">
                     <div className="border-b border-slate-200 px-3 py-2">
-                      <p className="text-xs font-semibold text-[#0c2340]">Actividades manuales o sin fuente</p>
+                      <p className="text-xs font-semibold text-slate-950">Actividades manuales o sin fuente</p>
                     </div>
                     <div className="max-h-48 overflow-y-auto p-3">
                       {result.manualActivities.length === 0 ? (

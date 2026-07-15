@@ -60,36 +60,36 @@ function MonthCard({ month, year, periodo, currentMonth, currentYear, onSelect }
   return (
     <div
       className={cn(
-        'group relative overflow-hidden rounded-2xl border bg-white p-4 transition-all',
+        'group relative overflow-hidden rounded-lg border bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition',
         isFuture
           ? 'border-dashed border-slate-200 opacity-50'
           : isCurrent
-            ? 'border-sky-300 shadow-md shadow-sky-100/60 hover:-translate-y-0.5'
+            ? 'border-cyan-300'
             : periodo?.isSigned
-              ? 'border-emerald-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-emerald-100/60'
-              : 'border-slate-200 hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md',
+              ? 'border-emerald-200'
+              : 'border-slate-200 hover:border-cyan-300',
       )}
     >
       {/* Top accent bar */}
       {isCurrent && (
-        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-300 via-sky-500 to-sky-300" />
+        <div className="absolute inset-x-0 top-0 h-1 bg-cyan-500" />
       )}
       {periodo?.isSigned && !isCurrent && (
-        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-300 via-emerald-500 to-emerald-300" />
+        <div className="absolute inset-x-0 top-0 h-1 bg-emerald-500" />
       )}
 
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <div className={cn(
-            'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-110',
+            'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
             isCurrent
-              ? 'bg-gradient-to-br from-sky-100 to-sky-200'
+              ? 'bg-cyan-50'
               : periodo?.isSigned
-                ? 'bg-gradient-to-br from-emerald-100 to-emerald-200'
+                ? 'bg-emerald-50'
                 : 'bg-slate-100',
           )}>
             {isCurrent ? (
-              <Clock className="h-4 w-4 text-sky-600" />
+              <Clock className="h-4 w-4 text-cyan-700" />
             ) : periodo?.isSigned ? (
               <CheckCircle2 className="h-4 w-4 text-emerald-600" />
             ) : (
@@ -99,11 +99,8 @@ function MonthCard({ month, year, periodo, currentMonth, currentYear, onSelect }
           <div>
             <p className="text-sm font-bold text-slate-900">{MONTHS_ES[month - 1]}</p>
             {isCurrent && (
-              <p className="flex items-center gap-1 text-[10px] font-semibold text-sky-600">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-sky-500" />
-                </span>
+              <p className="flex items-center gap-1 text-[10px] font-semibold text-cyan-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-cyan-500" />
                 Mes actual
               </p>
             )}
@@ -132,10 +129,10 @@ function MonthCard({ month, year, periodo, currentMonth, currentYear, onSelect }
         <button
           onClick={() => onSelect(periodo)}
           className={cn(
-            'mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border py-2 text-[11px] font-semibold transition',
+            'mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-[11px] font-semibold transition',
             periodo.isSigned
               ? 'border-emerald-200 bg-emerald-50/40 text-emerald-700 hover:bg-emerald-100/50'
-              : 'border-slate-200 text-slate-900 hover:border-sky-300 hover:bg-sky-50/40 hover:text-sky-700',
+              : 'border-slate-200 text-slate-900 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700',
           )}
         >
           {periodo.isSigned ? (
@@ -198,7 +195,7 @@ export function PprPeriodosPage() {
         title="Períodos"
         description="Historial mensual de actividades y firmas"
         right={
-          <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-1 py-1 shadow-sm">
+          <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-1 py-1 shadow-sm">
             <button
               onClick={() => setYear((y) => y - 1)}
               className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-900"
@@ -231,13 +228,13 @@ export function PprPeriodosPage() {
       {loading ? (
         <>
           <div className="flex gap-3">
-            <PprSkeleton className="h-20 w-32 rounded-2xl" />
-            <PprSkeleton className="h-20 w-32 rounded-2xl" />
-            <PprSkeleton className="h-20 w-32 rounded-2xl" />
+            <PprSkeleton className="h-20 w-32 rounded-lg" />
+            <PprSkeleton className="h-20 w-32 rounded-lg" />
+            <PprSkeleton className="h-20 w-32 rounded-lg" />
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 12 }).map((_, i) => (
-              <PprSkeleton key={i} className="h-32 w-full rounded-2xl" />
+              <PprSkeleton key={i} className="h-32 w-full rounded-lg" />
             ))}
           </div>
         </>
@@ -246,7 +243,7 @@ export function PprPeriodosPage() {
           {/* Year summary */}
           {totalWithData > 0 && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                   Meses con datos
                 </p>
@@ -255,7 +252,7 @@ export function PprPeriodosPage() {
                 </p>
                 <p className="text-[10px] text-slate-400">de 12 posibles</p>
               </div>
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
                   Meses firmados
                 </p>
@@ -264,18 +261,18 @@ export function PprPeriodosPage() {
                 </p>
                 <p className="text-[10px] text-emerald-600/80">períodos cerrados</p>
               </div>
-              <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+              <div className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-teal-700">
                   Avance del año
                 </p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-indigo-700">
+                <p className="mt-1 text-2xl font-bold tabular-nums text-teal-700">
                   {pctYear != null ? `${pctYear}%` : '—'}
                 </p>
-                <p className="text-[10px] text-indigo-600/80">
+                <p className="text-[10px] text-teal-600/80">
                   {totalCompletadas}/{totalActividades} actividades
                 </p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                   Pendientes
                 </p>

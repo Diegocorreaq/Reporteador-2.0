@@ -2,6 +2,7 @@ import {
   BedDouble,
   BookOpenText,
   CalendarRange,
+  ClipboardList,
   FileDown,
   FileText,
   FlaskConical,
@@ -276,7 +277,14 @@ export const sighSections: NavigationSection[] = [
 ]
 
 export const sighQuickLinks: WorkspaceQuickLink[] = [
-  
+  {
+    key: 'portal-ppr',
+    label: 'Portal PPR',
+    to: '/ppr',
+    description: 'Acceso directo al portal de validacion PPR.',
+    icon: ClipboardList,
+    access: { employeeIds: [5713] },
+  },
   {
     key: 'manuales',
     label: 'Ver manuales y tutoriales',

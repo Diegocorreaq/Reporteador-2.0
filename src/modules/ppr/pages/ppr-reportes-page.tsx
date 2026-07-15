@@ -120,7 +120,7 @@ export function PprReportesPage() {
               <button
                 onClick={handleExport}
                 disabled={exporting}
-                className="group flex items-center gap-1.5 rounded-xl border border-indigo-300 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 shadow-sm transition hover:border-indigo-400 hover:bg-indigo-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                className="group flex items-center gap-1.5 rounded-lg border border-teal-300 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 shadow-sm transition hover:border-teal-400 hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-50"
                 title={`Exportar matriz completa ${year} a Excel`}
               >
                 {exporting
@@ -132,10 +132,10 @@ export function PprReportesPage() {
             )}
 
             {/* Year selector */}
-            <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-1 py-1 shadow-sm">
+            <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-1 py-1 shadow-sm">
               <button
                 onClick={() => setYear((y) => y - 1)}
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600"
+                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-teal-700"
                 aria-label="Año anterior"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -146,7 +146,7 @@ export function PprReportesPage() {
               <button
                 onClick={() => setYear((y) => y + 1)}
                 disabled={year >= now.getFullYear()}
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-30"
+                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-teal-700 disabled:cursor-not-allowed disabled:opacity-30"
                 aria-label="Año siguiente"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -166,10 +166,10 @@ export function PprReportesPage() {
       {loading ? (
         <>
           <div className="flex gap-3">
-            <PprSkeleton className="h-20 w-40 rounded-2xl" />
-            <PprSkeleton className="h-20 w-40 rounded-2xl" />
+            <PprSkeleton className="h-20 w-40 rounded-lg" />
+            <PprSkeleton className="h-20 w-40 rounded-lg" />
           </div>
-          <PprSkeleton className="h-96 w-full rounded-2xl" />
+          <PprSkeleton className="h-96 w-full rounded-lg" />
         </>
       ) : resumen.length === 0 ? (
         <PprEmptyState
@@ -181,7 +181,7 @@ export function PprReportesPage() {
         <>
           {/* Stats bar */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
                 Meses con 100%
               </p>
@@ -192,7 +192,7 @@ export function PprReportesPage() {
                 de {totalCells} con datos
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3">
+            <div className="rounded-lg border border-slate-200 bg-white px-5 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                 Meses firmados
               </p>
@@ -201,19 +201,19 @@ export function PprReportesPage() {
               </p>
               <p className="text-[10px] text-slate-400">períodos cerrados</p>
             </div>
-            <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-5 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+            <div className="rounded-lg border border-teal-200 bg-teal-50 px-5 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-teal-700">
                 Filas de seguimiento
               </p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-indigo-700">
+              <p className="mt-1 text-2xl font-bold tabular-nums text-teal-700">
                 {resumen.length}
               </p>
-              <p className="text-[10px] text-indigo-600/80">programas y grupos</p>
+              <p className="text-[10px] text-teal-600/80">programas y grupos</p>
             </div>
           </div>
 
           {/* Matrix table */}
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="overflow-x-auto ppr-scroll">
               <table className="w-full text-xs">
                 <thead>
@@ -227,7 +227,7 @@ export function PprReportesPage() {
                         className={cn(
                           'w-14 px-1 py-3 text-center text-xs font-semibold',
                           i + 1 === currentMonth && year === currentYear
-                            ? 'bg-sky-100/60 text-sky-700'
+                            ? 'bg-cyan-50 text-cyan-700'
                             : 'text-slate-900',
                         )}
                       >
@@ -240,15 +240,15 @@ export function PprReportesPage() {
                   {resumen.map((prog) => {
                     const mesByMonth = new Map(prog.meses.map((m) => [m.month, m]))
                     return (
-                      <tr key={prog.rowKey ?? prog.programaId} className="border-b border-slate-100 transition-colors last:border-0 hover:bg-indigo-50/20">
+                      <tr key={prog.rowKey ?? prog.programaId} className="border-b border-slate-100 transition-colors last:border-0 hover:bg-teal-50/30">
                         <td className="py-3 pl-4 pr-3">
                           {prog.code && (
-                            <span className="mr-1.5 rounded bg-indigo-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-indigo-700">
+                            <span className="mr-1.5 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-700">
                               {prog.code}
                             </span>
                           )}
                           {prog.activityGroup && (
-                            <span className="mr-1.5 rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                            <span className="mr-1.5 rounded bg-cyan-50 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-700">
                               {prog.activityGroup.name}
                             </span>
                           )}
@@ -264,7 +264,7 @@ export function PprReportesPage() {
                               className={cn(
                                 'px-1 py-3 text-center transition-colors',
                                 bg,
-                                isCurrentCol && 'ring-inset ring-2 ring-sky-300/50',
+                                isCurrentCol && 'ring-inset ring-2 ring-cyan-300/50',
                               )}
                             >
                               <CellContent
@@ -306,7 +306,7 @@ export function PprReportesPage() {
                 <span className="text-[11px] text-slate-600">Firmado</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="h-2.5 w-2.5 rounded ring-2 ring-sky-300" />
+                <div className="h-2.5 w-2.5 rounded ring-2 ring-cyan-300" />
                 <span className="text-[11px] text-slate-600">Mes actual</span>
               </div>
             </div>

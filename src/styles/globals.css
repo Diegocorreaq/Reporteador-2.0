@@ -104,26 +104,52 @@ body {
   50%      { opacity: 0.6; }
 }
 
-.animate-ppr-fade   { animation: ppr-fade-in   0.35s ease-out both; }
-.animate-ppr-slide  { animation: ppr-slide-in  0.4s  ease-out both; }
-.animate-ppr-scale  { animation: ppr-scale-in  0.3s  ease-out both; }
+.animate-ppr-fade   { animation: ppr-fade-in   0.22s ease-out both; }
+.animate-ppr-slide  { animation: ppr-slide-in  0.24s ease-out both; }
+.animate-ppr-scale  { animation: ppr-scale-in  0.2s  ease-out both; }
 .animate-ppr-pulse  { animation: ppr-pulse-soft 2.4s ease-in-out infinite; }
 
 /* Stagger helper for children */
 .ppr-stagger > * {
-  animation: ppr-slide-in 0.35s ease-out both;
+  animation: ppr-slide-in 0.22s ease-out both;
 }
 .ppr-stagger > *:nth-child(1)  { animation-delay: 0ms; }
-.ppr-stagger > *:nth-child(2)  { animation-delay: 40ms; }
-.ppr-stagger > *:nth-child(3)  { animation-delay: 80ms; }
-.ppr-stagger > *:nth-child(4)  { animation-delay: 120ms; }
-.ppr-stagger > *:nth-child(5)  { animation-delay: 160ms; }
-.ppr-stagger > *:nth-child(6)  { animation-delay: 200ms; }
-.ppr-stagger > *:nth-child(7)  { animation-delay: 240ms; }
-.ppr-stagger > *:nth-child(8)  { animation-delay: 280ms; }
-.ppr-stagger > *:nth-child(9)  { animation-delay: 320ms; }
-.ppr-stagger > *:nth-child(10) { animation-delay: 360ms; }
-.ppr-stagger > *:nth-child(n+11) { animation-delay: 400ms; }
+.ppr-stagger > *:nth-child(2)  { animation-delay: 18ms; }
+.ppr-stagger > *:nth-child(3)  { animation-delay: 36ms; }
+.ppr-stagger > *:nth-child(4)  { animation-delay: 54ms; }
+.ppr-stagger > *:nth-child(5)  { animation-delay: 72ms; }
+.ppr-stagger > *:nth-child(6)  { animation-delay: 90ms; }
+.ppr-stagger > *:nth-child(7)  { animation-delay: 108ms; }
+.ppr-stagger > *:nth-child(8)  { animation-delay: 126ms; }
+.ppr-stagger > *:nth-child(9)  { animation-delay: 144ms; }
+.ppr-stagger > *:nth-child(10) { animation-delay: 162ms; }
+.ppr-stagger > *:nth-child(n+11) { animation-delay: 180ms; }
+
+.ppr-portal :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid rgb(13 148 136 / 0.9);
+  outline-offset: 2px;
+}
+
+.ppr-portal table {
+  font-variant-numeric: tabular-nums;
+}
+
+.ppr-portal thead th {
+  white-space: nowrap;
+}
+
+.ppr-portal input,
+.ppr-portal select,
+.ppr-portal textarea {
+  max-width: 100%;
+}
+
+.ppr-table-surface {
+  border-radius: 8px;
+  border: 1px solid rgb(226 232 240);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
 
 /* PPR scrollbars in light surfaces */
 .ppr-scroll {

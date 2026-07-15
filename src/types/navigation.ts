@@ -11,6 +11,7 @@ export type ScreenPattern =
 
 export interface NavigationAccessRule {
   allowedDnis?: readonly string[]
+  employeeIds?: readonly number[]
   permissions?: string[]
   roles?: string[]
   pprRoles?: PprRole[]

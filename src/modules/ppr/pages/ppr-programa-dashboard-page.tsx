@@ -30,7 +30,7 @@ function fmt(n: number | null): string {
 }
 
 function cellBg(value: number | null, isActive: boolean) {
-  if (value == null) return isActive ? 'bg-blue-50' : ''
+  if (value == null) return isActive ? 'bg-cyan-50' : ''
   if (value === 0) return isActive ? 'bg-amber-100' : 'bg-amber-50'
   return isActive ? 'bg-emerald-100' : 'bg-emerald-50'
 }
@@ -62,23 +62,23 @@ function CellModal({ activity, monthData, year, onClose }: CellModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"
+        className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             {activity.code && (
-              <span className="mb-1 inline-block rounded bg-[#e8f0f8] px-1.5 py-0.5 font-mono text-[10px] text-[#3a6fa0]">
+              <span className="mb-1 inline-block rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
                 {activity.code}
               </span>
             )}
             {activity.activityGroup && (
-              <span className="mb-1 ml-1 inline-block rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+              <span className="mb-1 ml-1 inline-block rounded bg-cyan-50 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-700">
                 {activity.activityGroup.name}
               </span>
             )}
-            <p className="text-sm font-bold leading-snug text-[#0c2340]">{activity.name}</p>
+            <p className="text-sm font-bold leading-snug text-slate-950">{activity.name}</p>
           </div>
           <button
             onClick={onClose}
@@ -95,7 +95,7 @@ function CellModal({ activity, monthData, year, onClose }: CellModalProps) {
 
         {/* Stats */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+          <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
             <span className="text-xs text-slate-500">Valor reportado</span>
             <span className={cn('text-sm font-bold', monthData.value == null ? 'text-slate-300' : monthData.value === 0 ? 'text-amber-600' : 'text-emerald-600')}>
               {fmt(monthData.value)} {monthData.value != null ? activity.unit : ''}
@@ -103,32 +103,32 @@ function CellModal({ activity, monthData, year, onClose }: CellModalProps) {
           </div>
 
           {activity.annualGoal != null && (
-            <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+            <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
               <span className="text-xs text-slate-500">Meta anual</span>
-              <span className="text-sm font-semibold text-[#0c2340]">
+              <span className="text-sm font-semibold text-slate-950">
                 {fmt(activity.annualGoal)} {activity.unit}
               </span>
             </div>
           )}
 
-          <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+          <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
             <span className="text-xs text-slate-500">Acumulado al mes</span>
-            <span className="text-sm font-semibold text-[#0c2340]">
+            <span className="text-sm font-semibold text-slate-950">
               {fmt(accum)} {activity.unit}
             </span>
           </div>
 
           {goalPct != null && (
-            <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <div className="rounded-lg bg-slate-50 px-3 py-2">
               <div className="mb-1.5 flex items-center justify-between">
                 <span className="text-xs text-slate-500">Avance vs meta</span>
-                <span className={cn('text-sm font-bold', goalPct >= 100 ? 'text-emerald-600' : goalPct >= 60 ? 'text-amber-600' : 'text-red-500')}>
+                <span className={cn('text-sm font-bold', goalPct >= 100 ? 'text-emerald-600' : goalPct >= 60 ? 'text-amber-600' : 'text-rose-600')}>
                   {goalPct}%
                 </span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                 <div
-                  className={cn('h-full rounded-full', goalPct >= 100 ? 'bg-emerald-500' : goalPct >= 60 ? 'bg-amber-400' : 'bg-red-400')}
+                  className={cn('h-full rounded', goalPct >= 100 ? 'bg-emerald-500' : goalPct >= 60 ? 'bg-amber-400' : 'bg-rose-500')}
                   style={{ width: `${Math.min(goalPct, 100)}%` }}
                 />
               </div>
@@ -136,7 +136,7 @@ function CellModal({ activity, monthData, year, onClose }: CellModalProps) {
           )}
 
           {monthData.notes && (
-            <div className="rounded-xl bg-amber-50 px-3 py-2">
+            <div className="rounded-lg bg-amber-50 px-3 py-2">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600">Notas</p>
               <p className="mt-0.5 text-xs text-slate-600">{monthData.notes}</p>
             </div>
@@ -159,19 +159,19 @@ function ExpandedDetail({ activity, onGoToActividades }: ExpandedDetailProps) {
   const maxVal = Math.max(...activity.months.map((m) => m.value ?? 0), 1)
 
   return (
-    <tr className="bg-[#f8fbff]">
+    <tr className="bg-slate-50">
       <td colSpan={15} className="px-4 py-4">
         <div className="flex flex-col gap-4">
           {/* Activity meta */}
           <div className="flex flex-wrap gap-4">
             <div className="flex flex-col">
               <span className="text-[10px] uppercase tracking-wider text-slate-400">Unidad</span>
-              <span className="text-xs font-semibold text-[#0c2340]">{activity.unit || '—'}</span>
+              <span className="text-xs font-semibold text-slate-950">{activity.unit || '—'}</span>
             </div>
             {activity.annualGoal != null && (
               <div className="flex flex-col">
                 <span className="text-[10px] uppercase tracking-wider text-slate-400">Meta anual</span>
-                <span className="text-xs font-semibold text-[#0c2340]">{fmt(activity.annualGoal)} {activity.unit}</span>
+                <span className="text-xs font-semibold text-slate-950">{fmt(activity.annualGoal)} {activity.unit}</span>
               </div>
             )}
             <div className="flex flex-col">
@@ -180,7 +180,7 @@ function ExpandedDetail({ activity, onGoToActividades }: ExpandedDetailProps) {
             </div>
             <div className="flex flex-col">
               <span className="text-[10px] uppercase tracking-wider text-slate-400">Meses reportados</span>
-              <span className="text-xs font-semibold text-[#0c2340]">{withValue} / 12</span>
+              <span className="text-xs font-semibold text-slate-950">{withValue} / 12</span>
             </div>
             {activity.annualGoal && activity.annualGoal > 0 && (
               <div className="flex flex-col">
@@ -234,7 +234,7 @@ function ExpandedDetail({ activity, onGoToActividades }: ExpandedDetailProps) {
           <div>
             <button
               onClick={onGoToActividades}
-              className="flex items-center gap-1.5 rounded-xl bg-[#0c2340] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#153860]"
+              className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-teal-800"
             >
               <ClipboardList className="h-3.5 w-3.5" />
               Ingresar datos en Actividades
@@ -256,10 +256,15 @@ interface MonthlyBarsProps {
 
 function MonthlyBars({ stats, activeMonth, currentMonth, onSelectMonth }: MonthlyBarsProps) {
   return (
-    <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4">
-      <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-        Avance mensual — clic para filtrar columna
-      </p>
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="mb-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+          Consolidación mensual de registros — clic para filtrar columna
+        </p>
+        <p className="mt-1 text-[10px] text-slate-400">
+          Porcentaje de actividades con dato cargado; no mide cumplimiento de meta.
+        </p>
+      </div>
       <div className="flex items-end gap-1">
         {stats.map((s) => {
           const isClosed = s.month < currentMonth   // solo meses cerrados tienen dato real
@@ -271,15 +276,15 @@ function MonthlyBars({ stats, activeMonth, currentMonth, onSelectMonth }: Monthl
               onClick={() => isClosed ? onSelectMonth(isActive ? null : s.month) : undefined}
               disabled={!isClosed}
               className={cn(
-                'group flex flex-1 flex-col items-center gap-1 rounded-xl pb-1 pt-2 transition',
+                'group flex flex-1 flex-col items-center gap-1 rounded-lg pb-1 pt-2 transition',
                 isClosed ? 'hover:bg-slate-50 cursor-pointer' : 'cursor-default opacity-40',
-                isActive && 'bg-blue-50 ring-1 ring-blue-200',
+                isActive && 'bg-cyan-50 ring-1 ring-cyan-200',
               )}
             >
               <span className={cn(
                 'text-[10px] font-semibold',
                 !isClosed ? 'text-slate-200'
-                  : isActive ? 'text-blue-600'
+                  : isActive ? 'text-cyan-700'
                   : s.pct >= 100 ? 'text-emerald-600'
                   : s.pct >= 60 ? 'text-amber-600'
                   : s.pct > 0 ? 'text-slate-500'
@@ -292,16 +297,16 @@ function MonthlyBars({ stats, activeMonth, currentMonth, onSelectMonth }: Monthl
                   className={cn(
                     'w-4/5 rounded-t transition-all',
                     !isClosed ? 'bg-slate-100'
-                      : isActive ? 'bg-blue-400'
+                      : isActive ? 'bg-cyan-500'
                       : s.pct >= 100 ? 'bg-emerald-400'
                       : s.pct >= 60 ? 'bg-amber-400'
-                      : s.pct > 0 ? 'bg-red-300'
+                      : s.pct > 0 ? 'bg-rose-300'
                       : 'bg-slate-100',
                   )}
                   style={{ height: `${barH}%` }}
                 />
               </div>
-              <span className={cn('text-[9px]', isActive ? 'font-bold text-blue-600' : isClosed ? 'text-slate-400' : 'text-slate-300')}>
+              <span className={cn('text-[9px]', isActive ? 'font-bold text-cyan-700' : isClosed ? 'text-slate-400' : 'text-slate-300')}>
                 {MONTHS_SHORT[s.month - 1]}
               </span>
             </button>
@@ -369,7 +374,7 @@ function ChartsSection({ chartData, programName, year }: { chartData: ChartData;
     backgroundColor: 'transparent',
     tooltip: { trigger: 'axis', textStyle: { fontSize: 11 } },
     legend: {
-      data: ['Logrado', 'Meta Por Act. Operativa'],
+      data: ['Logro mensual', 'Meta mensual estimada'],
       bottom: 0,
       textStyle: { fontSize: 10, color: '#64748b' },
       icon: 'circle',
@@ -391,7 +396,7 @@ function ChartsSection({ chartData, programName, year }: { chartData: ChartData;
     },
     series: [
       {
-        name: 'Logrado',
+        name: 'Logro mensual',
         type: 'line',
         data: monthlyLogrado,
         smooth: false,
@@ -402,7 +407,7 @@ function ChartsSection({ chartData, programName, year }: { chartData: ChartData;
         label: { show: true, fontSize: 9, color: '#2563eb', fontWeight: 'bold', position: 'top' },
       },
       {
-        name: 'Meta Por Act. Operativa',
+        name: 'Meta mensual estimada',
         type: 'line',
         data: monthlyMeta,
         smooth: false,
@@ -418,7 +423,7 @@ function ChartsSection({ chartData, programName, year }: { chartData: ChartData;
     backgroundColor: 'transparent',
     tooltip: { trigger: 'axis', textStyle: { fontSize: 11 } },
     legend: {
-      data: ['Logrado', 'Meta Trimestral'],
+      data: ['Logro trimestral', 'Meta trimestral'],
       bottom: 0,
       textStyle: { fontSize: 10, color: '#64748b' },
       icon: 'circle',
@@ -440,7 +445,7 @@ function ChartsSection({ chartData, programName, year }: { chartData: ChartData;
     },
     series: [
       {
-        name: 'Logrado',
+        name: 'Logro trimestral',
         type: 'bar',
         data: quarterlyLogrado,
         barMaxWidth: 40,
@@ -448,7 +453,7 @@ function ChartsSection({ chartData, programName, year }: { chartData: ChartData;
         label: { show: true, position: 'top', fontSize: 10, color: '#1d4ed8', fontWeight: 'bold', formatter: (p: { value: number }) => fmtK(p.value) },
       },
       {
-        name: 'Meta Trimestral',
+        name: 'Meta trimestral',
         type: 'bar',
         data: quarterlyMeta,
         barMaxWidth: 40,
@@ -498,17 +503,17 @@ function ChartsSection({ chartData, programName, year }: { chartData: ChartData;
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
       {/* Line chart — 2 cols */}
-      <div className="col-span-1 rounded-2xl border border-[#e2e8f0] bg-white p-4 lg:col-span-2">
-        <p className="mb-1 text-xs font-bold text-[#0c2340]">
-          Avance mensual · {programName}
+      <div className="col-span-1 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] lg:col-span-2">
+        <p className="mb-1 text-xs font-bold text-slate-950">
+          Cumplimiento mensual de meta · {programName}
         </p>
         <ReactECharts option={lineOption} style={{ height: '220px' }} />
       </div>
 
       {/* Bar chart — 2 cols */}
-      <div className="col-span-1 rounded-2xl border border-[#e2e8f0] bg-white p-4 lg:col-span-2">
-        <p className="mb-1 text-xs font-bold text-[#0c2340]">
-          Avance trimestral · {year}
+      <div className="col-span-1 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] lg:col-span-2">
+        <p className="mb-1 text-xs font-bold text-slate-950">
+          Cumplimiento trimestral de meta · {year}
         </p>
         <ReactECharts option={barOption} style={{ height: '220px' }} />
       </div>
@@ -517,19 +522,19 @@ function ChartsSection({ chartData, programName, year }: { chartData: ChartData;
       <div className="col-span-1 flex flex-col gap-3">
         {/* KPI cards */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-[#e2e8f0] bg-white p-3 text-center">
-            <p className="text-lg font-bold text-[#0c2340]">{fmtK(totalMeta)}</p>
-            <p className="text-[10px] text-slate-400">Meta Anual</p>
+          <div className="rounded-lg border border-slate-200 bg-white p-3 text-center">
+            <p className="text-lg font-bold text-slate-950">{fmtK(totalMeta)}</p>
+            <p className="text-[10px] text-slate-400">Meta anual</p>
           </div>
-          <div className="rounded-2xl border border-[#e2e8f0] bg-white p-3 text-center">
+          <div className="rounded-lg border border-slate-200 bg-white p-3 text-center">
             <p className="text-lg font-bold text-emerald-600">{fmtK(totalLogrado)}</p>
-            <p className="text-[10px] text-slate-400">Logro</p>
+            <p className="text-[10px] text-slate-400">Logro acumulado</p>
           </div>
         </div>
 
         {/* Gauge */}
-        <div className="flex-1 rounded-2xl border border-[#e2e8f0] bg-white p-3">
-          <p className="text-center text-xs font-bold text-[#0c2340]">Logro Alcanzado</p>
+        <div className="flex-1 rounded-lg border border-slate-200 bg-white p-3">
+          <p className="text-center text-xs font-bold text-slate-950">Cumplimiento de meta anual</p>
           <ReactECharts option={gaugeOption} style={{ height: '160px' }} />
           <div className="flex justify-between px-2">
             <span className="text-[10px] text-slate-400">0</span>
@@ -657,7 +662,7 @@ export function PprProgramaDashboardPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/ppr/programas')}
-            className="flex items-center gap-1.5 rounded-xl border border-[#e2e8f0] bg-white px-3 py-1.5 text-xs font-semibold text-[#0c2340] transition hover:bg-slate-50"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-slate-50"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Programas
@@ -666,15 +671,15 @@ export function PprProgramaDashboardPage() {
             {data ? (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="rounded bg-[#e8f0f8] px-1.5 py-0.5 font-mono text-[10px] text-[#3a6fa0]">
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
                     {data.programCode}
                   </span>
                   {activeGroup && (
-                    <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                    <span className="rounded bg-cyan-50 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-700">
                       {activeGroup.name}
                     </span>
                   )}
-                  <h1 className="text-sm font-bold text-[#0c2340] sm:text-base">
+                  <h1 className="text-sm font-bold text-slate-950 sm:text-base">
                     {data.programName}
                   </h1>
                 </div>
@@ -690,18 +695,18 @@ export function PprProgramaDashboardPage() {
         </div>
 
         {/* Year selector */}
-        <div className="flex items-center gap-1 rounded-xl border border-[#e2e8f0] bg-white px-1 py-1">
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-1 py-1">
           <button
             onClick={() => setYear((y) => y - 1)}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[#0c2340]"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-teal-700"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
           </button>
-          <span className="min-w-[3rem] text-center text-sm font-bold text-[#0c2340]">{year}</span>
+          <span className="min-w-[3rem] text-center text-sm font-bold text-slate-950">{year}</span>
           <button
             onClick={() => setYear((y) => y + 1)}
             disabled={year >= currentYear}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-[#0c2340] disabled:opacity-30"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-teal-700 disabled:opacity-30"
           >
             <ChevronRight className="h-3.5 w-3.5" />
           </button>
@@ -710,7 +715,7 @@ export function PprProgramaDashboardPage() {
 
       {/* Error */}
       {error && (
-        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
+        <div className="flex items-center justify-between rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs text-rose-700">
           {error}
           <button onClick={() => setError(null)}><X className="h-3.5 w-3.5" /></button>
         </div>
@@ -718,19 +723,19 @@ export function PprProgramaDashboardPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-green-600" />
+          <Loader2 className="h-6 w-6 animate-spin text-teal-700" />
         </div>
       ) : !data ? null : (
         <>
           {/* Stats row */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: 'Actividades', value: globalStats.total, color: 'text-[#0c2340]' },
-              { label: 'Con datos', value: globalStats.withData, color: 'text-emerald-600' },
-              { label: 'Celdas llenas', value: `${globalStats.totalValues} / ${globalStats.total * 12}`, color: 'text-slate-600' },
-              { label: '% global', value: `${globalStats.globalPct}%`, color: globalStats.globalPct >= 100 ? 'text-emerald-600' : globalStats.globalPct >= 60 ? 'text-amber-600' : 'text-red-500' },
+              { label: 'Actividades', value: globalStats.total, color: 'text-slate-950' },
+              { label: 'Actividades con dato', value: globalStats.withData, color: 'text-emerald-600' },
+              { label: 'Registros consolidados', value: `${globalStats.totalValues} / ${globalStats.total * 12}`, color: 'text-slate-600' },
+              { label: '% consolidación anual', value: `${globalStats.globalPct}%`, color: globalStats.globalPct >= 100 ? 'text-emerald-600' : globalStats.globalPct >= 60 ? 'text-amber-600' : 'text-rose-600' },
             ].map((s) => (
-              <div key={s.label} className="rounded-2xl border border-[#e2e8f0] bg-white p-3 text-center">
+              <div key={s.label} className="rounded-lg border border-slate-200 bg-white p-3 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                 <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
                 <p className="text-[10px] text-slate-400">{s.label}</p>
               </div>
@@ -760,7 +765,7 @@ export function PprProgramaDashboardPage() {
               <select
                 value={activeGroupCode}
                 onChange={(event) => setActiveGroupCode(event.target.value)}
-                className="rounded-xl border border-[#e2e8f0] bg-white px-3 py-2 text-xs font-semibold text-[#0c2340] outline-none transition focus:border-green-400 focus:ring-1 focus:ring-green-200"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
               >
                 <option value="ALL">Todo el programa</option>
                 {groupOptions.map((group) => (
@@ -777,13 +782,13 @@ export function PprProgramaDashboardPage() {
                 placeholder="Buscar actividad por nombre o código…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-xl border border-[#e2e8f0] bg-white py-2 pl-8 pr-3 text-xs text-[#0c2340] placeholder-slate-300 outline-none focus:border-green-400 focus:ring-1 focus:ring-green-200"
+                className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-8 pr-3 text-xs text-slate-950 placeholder-slate-300 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
               />
             </div>
             {activeMonth && (
               <button
                 onClick={() => setActiveMonth(null)}
-                className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                className="flex items-center gap-1.5 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-700 hover:bg-cyan-100"
               >
                 <X className="h-3 w-3" />
                 {MONTHS_SHORT[activeMonth - 1]}
@@ -791,7 +796,7 @@ export function PprProgramaDashboardPage() {
             )}
             <button
               onClick={() => handleGoToActividades(programId)}
-              className="flex items-center gap-1.5 rounded-xl bg-[#0c2340] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#153860]"
+              className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-800"
             >
               <ClipboardList className="h-3.5 w-3.5" />
               Ingresar datos
@@ -799,11 +804,11 @@ export function PprProgramaDashboardPage() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto rounded-2xl border border-[#e2e8f0] bg-white">
+          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <table className="w-full min-w-[900px] border-collapse text-xs">
               <thead>
-                <tr className="border-b border-[#e2e8f0] bg-[#f8fbff]">
-                  <th className="sticky left-0 z-10 bg-[#f8fbff] px-4 py-3 text-left font-semibold text-[#0c2340]">
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 text-left font-semibold text-slate-950">
                     Actividad
                   </th>
                   {MONTHS_SHORT.map((m, i) => (
@@ -813,7 +818,7 @@ export function PprProgramaDashboardPage() {
                       className={cn(
                         'cursor-pointer px-2 py-3 text-center font-semibold transition select-none',
                         activeMonth === i + 1
-                          ? 'bg-blue-100 text-blue-700'
+                          ? 'bg-cyan-100 text-cyan-700'
                           : 'text-slate-500 hover:bg-slate-100',
                       )}
                     >
@@ -843,36 +848,36 @@ export function PprProgramaDashboardPage() {
                       <tr
                         key={activity.id}
                         className={cn(
-                          'border-b border-[#f0f4f8] transition-colors',
-                          isExpanded ? 'bg-[#f0f7ff]' : 'hover:bg-[#fafcff]',
+                          'border-b border-slate-100 transition-colors',
+                          isExpanded ? 'bg-cyan-50' : 'hover:bg-slate-50',
                         )}
                       >
                         {/* Activity name */}
                         <td
                           className={cn(
                             'sticky left-0 z-10 px-4 py-2.5 cursor-pointer',
-                            isExpanded ? 'bg-[#f0f7ff]' : 'bg-white hover:bg-[#fafcff]',
+                            isExpanded ? 'bg-cyan-50' : 'bg-white hover:bg-slate-50',
                           )}
                           onClick={() => toggleRow(activity.id)}
                         >
                           <div className="flex items-start gap-2 max-w-[220px]">
                             {isExpanded ? (
-                              <ChevronUp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
+                              <ChevronUp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-600" />
                             ) : (
                               <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
                             )}
                             <div className="min-w-0">
                               {activity.code && (
-                                <span className="mb-0.5 inline-block rounded bg-[#e8f0f8] px-1 py-px font-mono text-[9px] text-[#3a6fa0]">
+                                <span className="mb-0.5 inline-block rounded bg-slate-100 px-1 py-px font-mono text-[9px] text-slate-600">
                                   {activity.code}
                                 </span>
                               )}
                               {activity.activityGroup && (
-                                <span className="mb-0.5 ml-1 inline-block rounded bg-sky-50 px-1 py-px text-[9px] font-semibold text-sky-700">
+                                <span className="mb-0.5 ml-1 inline-block rounded bg-cyan-50 px-1 py-px text-[9px] font-semibold text-cyan-700">
                                   {activity.activityGroup.name}
                                 </span>
                               )}
-                              <p className="truncate text-[11px] font-medium leading-snug text-[#0c2340]" title={activity.name}>
+                              <p className="truncate text-[11px] font-medium leading-snug text-slate-950" title={activity.name}>
                                 {activity.name}
                               </p>
                             </div>
@@ -903,14 +908,14 @@ export function PprProgramaDashboardPage() {
 
                         {/* Total */}
                         <td className="px-3 py-2.5 text-right">
-                          <span className="text-[11px] font-semibold text-[#0c2340]">
+                          <span className="text-[11px] font-semibold text-slate-950">
                             {fmt(total)}
                           </span>
                         </td>
 
                         {/* Expand icon */}
                         <td
-                          className="cursor-pointer px-3 py-2.5 text-center text-slate-300 hover:text-blue-500"
+                          className="cursor-pointer px-3 py-2.5 text-center text-slate-300 hover:text-cyan-600"
                           onClick={() => toggleRow(activity.id)}
                         >
                           {isExpanded ? <ChevronUp className="mx-auto h-3.5 w-3.5" /> : <ChevronDown className="mx-auto h-3.5 w-3.5" />}
@@ -932,8 +937,8 @@ export function PprProgramaDashboardPage() {
               {/* Footer totals */}
               {filteredActivities.length > 0 && (
                 <tfoot>
-                  <tr className="border-t-2 border-[#e2e8f0] bg-[#f8fbff]">
-                    <td className="sticky left-0 bg-[#f8fbff] px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  <tr className="border-t-2 border-slate-200 bg-slate-50">
+                    <td className="sticky left-0 bg-slate-50 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                       Total ({filteredActivities.length} act.)
                     </td>
                     {Array.from({ length: 12 }, (_, i) => {
@@ -948,14 +953,14 @@ export function PprProgramaDashboardPage() {
                           key={m}
                           className={cn(
                             'px-1 py-2.5 text-center text-[11px] font-bold',
-                            isActive ? 'bg-blue-100 text-blue-700' : 'text-[#0c2340]',
+                            isActive ? 'bg-cyan-100 text-cyan-700' : 'text-slate-950',
                           )}
                         >
                           {colTotal > 0 ? fmt(colTotal) : <span className="text-slate-300">—</span>}
                         </td>
                       )
                     })}
-                    <td className="px-3 py-2.5 text-right text-[11px] font-bold text-[#0c2340]">
+                    <td className="px-3 py-2.5 text-right text-[11px] font-bold text-slate-950">
                       {fmt(
                         filteredActivities.reduce(
                           (s, a) => s + a.months.reduce((ms, m) => ms + (m.value ?? 0), 0),
