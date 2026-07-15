@@ -5,7 +5,7 @@ import { getSqlPool, closeSqlPool, sql } from '../server/db/sql-server.js'
 const now = new Date()
 const stamp = now.toISOString().replace(/[:.]/g, '-')
 const backupDir = path.join('informes', 'ppr-sp-backups', `coordinator-assignments-${stamp}`)
-const reportPath = path.join('informes', 'ppr-jerarquia-web-2026-07.md')
+const reportPath = path.join('informes', 'ppr-coordinadores-web-2026-07.md')
 
 const assignments = [
   { programCode: '16', employeeId: 4226 },
@@ -139,7 +139,9 @@ async function fetchHierarchy(pool) {
       ON a.program_id = p.id
      AND ISNULL(a.is_active, 1) = 1
     GROUP BY p.id, p.code, p.name
-    ORDER BY TRY_CONVERT(INT, p.code), p.code;
+    ORDER BY
+      CASE WHEN ISNUMERIC(p.code) = 1 THEN CONVERT(INT, p.code) ELSE 999999 END,
+      p.code;
   `)
 
   const coordinators = await query(pool, `
@@ -155,7 +157,10 @@ async function fetchHierarchy(pool) {
     INNER JOIN dbo.ppr_programs p ON p.id = up.program_id
     INNER JOIN SIGH_DEPURA..T_Empleado e ON e.IDEMPLEADO = up.employee_id
     WHERE ISNULL(up.is_active, 1) = 1
-    ORDER BY TRY_CONVERT(INT, p.code), p.code, employee_name;
+    ORDER BY
+      CASE WHEN ISNUMERIC(p.code) = 1 THEN CONVERT(INT, p.code) ELSE 999999 END,
+      p.code,
+      employee_name;
   `)
 
   const mappedResponsables = await query(pool, `
@@ -193,17 +198,16 @@ function buildReport(hierarchy, applied) {
   }
 
   const lines = [
-    '# PPR - Jerarquia web de responsables y coordinadores',
+    '# PPR - Coordinadores web por programa',
     '',
     `Generado: ${now.toLocaleString('es-PE', { timeZone: 'America/Lima' })}`,
     '',
     '## Criterio usado',
     '',
-    '- **Coordinador:** persona que tiene alcance operativo sobre un programa o grupo de actividades. Puede llenar, validar o firmar solo su parte, segun se configure.',
-    '- **Responsable:** persona que firma como responsable final o como responsable de un subconjunto. Tambien puede validar algunas actividades, o solo visualizar y supervisar si no tiene actividades propias.',
-    '- **Alcance real recomendado:** no debe depender solo del programa completo; debe poder bajar a grupo de actividades para separar captura, validacion, supervision y firma.',
-    '- **Estado actual:** `dbo.ppr_user_programs` asigna usuarios a programas completos. No existe aun una tabla directa `programa/grupo/actividad -> permiso/firma`.',
-    '- **Export actual:** `dbo.SP_PPR_ADMIN_EXPORT_MATRIZ` llena la columna `responsable` tomando un coordinador activo del programa, por eso actualmente puede confundirse la asignacion operativa con la firma responsable.',
+    '- **Coordinador:** usuario asignado en `dbo.ppr_user_programs` para acceder al programa PPR y registrar la informacion.',
+    '- **Responsable:** no se modela como rol separado en la web durante la marcha blanca. La responsabilidad se formaliza con documentos externos donde el responsable designa a sus coordinadores.',
+    '- **Firma:** la validez de la firma se sostiene con la designacion formal del responsable hacia sus coordinadores.',
+    '- **Estado actual:** `dbo.ppr_user_programs` asigna usuarios a programas completos y se tomara como la lista oficial de coordinadores operativos en la web.',
     '',
     '## Cambios aplicados en coordinadores',
     '',
@@ -215,7 +219,7 @@ function buildReport(hierarchy, applied) {
     lines.push(`| ${markdownEscape(item.program.code)} - ${markdownEscape(item.program.name)} | ${coordinatorLine(item.employee)} | ${markdownEscape(item.action)} |`)
   }
 
-  lines.push('', '## Jerarquia por programa', '')
+  lines.push('', '## Coordinadores por programa', '')
 
   for (const program of programs) {
     const programCoordinators = coordinatorsByProgram.get(program.id) ?? []
@@ -225,8 +229,8 @@ function buildReport(hierarchy, applied) {
     lines.push(`### ${program.code} - ${program.name}`)
     lines.push('')
     lines.push(`- Actividades activas: ${program.active_activity_count}`)
-    lines.push(`- Responsable firmante oficial: **pendiente de modelar por alcance**`)
-    lines.push(`- Responsable que muestra el export actual: ${exportResponsible ? markdownEscape(exportResponsible) : 'sin dato en export'}`)
+    lines.push('- Responsable formal: respaldado por documento externo de designacion.')
+    lines.push(`- Responsable que muestra el export actual: ${exportResponsible ? markdownEscape(exportResponsible) : 'sin dato en export'}; revisar solo como referencia historica, no como jerarquia de la web.`)
     lines.push('- Coordinadores activos:')
 
     if (programCoordinators.length === 0) {
@@ -251,7 +255,7 @@ function buildReport(hierarchy, applied) {
 
   lines.push('## Lectura rapida')
   lines.push('')
-  lines.push('La jerarquia operativa basica de usuarios por programa ya queda en `ppr_user_programs`. Para marcha blanca con firmas separadas, falta decidir y guardar una relacion explicita de persona, rol, accion permitida y alcance: programa completo, grupo de actividades o actividad puntual.')
+  lines.push('Para marcha blanca se mantiene un solo tipo de usuario PPR dentro de la web: coordinador. Los responsables quedan fuera del modelo operativo y se respaldan con documentos formales de designacion.')
   lines.push('')
 
   return lines.join('\n')

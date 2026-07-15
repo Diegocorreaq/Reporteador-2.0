@@ -130,7 +130,7 @@ const navigationCatalogBase: CatalogResource[] = [
     workspaceLabel: 'Reporteador',
     type: 'vista',
     category: 'Atención Ambulatoria y Hospitalización',
-    route: '/app/atencion-ambulatoria-hospitalizacion/consulta-externa-por-por-consultorio-y-profesional',
+    route: '/app/atencion-ambulatoria-hospitalizacion/consulta-externa-por-consultorio-y-profesional',
     breadcrumb: 'Reporteador → Atención Ambulatoria y Hospitalización',
     aliases: ['consultorio profesional', 'medico consultorio'],
     keywords: ['consulta', 'externa', 'consultorio', 'profesional', 'medico'],

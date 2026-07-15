@@ -125,7 +125,7 @@ const DIARIO_HOSP_TEMPLATE = {
     { key: 'CIE_EVOLUCION3',             label: 'CIE EVOLUCION3',               width: 14, headerColor: '75ABFD', align: 'center' },
     { key: 'TIPO_DX3',                   label: 'TIPO DX3',                     width: 12, headerColor: '75ABFD', align: 'center' },
     { key: 'NOMBRE_DX3',                 label: 'NOMBRE DX3',                   width: 34, headerColor: '75ABFD', align: 'left' },
-    { key: 'FECHA_DE_CORTE',             label: 'FECHA DE CORTE',               width: 20, headerColor: '75ABFD', format: 'excel-datetime', align: 'center', dataColor: 'BAEAFF' },
+    { key: 'FECHA_DE_CORTE',             label: 'FECHA DE CORTE',               width: 20, headerColor: '75ABFD', asText: true, align: 'center', dataColor: 'BAEAFF' },
   ],
 }
 
@@ -180,7 +180,7 @@ const DIARIO_ALTAS_TEMPLATE = {
     { key: 'ESTABLECIMIENTO',            label: 'ESTABLECIMIENTO',           width: 22, headerColor: '74DA5B', align: 'left' },
     { key: 'FECHA_DE_TRASLADO',          label: 'FECHA DE TRASLADO',         width: 20, headerColor: '74DA5B', format: 'excel-datetime', align: 'center' },
     { key: 'CONDICION_FINAL',            label: 'CONDICION',                 width: 12, headerColor: '74DA5B', align: 'center' },
-    { key: 'FECHA_DE_CORTE',             label: 'FECHA DE CORTE',            width: 20, headerColor: '74DA5B', format: 'excel-datetime', align: 'center', dataColor: 'BAEAFF' },
+    { key: 'FECHA_DE_CORTE',             label: 'FECHA DE CORTE',            width: 20, headerColor: '74DA5B', asText: true, align: 'center', dataColor: 'BAEAFF' },
   ],
 }
 
@@ -229,7 +229,7 @@ const DIARIO_FALL_TEMPLATE = {
     { key: 'SE_INFORMO_FAMILIA',         label: 'SE INFORMO FAMILIA',         width: 16, headerColor: 'FA7985', align: 'center' },
     { key: 'ULTIMA_LLAMADA',             label: 'ULTIMA LLAMADA',             width: 20, headerColor: 'FA7985', format: 'excel-datetime', align: 'center' },
     { key: 'CONDICION_FINAL',            label: 'CONDICION',                  width: 12, headerColor: 'FA7985', align: 'center' },
-    { key: 'FECHA_DE_CORTE',             label: 'FECHA DE CORTE',             width: 20, headerColor: 'FA7985', format: 'excel-datetime', align: 'center' },
+    { key: 'FECHA_DE_CORTE',             label: 'FECHA DE CORTE',             width: 20, headerColor: 'FA7985', asText: true, align: 'center' },
   ],
 }
 
@@ -629,7 +629,7 @@ async function buildDxEvolutionRankByAtencion(rows, connectionName) {
   return rankByAtencion
 }
 
-function getLimaCutoffDateTime(date = new Date()) {
+function formatDateTimeInLima(date = new Date()) {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Lima',
@@ -646,6 +646,38 @@ function getLimaCutoffDateTime(date = new Date()) {
   )
 
   return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}`
+}
+
+function formatCutoffDateTimeInLima(value = new Date()) {
+  if (value == null || value === '') {
+    return ''
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? '' : formatDateTimeInLima(value)
+  }
+
+  const raw = normalizeExportCell(value)
+  if (!raw) {
+    return ''
+  }
+
+  if (/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)) {
+    const parsed = new Date(raw)
+    return Number.isNaN(parsed.getTime()) ? raw : formatDateTimeInLima(parsed)
+  }
+
+  let match = raw.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[T\s](\d{2}):(\d{2})/)
+  if (match) {
+    return `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}`
+  }
+
+  match = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})[T\s](\d{2}):(\d{2})/)
+  if (match) {
+    return `${match[1]}/${match[2]}/${match[3]} ${match[4]}:${match[5]}`
+  }
+
+  return raw
 }
 
 function mapHospitalizadosCorteRow(row, dxRankByAtencion = null, cutoffDateTime = '') {
@@ -679,7 +711,7 @@ function mapHospitalizadosCorteRow(row, dxRankByAtencion = null, cutoffDateTime 
 
 async function mapHospitalizadosCorteRows(rows, { connectionName }) {
   const dxRankByAtencion = await buildDxEvolutionRankByAtencion(rows, connectionName)
-  const cutoffDateTime = getLimaCutoffDateTime()
+  const cutoffDateTime = formatCutoffDateTimeInLima()
 
   return rows.map((row) => mapHospitalizadosCorteRow(row, dxRankByAtencion, cutoffDateTime))
 }
@@ -739,7 +771,7 @@ function mapDiarioHospRow(row) {
     CIE_EVOLUCION3: normalizeExportCell(col(row, 'DX_EVO3')),
     TIPO_DX3: normalizeExportCell(col(row, 'TIPO_EVO3')),
     NOMBRE_DX3: dxEvo3Name,
-    FECHA_DE_CORTE: normalizeExportCell(col(row, 'FECHA')),
+    FECHA_DE_CORTE: formatCutoffDateTimeInLima(col(row, 'FECHA')),
   }
 }
 
@@ -792,7 +824,7 @@ function mapDiarioAltasRow(row) {
     ESTABLECIMIENTO: normalizeExportCell(col(row, 'ESTABLECIMIENTO')),
     FECHA_DE_TRASLADO: normalizeExportCell(col(row, 'FECHATRASLADO')),
     CONDICION_FINAL: condicion,
-    FECHA_DE_CORTE: normalizeExportCell(col(row, 'FECHA')),
+    FECHA_DE_CORTE: formatCutoffDateTimeInLima(col(row, 'FECHA')),
   }
 }
 
@@ -839,7 +871,7 @@ function mapDiarioFallRow(row) {
     SE_INFORMO_FAMILIA: normalizeExportCell(col(row, 'SEINFORMO')),
     ULTIMA_LLAMADA: normalizeExportCell(col(row, 'FECHALLAMADA')),
     CONDICION_FINAL: condicion,
-    FECHA_DE_CORTE: normalizeExportCell(col(row, 'FECHA')),
+    FECHA_DE_CORTE: formatCutoffDateTimeInLima(col(row, 'FECHA')),
   }
 }
 

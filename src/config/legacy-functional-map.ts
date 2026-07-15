@@ -88,10 +88,10 @@ export const legacyPowerBiModules: LegacyModuleMapping[] = [
   },
   {
     workspace: 'main',
-    path: 'atencion-ambulatoria-hospitalizacion/consulta-externa-por-por-consultorio-y-profesional',
+    path: 'atencion-ambulatoria-hospitalizacion/consulta-externa-por-consultorio-y-profesional',
     legacyRoute: '/upss/consultorio',
     moduleType: 'powerbi',
-    title: 'Consulta Externa por por Consultorio y Profesional',
+    title: 'Consulta Externa por Consultorio y Profesional',
     powerBiUrl:
       'https://app.powerbi.com/view?r=eyJrIjoiOTgxNzUxN2ItNzRlZC00MDM5LThkZDctMDRjYzAwMGQzOTg5IiwidCI6ImIwZDQ1ZmViLTM5MzUtNGE4ZS04YTc1LTNhYWM4MGQ4NTMzYSJ9',
     frameHeight: 800,

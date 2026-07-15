@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { getSqlPool, sql } from '../db/sql-server.js'
 import { buildPprMonthlySignaturePdf, MIME_PDF } from './pdf-export.service.js'
+import { filterPprActivitiesForEmployee } from './ppr-activity-scope.service.js'
 
 const SIGNATURE_LABEL = 'FIRMA FICTICIA DE PRUEBA - NO RENIEC'
 
@@ -23,6 +24,9 @@ function createContentHash(payload) {
 export async function ensurePprSignedDocumentInfrastructure() {
   const pool = await getSqlPool('general')
   await pool.request().query(`
+    IF COL_LENGTH('dbo.ppr_activities', 'activity_group_code') IS NULL
+      ALTER TABLE dbo.ppr_activities ADD activity_group_code NVARCHAR(30) NULL;
+
     IF COL_LENGTH('dbo.ppr_signatures', 'program_id') IS NULL
       ALTER TABLE dbo.ppr_signatures ADD program_id INT NULL;
 
@@ -124,6 +128,7 @@ export async function ensurePprSignedDocumentInfrastructure() {
           a.name,
           a.unit,
           a.annual_goal,
+          a.activity_group_code,
           a.sort_order,
           mv.value,
           mv.notes,
@@ -196,7 +201,7 @@ async function readSigningSnapshot(transaction, employeeId, periodId, programId 
       AND (@program_id IS NULL OR up.program_id = @program_id);
   `)
   const summaryRow = summaryResult.recordset[0] ?? {}
-  const summary = {
+  let summary = {
     total: Number(summaryRow.total_activities ?? 0),
     withValue: Number(summaryRow.with_value ?? 0),
     validated: Number(summaryRow.validated ?? 0),
@@ -214,9 +219,11 @@ async function readSigningSnapshot(transaction, employeeId, periodId, programId 
       a.id AS activity_id,
       a.code AS activity_code,
       a.name AS activity_name,
+      a.activity_group_code,
       a.unit,
       a.annual_goal,
       mv.value AS month_value,
+      mv.validation_status,
       totals.accumulated_value
     FROM dbo.ppr_user_programs up
     INNER JOIN dbo.ppr_programs p
@@ -242,6 +249,18 @@ async function readSigningSnapshot(transaction, employeeId, periodId, programId 
     ORDER BY p.code, a.sort_order, a.id;
   `)
 
+  const scopedRows = filterPprActivitiesForEmployee(rowsResult.recordset, {
+    programCodeKey: 'program_code',
+    activityNameKey: 'activity_name',
+    employeeId,
+  })
+
+  summary = {
+    total: scopedRows.length,
+    withValue: scopedRows.filter((row) => row.month_value != null).length,
+    validated: scopedRows.filter((row) => row.validation_status === 'validated').length,
+  }
+
   return {
     period: {
       id: Number(period.id),
@@ -251,7 +270,7 @@ async function readSigningSnapshot(transaction, employeeId, periodId, programId 
       signedAt: period.signed_at ?? null,
     },
     summary,
-    rows: rowsResult.recordset.map((row) => {
+    rows: scopedRows.map((row) => {
       const annualGoal = row.annual_goal == null ? null : Number(row.annual_goal)
       const accumulatedValue = row.accumulated_value == null ? 0 : Number(row.accumulated_value)
       return {

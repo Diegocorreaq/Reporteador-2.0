@@ -17,12 +17,16 @@ export interface PprPrograma {
   sumMetaEsperada: number
   sumMetaAnual: number
   mesesCompletos: number
+  activityGroups?: Array<{ code: string; name: string; sortOrder: number }>
+  activityScope?: Array<{ code: string; name: string; sortOrder: number }>
 }
 
 export interface PprActividad {
   id: number
   code: string
   name: string
+  activityGroup: { code: string; name: string; sortOrder: number } | null
+  canEdit: boolean
   unit: string
   annualGoal: number | null
   sortOrder: number
@@ -35,6 +39,12 @@ export interface PprActividad {
   loadedAt: string | null
   validatedAt: string | null
   validationStatus: 'pending' | 'validated' | string
+}
+
+export interface PprActivityGroup {
+  code: string
+  name: string
+  sortOrder: number
 }
 
 export interface PprPeriodoItem extends PprPeriodo {
@@ -54,9 +64,11 @@ export interface PprResumenMes {
 }
 
 export interface PprResumenPrograma {
+  rowKey?: string
   programaId: number
   code: string
   name: string
+  activityGroup: PprActivityGroup | null
   meses: PprResumenMes[]
 }
 
@@ -73,6 +85,7 @@ export interface PprProgramaAdmin {
   id: number
   code: string
   name: string
+  activityGroups?: PprActivityGroup[]
 }
 
 export interface PprActividadAdmin {
@@ -80,6 +93,8 @@ export interface PprActividadAdmin {
   programId: number
   code: string
   name: string
+  activityGroupCode: string | null
+  activityGroup: PprActivityGroup | null
   unit: string
   annualGoal: number | null
   sortOrder: number
@@ -104,6 +119,7 @@ export interface PprActividadDetalle {
   id: number
   code: string
   name: string
+  activityGroup: PprActivityGroup | null
   unit: string
   annualGoal: number | null
   sortOrder: number
@@ -114,6 +130,8 @@ export interface PprProgramaDetalle {
   programId: number
   programCode: string
   programName: string
+  activityGroups?: PprActivityGroup[]
+  activityScope?: PprActivityGroup[]
   activities: PprActividadDetalle[]
 }
 

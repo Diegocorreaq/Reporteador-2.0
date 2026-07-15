@@ -366,6 +366,15 @@ export const router = createBrowserRouter([
             index: true,
             element: lazyElement(<MainHomePage />),
           },
+          {
+            path: 'atencion-ambulatoria-hospitalizacion/consulta-externa-por-por-consultorio-y-profesional',
+            element: (
+              <Navigate
+                replace
+                to="/app/atencion-ambulatoria-hospitalizacion/consulta-externa-por-consultorio-y-profesional"
+              />
+            ),
+          },
           ...mainImplementedRoutes,
           ...mainScaffoldRoutes,
           {

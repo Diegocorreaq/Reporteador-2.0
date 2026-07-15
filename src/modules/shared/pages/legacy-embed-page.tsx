@@ -50,7 +50,7 @@ const dashboardExcelExports: Partial<Record<string, DashboardExcelExportConfig>>
     title: 'indicadores de calidad',
     description: 'Seleccione el rango de fechas para generar el Excel con las bases de cada indicador.',
   },
-  'atencion-ambulatoria-hospitalizacion/consulta-externa-por-por-consultorio-y-profesional': {
+  'atencion-ambulatoria-hospitalizacion/consulta-externa-por-consultorio-y-profesional': {
     type: 'consultaExternaConsultorioProfesional',
     title: 'consulta externa por consultorio y profesional',
     description: 'Seleccione el rango de fechas para generar el Excel con las bases de los cuadros del dashboard.',

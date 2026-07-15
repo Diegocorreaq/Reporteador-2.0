@@ -300,8 +300,9 @@ export function PprPage() {
     return <ValidationDialog onAuthorized={(id, name) => setAuthorizedUser({ employeeId: id, employeeName: name })} />
   }
 
-  const completadas = actividades.filter((a) => a.value != null).length
-  const total = actividades.length
+  const editableActivities = actividades.filter((a) => a.canEdit)
+  const completadas = editableActivities.filter((a) => a.value != null).length
+  const total = editableActivities.length
   const pctTotal = total > 0 ? Math.round((completadas / total) * 100) : 0
   const canSign = !signed && completadas === total && total > 0 && (periodo?.isOpen ?? false)
 
@@ -457,7 +458,7 @@ export function PprPage() {
                         <ActividadRow
                           key={act.id}
                           actividad={act}
-                          disabled={signed || !(periodo?.isOpen ?? false)}
+                          disabled={signed || !(periodo?.isOpen ?? false) || !act.canEdit}
                           employeeId={authorizedUser.employeeId}
                           periodId={periodo?.id ?? 0}
                           onChange={handleValorChange}

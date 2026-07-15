@@ -4,6 +4,14 @@ import {
   sql,
 } from './sigh-sql-helpers.js'
 import { ensurePprSignedDocumentInfrastructure } from './ppr-signature-document.service.js'
+import {
+  canPprEmployeeEditActivity,
+  filterPprActivitiesForEmployee,
+  getPprActivityGroupDefinition,
+  getPprEmployeeActivityScopeGroups,
+  getPprProgramActivityGroups,
+  resolvePprActivityGroup,
+} from './ppr-activity-scope.service.js'
 
 const MONTHS_ES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -243,10 +251,11 @@ export async function getPeriodoActivo() {
 }
 
 export async function getProgramasUsuario(employeeId) {
+  await ensurePprActivityGroupInfrastructure()
   const rows = await executeProcedure('SP_PPR_PROGRAMAS_USUARIO', [
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
   ])
-  return rows.map((r) => ({
+  const programas = rows.map((r) => ({
     id: Number(r.id),
     code: String(r.code ?? ''),
     name: String(r.name ?? ''),
@@ -256,16 +265,120 @@ export async function getProgramasUsuario(employeeId) {
     sumMetaEsperada: Number(r.sum_meta_esperada ?? 0),
     sumMetaAnual: Number(r.sum_meta_anual ?? 0),
     mesesCompletos: Number(r.meses_completos ?? 0),
+    activityGroups: getPprProgramActivityGroups(r.code),
+    activityScope: getPprEmployeeActivityScopeGroups(r.code, employeeId),
   }))
+
+  return programas
+}
+
+async function ensurePprActivityGroupInfrastructure() {
+  await executeQuery(`
+    IF COL_LENGTH('dbo.ppr_activities', 'activity_group_code') IS NULL
+      ALTER TABLE dbo.ppr_activities ADD activity_group_code NVARCHAR(30) NULL;
+  `)
+}
+
+async function getScopedProgramMetrics({ employeeId, programId, programCode, mesesCompletos }) {
+  await ensurePprActivityGroupInfrastructure()
+  const metricRows = await executeQuery(`
+    DECLARE @active_year INT = YEAR(GETDATE());
+    DECLARE @active_month INT = MONTH(GETDATE());
+
+    SELECT TOP 1
+      @active_year = [year],
+      @active_month = [month]
+    FROM dbo.ppr_periods
+    WHERE is_open = 1
+    ORDER BY [year] DESC, [month] DESC;
+
+    SELECT
+      @active_year AS active_year,
+      @active_month AS active_month,
+      p.code AS program_code,
+      a.id AS activity_id,
+      a.name AS activity_name,
+      a.activity_group_code,
+      ISNULL(a.annual_goal, 0) AS annual_goal,
+      SUM(CASE
+          WHEN per.year = @active_year
+            AND per.month < @active_month
+          THEN ISNULL(mv.value, 0)
+          ELSE 0
+      END) AS logrado,
+      MAX(CASE
+          WHEN per.year = @active_year
+            AND per.month < @active_month
+            AND mv.value IS NOT NULL
+          THEN 1
+          ELSE 0
+      END) AS tiene_dato
+    FROM dbo.ppr_programs p
+    INNER JOIN dbo.ppr_activities a
+      ON a.program_id = p.id
+      AND ISNULL(a.is_active, 1) = 1
+    LEFT JOIN dbo.ppr_monthly_values mv
+      ON mv.activity_id = a.id
+    LEFT JOIN dbo.ppr_periods per
+      ON per.id = mv.period_id
+    WHERE p.id = @program_id
+    GROUP BY p.code, a.id, a.name, a.activity_group_code, a.annual_goal;
+  `, [
+    { name: 'program_id', type: sql.Int, value: Number(programId) },
+  ])
+
+  const scopedRows = filterPprActivitiesForEmployee(metricRows, {
+    programCodeKey: 'program_code',
+    activityNameKey: 'activity_name',
+    employeeId,
+  })
+
+  if (scopedRows.length === metricRows.length) return null
+
+  const meses = Number(metricRows[0]?.active_month ?? 1) > 1
+    ? Number(metricRows[0].active_month) - 1
+    : Number(mesesCompletos ?? 0)
+
+  return {
+    totalActividades: scopedRows.length,
+    conDatos: scopedRows.reduce((sum, row) => sum + Number(row.tiene_dato ?? 0), 0),
+    sumLogrado: scopedRows.reduce((sum, row) => sum + Number(row.logrado ?? 0), 0),
+    sumMetaEsperada: scopedRows.reduce(
+      (sum, row) => sum + (Number(row.annual_goal ?? 0) * meses / 12),
+      0,
+    ),
+    sumMetaAnual: scopedRows.reduce((sum, row) => sum + Number(row.annual_goal ?? 0), 0),
+    mesesCompletos: meses,
+  }
 }
 
 export async function getActividadesPrograma({ programaId, periodoId, employeeId }) {
   await ensurePprSignedDocumentInfrastructure()
+  await ensurePprActivityGroupInfrastructure()
   const rows = await executeProcedure('SP_PPR_ACTIVIDADES_PROGRAMA', [
     { name: 'program_id', type: sql.Int, value: Number(programaId) },
     { name: 'period_id', type: sql.Int, value: Number(periodoId) },
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
   ])
+  const programRows = await executeQuery(`
+    SELECT code
+    FROM dbo.ppr_programs
+    WHERE id = @program_id;
+  `, [
+    { name: 'program_id', type: sql.Int, value: Number(programaId) },
+  ])
+  const programCode = String(programRows[0]?.code ?? '')
+  const groupRows = await executeQuery(`
+    SELECT id, activity_group_code
+    FROM dbo.ppr_activities
+    WHERE program_id = @program_id;
+  `, [
+    { name: 'program_id', type: sql.Int, value: Number(programaId) },
+  ])
+  const groupByActivityId = new Map(groupRows.map((row) => [
+    Number(row.id),
+    row.activity_group_code == null ? null : String(row.activity_group_code),
+  ]))
   const signatureRows = await executeQuery(`
     SELECT TOP 1 signed_at
     FROM dbo.ppr_signatures
@@ -280,10 +393,22 @@ export async function getActividadesPrograma({ programaId, periodoId, employeeId
     { name: 'program_id', type: sql.Int, value: Number(programaId) },
   ])
   const signedAt = signatureRows[0]?.signed_at ?? null
-  return rows.map((r) => ({
+  const activityRows = rows.map((row) => ({
+    ...row,
+    program_code: programCode,
+    activity_group_code: row.activity_group_code ?? groupByActivityId.get(Number(row.id)) ?? null,
+  }))
+  return activityRows.map((r) => ({
     id: Number(r.id),
     code: String(r.code ?? ''),
     name: String(r.name ?? ''),
+    activityGroup: resolvePprActivityGroup(programCode, r.name, r.activity_group_code),
+    canEdit: canPprEmployeeEditActivity({
+      programCode,
+      activityName: r.name,
+      activityGroupCode: r.activity_group_code,
+      employeeId,
+    }),
     unit: String(r.unit ?? ''),
     annualGoal: r.annual_goal != null ? Number(r.annual_goal) : null,
     sortOrder: Number(r.sort_order ?? 0),
@@ -299,7 +424,41 @@ export async function getActividadesPrograma({ programaId, periodoId, employeeId
   }))
 }
 
+async function ensureCanEditPprActivity({ activityId, employeeId }) {
+  await ensurePprActivityGroupInfrastructure()
+  const rows = await executeQuery(`
+    SELECT
+      p.code AS program_code,
+      a.name AS activity_name,
+      a.activity_group_code
+    FROM dbo.ppr_activities a
+    INNER JOIN dbo.ppr_programs p
+      ON p.id = a.program_id
+    WHERE a.id = @activity_id
+      AND ISNULL(a.is_active, 1) = 1;
+  `, [
+    { name: 'activity_id', type: sql.Int, value: Number(activityId) },
+  ])
+  const row = rows[0]
+  if (!row) {
+    const error = new Error('La actividad PPR no existe o no esta activa.')
+    error.code = 'PPR_ACTIVITY_NOT_FOUND'
+    throw error
+  }
+  if (!canPprEmployeeEditActivity({
+    programCode: row.program_code,
+    activityName: row.activity_name,
+    activityGroupCode: row.activity_group_code,
+    employeeId,
+  })) {
+    const error = new Error('No tiene permiso para registrar o validar esta actividad PPR.')
+    error.code = 'PPR_ACTIVITY_FORBIDDEN'
+    throw error
+  }
+}
+
 export async function guardarValor({ activityId, periodId, employeeId, value, notes }) {
+  await ensureCanEditPprActivity({ activityId, employeeId })
   await executeQuery(`
     DECLARE @now DATETIME2 = SYSDATETIME();
 
@@ -349,6 +508,7 @@ export async function guardarValor({ activityId, periodId, employeeId, value, no
 }
 
 export async function validarValor({ activityId, periodId, employeeId }) {
+  await ensureCanEditPprActivity({ activityId, employeeId })
   const rows = await executeQuery(`
     UPDATE dbo.ppr_monthly_values
     SET
@@ -381,15 +541,19 @@ export async function validarValor({ activityId, periodId, employeeId }) {
 }
 
 export async function getResumenValidacion(employeeId, periodId, programId = null) {
+  await ensurePprActivityGroupInfrastructure()
   const rows = await executeQuery(`
     SELECT
-      COUNT(DISTINCT a.id) AS total_actividades,
-      COUNT(DISTINCT CASE WHEN mv.value IS NOT NULL THEN a.id END) AS con_valor,
-      COUNT(DISTINCT CASE WHEN mv.validation_status = 'validated' THEN a.id END) AS validadas,
-      COUNT(DISTINCT CASE WHEN mv.value_source = 'source' THEN a.id END) AS precargadas,
-      COUNT(DISTINCT CASE WHEN mv.value_source = 'manual_override' THEN a.id END) AS editadas,
-      COUNT(DISTINCT CASE WHEN mv.value_source IS NULL OR mv.value_source = 'manual' THEN a.id END) AS manuales
+      p.code AS program_code,
+      a.id AS activity_id,
+      a.name AS activity_name,
+      a.activity_group_code,
+      mv.value,
+      mv.validation_status,
+      mv.value_source
     FROM dbo.ppr_user_programs up
+    INNER JOIN dbo.ppr_programs p
+      ON p.id = up.program_id
     INNER JOIN dbo.ppr_activities a
       ON a.program_id = up.program_id
       AND ISNULL(a.is_active, 1) = 1
@@ -404,17 +568,24 @@ export async function getResumenValidacion(employeeId, periodId, programId = nul
     { name: 'period_id', type: sql.Int, value: Number(periodId) },
     { name: 'program_id', type: sql.Int, value: programId == null ? null : Number(programId) },
   ])
-  const r = rows[0] ?? {}
-  const total = Number(r.total_actividades ?? 0)
-  const validated = Number(r.validadas ?? 0)
+
+  const scopedRows = filterPprActivitiesForEmployee(rows, {
+    programCodeKey: 'program_code',
+    activityNameKey: 'activity_name',
+    employeeId,
+  })
+  const uniqueRows = Array.from(new Map(scopedRows.map((row) => [Number(row.activity_id), row])).values())
+  const total = uniqueRows.length
+  const validated = uniqueRows.filter((row) => row.validation_status === 'validated').length
+
   return {
     total,
-    withValue: Number(r.con_valor ?? 0),
+    withValue: uniqueRows.filter((row) => row.value != null).length,
     validated,
     pending: Math.max(total - validated, 0),
-    imported: Number(r.precargadas ?? 0),
-    edited: Number(r.editadas ?? 0),
-    manual: Number(r.manuales ?? 0),
+    imported: uniqueRows.filter((row) => row.value_source === 'source').length,
+    edited: uniqueRows.filter((row) => row.value_source === 'manual_override').length,
+    manual: uniqueRows.filter((row) => row.value_source == null || row.value_source === 'manual').length,
     canSign: total > 0 && total === validated,
   }
 }
@@ -815,63 +986,102 @@ export async function runPprImport({ programId, sourceId, adminId }) {
 // Returns: id, year, month, is_open, deadline, signed_at, completadas, total_actividades
 export async function getPeriodosUsuario(employeeId) {
   await ensurePprSignedDocumentInfrastructure()
-  const rows = await executeProcedure('SP_PPR_PERIODOS_USUARIO', [
-    { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
-  ])
-  const signatureRows = await executeQuery(`
+  await ensurePprActivityGroupInfrastructure()
+  const rows = await executeQuery(`
     SELECT
-      per.id AS period_id,
-      COUNT(DISTINCT up.program_id) AS total_programs,
-      COUNT(DISTINCT CASE WHEN sig.id IS NOT NULL THEN up.program_id END) AS signed_programs,
-      MAX(sig.signed_at) AS signed_at
+      per.id,
+      per.year,
+      per.month,
+      per.is_open,
+      per.deadline,
+      p.id AS program_id,
+      p.code AS program_code,
+      a.id AS activity_id,
+      a.name AS activity_name,
+      a.activity_group_code,
+      mv.value,
+      sig.signed_at
     FROM dbo.ppr_periods per
     INNER JOIN dbo.ppr_user_programs up
       ON up.employee_id = @employee_id
       AND up.is_active = 1
+    INNER JOIN dbo.ppr_programs p
+      ON p.id = up.program_id
+    INNER JOIN dbo.ppr_activities a
+      ON a.program_id = p.id
+      AND ISNULL(a.is_active, 1) = 1
+    LEFT JOIN dbo.ppr_monthly_values mv
+      ON mv.activity_id = a.id
+      AND mv.period_id = per.id
     LEFT JOIN dbo.ppr_signatures sig
       ON sig.employee_id = up.employee_id
       AND sig.period_id = per.id
       AND sig.is_valid = 1
       AND (sig.program_id = up.program_id OR sig.program_id IS NULL)
-    GROUP BY per.id;
+    ORDER BY per.year, per.month, p.code, a.sort_order, a.id;
   `, [
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
   ])
-  const signatureMap = new Map(signatureRows.map((row) => {
-    const totalPrograms = Number(row.total_programs ?? 0)
-    const signedPrograms = Number(row.signed_programs ?? 0)
-    const isSigned = totalPrograms > 0 && totalPrograms === signedPrograms
-    return [Number(row.period_id), {
-      isSigned,
-      signedAt: isSigned ? (row.signed_at ?? null) : null,
-    }]
-  }))
+
   const periodMap = new Map()
   for (const r of rows) {
+    if (!canPprEmployeeEditActivity({
+      programCode: r.program_code,
+      activityName: r.activity_name,
+      activityGroupCode: r.activity_group_code,
+      employeeId,
+    })) {
+      continue
+    }
+
     const id = Number(r.id)
-    const current = periodMap.get(id)
-    const completadas = Number(r.completadas ?? 0)
-    const totalActividades = Number(r.total_actividades ?? 0)
+    let current = periodMap.get(id)
     if (!current) {
-      const signature = signatureMap.get(id)
-      periodMap.set(id, {
+      current = {
         id,
         year: Number(r.year),
         month: Number(r.month),
         label: periodLabel(r.year, r.month),
         isOpen: Boolean(r.is_open),
         deadline: r.deadline ?? null,
-        isSigned: signature?.isSigned ?? false,
-        signedAt: signature?.signedAt ?? null,
-        completadas,
-        totalActividades,
-      })
-      continue
+        isSigned: false,
+        signedAt: null,
+        completadas: 0,
+        totalActividades: 0,
+        _activities: new Set(),
+        _programSignatures: new Map(),
+      }
+      periodMap.set(id, current)
     }
-    current.completadas = Math.max(current.completadas, completadas)
-    current.totalActividades = Math.max(current.totalActividades, totalActividades)
+
+    const programId = Number(r.program_id)
+    current._programSignatures.set(
+      programId,
+      current._programSignatures.get(programId) || r.signed_at != null,
+    )
+    if (r.signed_at != null && current.signedAt == null) {
+      current.signedAt = r.signed_at
+    }
+
+    const activityId = Number(r.activity_id)
+    if (!current._activities.has(activityId)) {
+      current._activities.add(activityId)
+      current.totalActividades += 1
+      if (r.value != null) current.completadas += 1
+    }
   }
-  return Array.from(periodMap.values()).sort((a, b) => (a.year - b.year) || (a.month - b.month))
+
+  return Array.from(periodMap.values())
+    .map(({ _activities, _programSignatures, ...period }) => ({
+      ...period,
+      isSigned: _programSignatures.size > 0
+        && Array.from(_programSignatures.values()).every(Boolean),
+      signedAt: _programSignatures.size > 0
+        && Array.from(_programSignatures.values()).every(Boolean)
+        ? period.signedAt
+        : null,
+    }))
+    .sort((a, b) => (a.year - b.year) || (a.month - b.month))
 }
 
 // ─── Admin functions ──────────────────────────────────────────────────────────
@@ -935,6 +1145,7 @@ export async function getTodosLosProgramas() {
     id: Number(r.id),
     code: String(r.code ?? ''),
     name: String(r.name ?? ''),
+    activityGroups: getPprProgramActivityGroups(r.code),
   }))
 }
 
@@ -966,6 +1177,7 @@ export async function buscarEmpleados(query) {
 //          activity_id, activity_code, activity_name, unit, annual_goal, sort_order,
 //          period_id, month, value, notes
 export async function getProgramaDetalle(programId, year, employeeId) {
+  await ensurePprActivityGroupInfrastructure()
   const rows = await executeProcedure('SP_PPR_PROGRAMA_DETALLE', [
     { name: 'program_id', type: sql.Int, value: Number(programId) },
     { name: 'year', type: sql.Int, value: Number(year) },
@@ -973,14 +1185,31 @@ export async function getProgramaDetalle(programId, year, employeeId) {
   ])
   if (!rows.length) return null
   const first = rows[0]
+  const groupRows = await executeQuery(`
+    SELECT id, activity_group_code
+    FROM dbo.ppr_activities
+    WHERE program_id = @program_id;
+  `, [
+    { name: 'program_id', type: sql.Int, value: Number(programId) },
+  ])
+  const groupByActivityId = new Map(groupRows.map((row) => [
+    Number(row.id),
+    row.activity_group_code == null ? null : String(row.activity_group_code),
+  ]))
+  const detailRows = rows.map((row) => ({
+    ...row,
+    activity_group_code: row.activity_group_code ?? groupByActivityId.get(Number(row.activity_id)) ?? null,
+  }))
   const activityMap = new Map()
-  for (const r of rows) {
+  for (const r of detailRows) {
     const aid = Number(r.activity_id)
+    const activityGroup = resolvePprActivityGroup(r.program_code, r.activity_name, r.activity_group_code)
     if (!activityMap.has(aid)) {
       activityMap.set(aid, {
         id: aid,
         code: String(r.activity_code ?? ''),
         name: String(r.activity_name ?? ''),
+        activityGroup,
         unit: String(r.unit ?? ''),
         annualGoal: r.annual_goal != null ? Number(r.annual_goal) : null,
         sortOrder: Number(r.sort_order ?? 0),
@@ -998,6 +1227,8 @@ export async function getProgramaDetalle(programId, year, employeeId) {
     programId: Number(first.program_id),
     programCode: String(first.program_code ?? ''),
     programName: String(first.program_name ?? ''),
+    activityGroups: getPprProgramActivityGroups(first.program_code),
+    activityScope: getPprEmployeeActivityScopeGroups(first.program_code, employeeId),
     activities: Array.from(activityMap.values()),
   }
 }
@@ -1005,7 +1236,25 @@ export async function getProgramaDetalle(programId, year, employeeId) {
 // SP_PPR_ADMIN_ACTIVIDADES(@program_id INT)
 // Returns: id, program_id, code, name, unit, annual_goal, sort_order, is_active
 export async function getActividadesAdmin(programId) {
-  const rows = await executeProcedure('SP_PPR_ADMIN_ACTIVIDADES', [
+  await ensurePprActivityGroupInfrastructure()
+  const rows = await executeQuery(`
+    SELECT
+      a.id,
+      a.program_id,
+      p.code AS program_code,
+      a.code,
+      a.name,
+      a.unit,
+      a.annual_goal,
+      a.sort_order,
+      a.is_active,
+      a.activity_group_code
+    FROM dbo.ppr_activities a
+    INNER JOIN dbo.ppr_programs p
+      ON p.id = a.program_id
+    WHERE a.program_id = @program_id
+    ORDER BY ISNULL(a.is_active, 1) DESC, a.sort_order, a.id;
+  `, [
     { name: 'program_id', type: sql.Int, value: Number(programId) },
   ])
   return rows.map((r) => ({
@@ -1017,6 +1266,8 @@ export async function getActividadesAdmin(programId) {
     annualGoal: r.annual_goal != null ? Number(r.annual_goal) : null,
     sortOrder: Number(r.sort_order ?? 0),
     isActive: r.is_active == null ? true : Boolean(r.is_active),
+    activityGroupCode: r.activity_group_code == null ? null : String(r.activity_group_code),
+    activityGroup: resolvePprActivityGroup(r.program_code, r.name, r.activity_group_code),
   }))
 }
 
@@ -1024,7 +1275,19 @@ export async function getActividadesAdmin(programId) {
 // @id INT NULL (NULL = create), @program_id INT, @code NVARCHAR(20), @name NVARCHAR(300),
 // @unit NVARCHAR(50), @annual_goal DECIMAL NULL, @sort_order INT, @is_active BIT, @admin_id INT
 // Returns: id
-export async function guardarActividad({ id, programId, code, name, unit, annualGoal, sortOrder, isActive, adminId }) {
+export async function guardarActividad({
+  id,
+  programId,
+  code,
+  name,
+  unit,
+  annualGoal,
+  sortOrder,
+  isActive,
+  adminId,
+  activityGroupCode = null,
+}) {
+  await ensurePprActivityGroupInfrastructure()
   const rows = await executeProcedure('SP_PPR_ADMIN_GUARDAR_ACTIVIDAD', [
     { name: 'id',           type: sql.Int,            value: id ?? null },
     { name: 'program_id',   type: sql.Int,            value: Number(programId) },
@@ -1036,7 +1299,26 @@ export async function guardarActividad({ id, programId, code, name, unit, annual
     { name: 'is_active',    type: sql.Bit,            value: isActive ? 1 : 0 },
     { name: 'admin_id',     type: sql.Int,            value: Number(adminId) },
   ])
-  return { id: Number(rows[0]?.id ?? 0) }
+  const activityId = Number(rows[0]?.id ?? 0)
+  const programRows = await executeQuery(`
+    SELECT code
+    FROM dbo.ppr_programs
+    WHERE id = @program_id;
+  `, [
+    { name: 'program_id', type: sql.Int, value: Number(programId) },
+  ])
+  const programCode = String(programRows[0]?.code ?? '')
+  const normalizedGroupCode = String(activityGroupCode ?? '').trim().toUpperCase()
+  const validGroup = getPprActivityGroupDefinition(programCode, normalizedGroupCode)
+  await executeQuery(`
+    UPDATE dbo.ppr_activities
+    SET activity_group_code = @activity_group_code
+    WHERE id = @activity_id;
+  `, [
+    { name: 'activity_group_code', type: sql.NVarChar(30), value: validGroup ? normalizedGroupCode : null },
+    { name: 'activity_id', type: sql.Int, value: activityId },
+  ])
+  return { id: activityId }
 }
 
 // SP_PPR_ADMIN_TOGGLE_ACTIVIDAD(@activity_id INT, @is_active BIT, @admin_id INT)
@@ -1083,18 +1365,37 @@ export async function getMatrizExportData(year) {
 //          completadas, total_actividades, signed_at
 export async function getResumenAnual(employeeId, year) {
   await ensurePprSignedDocumentInfrastructure()
-  const rows = await executeProcedure('SP_PPR_RESUMEN_ANUAL', [
-    { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
-    { name: 'year', type: sql.Int, value: Number(year) },
-  ])
-  const signatureRows = await executeQuery(`
+  await ensurePprActivityGroupInfrastructure()
+  const rows = await executeQuery(`
+    WITH months AS (
+      SELECT 1 AS month UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
+      UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8
+      UNION ALL SELECT 9 UNION ALL SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12
+    )
     SELECT
-      up.program_id,
+      p.id AS program_id,
+      p.code AS program_code,
+      p.name AS program_name,
+      a.id AS activity_id,
+      a.name AS activity_name,
+      a.activity_group_code,
+      months.month,
       per.id AS period_id,
-      MAX(sig.signed_at) AS signed_at
+      mv.value,
+      sig.signed_at
     FROM dbo.ppr_user_programs up
-    INNER JOIN dbo.ppr_periods per
+    INNER JOIN dbo.ppr_programs p
+      ON p.id = up.program_id
+    INNER JOIN dbo.ppr_activities a
+      ON a.program_id = p.id
+      AND ISNULL(a.is_active, 1) = 1
+    CROSS JOIN months
+    LEFT JOIN dbo.ppr_periods per
       ON per.year = @year
+      AND per.month = months.month
+    LEFT JOIN dbo.ppr_monthly_values mv
+      ON mv.activity_id = a.id
+      AND mv.period_id = per.id
     LEFT JOIN dbo.ppr_signatures sig
       ON sig.employee_id = up.employee_id
       AND sig.period_id = per.id
@@ -1102,35 +1403,60 @@ export async function getResumenAnual(employeeId, year) {
       AND (sig.program_id = up.program_id OR sig.program_id IS NULL)
     WHERE up.employee_id = @employee_id
       AND up.is_active = 1
-    GROUP BY up.program_id, per.id;
+    ORDER BY p.code, a.sort_order, a.id, months.month;
   `, [
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
     { name: 'year', type: sql.Int, value: Number(year) },
   ])
-  const signatureMap = new Map(signatureRows.map((row) => [
-    `${Number(row.program_id)}:${Number(row.period_id)}`,
-    row.signed_at ?? null,
-  ]))
+
   const programaMap = new Map()
   for (const r of rows) {
     const pid = Number(r.program_id)
-    if (!programaMap.has(pid)) {
-      programaMap.set(pid, {
+    const activityGroup = resolvePprActivityGroup(r.program_code, r.activity_name, r.activity_group_code)
+    const groupKey = activityGroup?.code ?? 'ALL'
+    const key = `${pid}:${groupKey}`
+    if (!programaMap.has(key)) {
+      programaMap.set(key, {
+        rowKey: key,
         programaId: pid,
         code: String(r.program_code ?? ''),
         name: String(r.program_name ?? ''),
-        meses: [],
+        activityGroup,
+        meses: new Map(),
       })
     }
-    const signatureKey = `${pid}:${r.period_id != null ? Number(r.period_id) : 0}`
-    programaMap.get(pid).meses.push({
-      periodoId: r.period_id != null ? Number(r.period_id) : null,
-      month: Number(r.month),
-      label: periodLabel(year, r.month),
-      completadas: Number(r.completadas ?? 0),
-      totalActividades: Number(r.total_actividades ?? 0),
-      isSigned: r.period_id != null && signatureMap.get(signatureKey) != null,
-    })
+    const entry = programaMap.get(key)
+    const month = Number(r.month)
+    if (!entry.meses.has(month)) {
+      entry.meses.set(month, {
+        periodoId: r.period_id != null ? Number(r.period_id) : null,
+        month,
+        label: periodLabel(year, month),
+        completadas: 0,
+        totalActividades: 0,
+        isSigned: r.period_id != null && r.signed_at != null,
+        _activities: new Set(),
+      })
+    }
+    const monthEntry = entry.meses.get(month)
+    const activityId = Number(r.activity_id)
+    if (!monthEntry._activities.has(activityId)) {
+      monthEntry._activities.add(activityId)
+      monthEntry.totalActividades += 1
+      if (r.value != null) monthEntry.completadas += 1
+    }
+    monthEntry.isSigned = monthEntry.isSigned || (r.period_id != null && r.signed_at != null)
   }
   return Array.from(programaMap.values())
+    .map((programa) => ({
+      ...programa,
+      meses: Array.from(programa.meses.values())
+        .map(({ _activities, ...mes }) => mes)
+        .sort((a, b) => a.month - b.month),
+    }))
+    .sort((a, b) => {
+      const codeCompare = a.code.localeCompare(b.code, 'es-PE', { numeric: true })
+      if (codeCompare !== 0) return codeCompare
+      return (a.activityGroup?.sortOrder ?? 0) - (b.activityGroup?.sortOrder ?? 0)
+    })
 }

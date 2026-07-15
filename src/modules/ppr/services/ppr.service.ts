@@ -293,6 +293,7 @@ export async function guardarActividadAdmin(payload: {
   annualGoal: number | null
   sortOrder: number
   isActive: boolean
+  activityGroupCode?: string | null
   adminId: number
 }): Promise<{ id: number }> {
   const res = await httpClient.post<{ ok: boolean; id: number }>('/ppr/admin/actividades', payload)

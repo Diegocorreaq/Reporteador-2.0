@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { usePprContext } from '@/modules/ppr/context/ppr-context'
 import { fetchProgramaDetalle } from '@/modules/ppr/services/ppr.service'
-import type { PprActividadDetalle, PprActividadMes, PprProgramaDetalle } from '@/modules/ppr/types'
+import type { PprActividadDetalle, PprActividadMes, PprActivityGroup, PprProgramaDetalle } from '@/modules/ppr/types'
 import { cn } from '@/lib/utils'
 
 const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
@@ -71,6 +71,11 @@ function CellModal({ activity, monthData, year, onClose }: CellModalProps) {
             {activity.code && (
               <span className="mb-1 inline-block rounded bg-[#e8f0f8] px-1.5 py-0.5 font-mono text-[10px] text-[#3a6fa0]">
                 {activity.code}
+              </span>
+            )}
+            {activity.activityGroup && (
+              <span className="mb-1 ml-1 inline-block rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                {activity.activityGroup.name}
               </span>
             )}
             <p className="text-sm font-bold leading-snug text-[#0c2340]">{activity.name}</p>
@@ -323,19 +328,19 @@ interface ChartData {
   totalMeta: number
 }
 
-function buildChartData(data: PprProgramaDetalle): ChartData {
+function buildChartData(activities: PprActividadDetalle[]): ChartData {
   const currentMonth = new Date().getMonth() + 1  // 1-12, mes en curso (no cerrado)
 
   const monthlyLogrado = Array.from({ length: 12 }, (_, i) => {
     const m = i + 1
     if (m >= currentMonth) return null   // mes actual y futuros: sin dato
-    return data.activities.reduce((s, a) => {
+    return activities.reduce((s, a) => {
       const md = a.months.find((mm) => mm.month === m)
       return s + (md?.value ?? 0)
     }, 0)
   })
 
-  const totalAnnualGoal = data.activities.reduce((s, a) => s + (a.annualGoal ?? 0), 0)
+  const totalAnnualGoal = activities.reduce((s, a) => s + (a.annualGoal ?? 0), 0)
   const monthlyMeta = Array.from({ length: 12 }, (_, i) => {
     const m = i + 1
     if (m >= currentMonth) return null   // sin meta para meses no cerrados
@@ -548,6 +553,7 @@ export function PprProgramaDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [activeGroupCode, setActiveGroupCode] = useState<string>('ALL')
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   const [activeMonth, setActiveMonth] = useState<number | null>(null)
   const [modalCell, setModalCell] = useState<{
@@ -585,46 +591,64 @@ export function PprProgramaDashboardPage() {
     navigate('/ppr/actividades', { state: { programaId } })
   }
 
+  const groupOptions = useMemo<PprActivityGroup[]>(() => {
+    if (!data) return []
+    return data.activityGroups ?? []
+  }, [data])
+  const activeGroup = groupOptions.find((group) => group.code === activeGroupCode) ?? null
+
+  useEffect(() => {
+    if (activeGroupCode !== 'ALL' && !groupOptions.some((group) => group.code === activeGroupCode)) {
+      setActiveGroupCode('ALL')
+    }
+  }, [activeGroupCode, groupOptions])
+
   // Derived: filtered activities
   const filteredActivities = useMemo(() => {
     if (!data) return []
     const q = search.toLowerCase()
-    return data.activities.filter(
-      (a) => !q || a.name.toLowerCase().includes(q) || a.code.toLowerCase().includes(q),
-    )
-  }, [data, search])
+    return data.activities.filter((a) => {
+      const matchesGroup = activeGroupCode === 'ALL' || a.activityGroup?.code === activeGroupCode
+      const matchesSearch = !q
+        || a.name.toLowerCase().includes(q)
+        || a.code.toLowerCase().includes(q)
+        || a.activityGroup?.name.toLowerCase().includes(q)
+        || a.activityGroup?.code.toLowerCase().includes(q)
+      return matchesGroup && matchesSearch
+    })
+  }, [data, search, activeGroupCode])
 
   // Derived: monthly stats
   const monthlyStats = useMemo(() => {
     if (!data) return []
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1
-      const total = data.activities.length
-      const completadas = data.activities.filter((a) => {
+      const total = filteredActivities.length
+      const completadas = filteredActivities.filter((a) => {
         const md = a.months.find((mm) => mm.month === m)
         return md?.value != null
       }).length
       const pct = total > 0 ? Math.round((completadas / total) * 100) : 0
       return { month: m, completadas, total, pct }
     })
-  }, [data])
+  }, [data, filteredActivities])
 
   // Derived: chart data
-  const chartData = useMemo(() => (data ? buildChartData(data) : null), [data])
+  const chartData = useMemo(() => (data ? buildChartData(filteredActivities) : null), [data, filteredActivities])
 
   // Derived: global stats
   const globalStats = useMemo(() => {
     if (!data) return { total: 0, withData: 0, globalPct: 0, totalValues: 0 }
-    const total = data.activities.length
-    const withData = data.activities.filter((a) => a.months.some((m) => m.value != null)).length
-    const allCells = data.activities.length * 12
-    const filledCells = data.activities.reduce(
+    const total = filteredActivities.length
+    const withData = filteredActivities.filter((a) => a.months.some((m) => m.value != null)).length
+    const allCells = filteredActivities.length * 12
+    const filledCells = filteredActivities.reduce(
       (s, a) => s + a.months.filter((m) => m.value != null).length,
       0,
     )
     const globalPct = allCells > 0 ? Math.round((filledCells / allCells) * 100) : 0
     return { total, withData, globalPct, totalValues: filledCells }
-  }, [data])
+  }, [data, filteredActivities])
 
   return (
     <div className="space-y-4">
@@ -645,11 +669,19 @@ export function PprProgramaDashboardPage() {
                   <span className="rounded bg-[#e8f0f8] px-1.5 py-0.5 font-mono text-[10px] text-[#3a6fa0]">
                     {data.programCode}
                   </span>
+                  {activeGroup && (
+                    <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                      {activeGroup.name}
+                    </span>
+                  )}
                   <h1 className="text-sm font-bold text-[#0c2340] sm:text-base">
                     {data.programName}
                   </h1>
                 </div>
-                <p className="text-[10px] text-slate-400">Dashboard de actividades · {year}</p>
+                <p className="text-[10px] text-slate-400">
+                  Dashboard de actividades · {year}
+                  {activeGroup ? ` · ${activeGroup.name}` : ''}
+                </p>
               </>
             ) : (
               <div className="h-5 w-48 animate-pulse rounded bg-slate-200" />
@@ -707,7 +739,11 @@ export function PprProgramaDashboardPage() {
 
           {/* Charts */}
           {chartData && (
-            <ChartsSection chartData={chartData} programName={data.programCode} year={year} />
+            <ChartsSection
+              chartData={chartData}
+              programName={activeGroup ? `${data.programCode} · ${activeGroup.name}` : data.programCode}
+              year={year}
+            />
           )}
 
           {/* Monthly bars */}
@@ -719,7 +755,21 @@ export function PprProgramaDashboardPage() {
           />
 
           {/* Search */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {groupOptions.length > 0 && (
+              <select
+                value={activeGroupCode}
+                onChange={(event) => setActiveGroupCode(event.target.value)}
+                className="rounded-xl border border-[#e2e8f0] bg-white px-3 py-2 text-xs font-semibold text-[#0c2340] outline-none transition focus:border-green-400 focus:ring-1 focus:ring-green-200"
+              >
+                <option value="ALL">Todo el programa</option>
+                {groupOptions.map((group) => (
+                  <option key={group.code} value={group.code}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            )}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               <input
@@ -815,6 +865,11 @@ export function PprProgramaDashboardPage() {
                               {activity.code && (
                                 <span className="mb-0.5 inline-block rounded bg-[#e8f0f8] px-1 py-px font-mono text-[9px] text-[#3a6fa0]">
                                   {activity.code}
+                                </span>
+                              )}
+                              {activity.activityGroup && (
+                                <span className="mb-0.5 ml-1 inline-block rounded bg-sky-50 px-1 py-px text-[9px] font-semibold text-sky-700">
+                                  {activity.activityGroup.name}
                                 </span>
                               )}
                               <p className="truncate text-[11px] font-medium leading-snug text-[#0c2340]" title={activity.name}>

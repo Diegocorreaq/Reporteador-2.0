@@ -175,12 +175,15 @@ export function PprPeriodosPage() {
 
   const periodosByMonth = new Map(periodos.filter((p) => p.year === year).map((p) => [p.month, p]))
 
-  const totalSigned = periodos.filter((p) => p.year === year && p.isSigned).length
-  const totalWithData = periodos.filter((p) => p.year === year).length
-  const totalCompletadas = periodos.filter((p) => p.year === year)
-    .reduce((s, p) => s + p.completadas, 0)
-  const totalActividades = periodos.filter((p) => p.year === year)
-    .reduce((s, p) => s + p.totalActividades, 0)
+  const trackablePeriodos = periodos.filter((p) => {
+    const isFutureOrCurrent = year > now.getFullYear()
+      || (year === now.getFullYear() && p.month >= now.getMonth() + 1)
+    return p.year === year && !isFutureOrCurrent && p.totalActividades > 0
+  })
+  const totalSigned = trackablePeriodos.filter((p) => p.isSigned).length
+  const totalWithData = trackablePeriodos.length
+  const totalCompletadas = trackablePeriodos.reduce((s, p) => s + p.completadas, 0)
+  const totalActividades = trackablePeriodos.reduce((s, p) => s + p.totalActividades, 0)
   const pctYear = totalActividades > 0 ? Math.round((totalCompletadas / totalActividades) * 100) : null
 
   function handleSelect(p: PprPeriodoItem) {

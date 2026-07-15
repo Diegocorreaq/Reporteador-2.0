@@ -115,8 +115,8 @@ export const mainSections: NavigationSection[] = [
             key: 'main-consulta-externa-consultorio-profesional',
             legacyKey: 'produccioncm',
             legacyRoute: '/upss/produccioncm',
-            label: 'Consulta Externa por por Consultorio y Profesional',
-            to: '/app/atencion-ambulatoria-hospitalizacion/consulta-externa-por-por-consultorio-y-profesional',
+            label: 'Consulta Externa por Consultorio y Profesional',
+            to: '/app/atencion-ambulatoria-hospitalizacion/consulta-externa-por-consultorio-y-profesional',
             description: 'Acceso actual por consultorio y profesional.',
             icon: Stethoscope,
             access: {

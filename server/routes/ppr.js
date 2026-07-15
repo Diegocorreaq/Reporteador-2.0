@@ -38,9 +38,9 @@ export const pprRouter = Router()
 
 // Verifies the requesting employee is a PPR admin before allowing admin operations
 async function requirePprAdmin(request, response, next) {
-  const adminId = Number(request.body?.adminId ?? request.query?.adminId)
+  const adminId = Number(request.user?.employeeId)
   if (!adminId) {
-    return response.status(403).json({ code: 'FORBIDDEN', message: 'Se requiere ID de administrador PPR.' })
+    return response.status(403).json({ code: 'FORBIDDEN', message: 'No se pudo identificar al administrador PPR autenticado.' })
   }
   try {
     const isAdmin = await verificarAdmin(adminId)
@@ -158,6 +158,12 @@ pprRouter.post('/ppr/valores', requireAuth, async (request, response) => {
     response.json({ ok: true })
   } catch (error) {
     logger.error({ correlationId: request.correlationId, event: 'ppr:valores:error', message: String(error) })
+    if (error?.code === 'PPR_ACTIVITY_FORBIDDEN') {
+      return response.status(403).json({ code: error.code, message: error.message })
+    }
+    if (error?.code === 'PPR_ACTIVITY_NOT_FOUND') {
+      return response.status(404).json({ code: error.code, message: error.message })
+    }
     response.status(500).json({ code: 'PPR_ERROR', message: 'Error al guardar valor.' })
   }
 })
@@ -177,7 +183,13 @@ pprRouter.post('/ppr/valores/validar', requireAuth, async (request, response) =>
     })
     response.json({ ok: true, validatedAt })
   } catch (error) {
-    const status = error?.code === 'PPR_VALIDATE_EMPTY' ? 409 : 500
+    const status = error?.code === 'PPR_VALIDATE_EMPTY'
+      ? 409
+      : error?.code === 'PPR_ACTIVITY_FORBIDDEN'
+        ? 403
+        : error?.code === 'PPR_ACTIVITY_NOT_FOUND'
+          ? 404
+          : 500
     logger.error({ correlationId: request.correlationId, event: 'ppr:valores:validar:error', message: String(error) })
     response.status(status).json({
       code: error?.code ?? 'PPR_ERROR',
@@ -548,7 +560,7 @@ pprRouter.get('/ppr/admin/actividades', requireAuth, requirePprAdmin, async (req
 
 // POST /ppr/admin/actividades — create or update an activity
 pprRouter.post('/ppr/admin/actividades', requireAuth, requirePprAdmin, async (request, response) => {
-  const { id, programId, code, name, unit, annualGoal, sortOrder, isActive } = request.body ?? {}
+  const { id, programId, code, name, unit, annualGoal, sortOrder, isActive, activityGroupCode } = request.body ?? {}
   if (!programId || !name || !unit) {
     return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere programId, name y unit.' })
   }
@@ -563,6 +575,7 @@ pprRouter.post('/ppr/admin/actividades', requireAuth, requirePprAdmin, async (re
       sortOrder: Number(sortOrder) || 1,
       isActive: isActive !== false,
       adminId: request.pprAdminId,
+      activityGroupCode: activityGroupCode ?? null,
     })
     logger.info({ correlationId: request.correlationId, event: 'ppr:admin:guardar-actividad', id, programId })
     response.json({ ok: true, id: result.id })

@@ -36,6 +36,7 @@ const UNITS_COMUNES = [
 interface ActividadFormData {
   code: string
   name: string
+  activityGroupCode: string
   unit: string
   annualGoal: string
   sortOrder: string
@@ -45,6 +46,7 @@ interface ActividadFormData {
 const EMPTY_FORM: ActividadFormData = {
   code: '',
   name: '',
+  activityGroupCode: '',
   unit: '',
   annualGoal: '',
   sortOrder: '1',
@@ -56,12 +58,13 @@ const EMPTY_FORM: ActividadFormData = {
 interface ActividadModalProps {
   mode: 'add' | 'edit'
   initial: ActividadFormData
+  activityGroups: NonNullable<PprProgramaAdmin['activityGroups']>
   onSave: (data: ActividadFormData) => Promise<void>
   onClose: () => void
   saving: boolean
 }
 
-function ActividadModal({ mode, initial, onSave, onClose, saving }: ActividadModalProps) {
+function ActividadModal({ mode, initial, activityGroups, onSave, onClose, saving }: ActividadModalProps) {
   const [form, setForm] = useState<ActividadFormData>(initial)
   const [unitSearch, setUnitSearch] = useState('')
   const [showUnitDrop, setShowUnitDrop] = useState(false)
@@ -91,13 +94,16 @@ function ActividadModal({ mode, initial, onSave, onClose, saving }: ActividadMod
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name.trim() || !form.unit.trim()) return
+    if (activityGroups.length > 0 && !form.activityGroupCode) return
     await onSave(form)
   }
 
   const filteredUnits = UNITS_COMUNES.filter(
     (u) => !unitSearch || u.toLowerCase().includes(unitSearch.toLowerCase()),
   )
-  const isValid = form.name.trim().length > 0 && form.unit.trim().length > 0
+  const isValid = form.name.trim().length > 0
+    && form.unit.trim().length > 0
+    && (activityGroups.length === 0 || form.activityGroupCode.length > 0)
 
   return (
     <div
@@ -170,6 +176,30 @@ function ActividadModal({ mode, initial, onSave, onClose, saving }: ActividadMod
             />
             <p className="mt-0.5 text-right text-[10px] text-slate-300">{form.name.length}/300</p>
           </div>
+
+          {activityGroups.length > 0 && (
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+                Grupo del programa <span className="text-red-400">*</span>
+              </label>
+              <select
+                value={form.activityGroupCode}
+                onChange={(e) => set('activityGroupCode', e.target.value)}
+                className="w-full rounded-xl border border-[#e2e8f0] bg-white px-3 py-2 text-xs text-[#0c2340] outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-200"
+                required
+              >
+                <option value="">Seleccionar grupo...</option>
+                {activityGroups.map((group) => (
+                  <option key={group.code} value={group.code}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[10px] text-slate-400">
+                Las nuevas actividades se mostraran y calcularan solo dentro de este grupo.
+              </p>
+            </div>
+          )}
 
           {/* Unit with autocomplete */}
           <div className="relative" ref={dropRef}>
@@ -352,14 +382,22 @@ export function PprAdminActividadesPage() {
     (p) =>
       !programSearch ||
       p.name.toLowerCase().includes(programSearch.toLowerCase()) ||
-      p.code.toLowerCase().includes(programSearch.toLowerCase()),
+      p.code.toLowerCase().includes(programSearch.toLowerCase()) ||
+      p.activityGroups?.some((group) =>
+        group.name.toLowerCase().includes(programSearch.toLowerCase()) ||
+        group.code.toLowerCase().includes(programSearch.toLowerCase()),
+      ),
   )
   const selectedPrograma = programas.find((p) => p.id === selectedId)
+  const selectedActivityGroups = selectedPrograma?.activityGroups ?? []
   const actActivas = actividades.filter((a) => a.isActive).length
   const actInactivas = actividades.filter((a) => !a.isActive).length
 
   const sortedActividades = [...actividades].sort((a, b) => {
     if (a.isActive !== b.isActive) return a.isActive ? -1 : 1
+    const groupA = a.activityGroup?.sortOrder ?? 99
+    const groupB = b.activityGroup?.sortOrder ?? 99
+    if (groupA !== groupB) return groupA - groupB
     return a.sortOrder - b.sortOrder
   })
 
@@ -370,6 +408,7 @@ export function PprAdminActividadesPage() {
       return {
         code: a.code,
         name: a.name,
+        activityGroupCode: a.activityGroupCode ?? a.activityGroup?.code ?? '',
         unit: a.unit,
         annualGoal: a.annualGoal != null ? String(a.annualGoal) : '',
         sortOrder: String(a.sortOrder),
@@ -380,7 +419,11 @@ export function PprAdminActividadesPage() {
       actividades.length > 0
         ? Math.max(...actividades.map((a) => a.sortOrder)) + 1
         : 1
-    return { ...EMPTY_FORM, sortOrder: String(nextOrder) }
+    return {
+      ...EMPTY_FORM,
+      activityGroupCode: selectedActivityGroups.length === 1 ? selectedActivityGroups[0].code : '',
+      sortOrder: String(nextOrder),
+    }
   }
 
   // ── Save activity ──
@@ -397,6 +440,7 @@ export function PprAdminActividadesPage() {
         annualGoal: formData.annualGoal ? Number(formData.annualGoal) : null,
         sortOrder: Number(formData.sortOrder) || 1,
         isActive: formData.isActive,
+        activityGroupCode: selectedActivityGroups.length > 0 ? formData.activityGroupCode : null,
         adminId: pprUser.employeeId,
       })
       const updated = await fetchActividadesAdmin(selectedId, pprUser.employeeId)
@@ -526,6 +570,21 @@ export function PprAdminActividadesPage() {
                           {cnt} actividad{cnt !== 1 ? 'es' : ''}
                         </p>
                       )}
+                      {p.activityGroups && p.activityGroups.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {p.activityGroups.map((group) => (
+                            <span
+                              key={group.code}
+                              className={cn(
+                                'rounded px-1.5 py-0.5 text-[9px] font-semibold',
+                                isSelected ? 'bg-amber-100 text-amber-700' : 'bg-sky-50 text-sky-700',
+                              )}
+                            >
+                              {group.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </button>
                 )
@@ -559,6 +618,18 @@ export function PprAdminActividadesPage() {
                     </span>
                     <h2 className="text-xs font-bold text-[#0c2340]">{selectedPrograma.name}</h2>
                   </div>
+                  {selectedActivityGroups.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {selectedActivityGroups.map((group) => (
+                        <span
+                          key={group.code}
+                          className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700"
+                        >
+                          {group.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <p className="mt-0.5 text-[10px] text-slate-400">
                     <span className="text-emerald-600 font-semibold">{actActivas}</span> activa{actActivas !== 1 ? 's' : ''}
                     {actInactivas > 0 && (
@@ -612,6 +683,11 @@ export function PprAdminActividadesPage() {
                         <th className="px-2 py-3 text-left text-[10px] font-semibold text-slate-400">
                           Nombre de la actividad
                         </th>
+                        {selectedActivityGroups.length > 0 && (
+                          <th className="w-32 px-2 py-3 text-left text-[10px] font-semibold text-slate-400">
+                            Grupo
+                          </th>
+                        )}
                         <th className="w-28 px-2 py-3 text-left text-[10px] font-semibold text-slate-400">
                           Unidad
                         </th>
@@ -665,6 +741,20 @@ export function PprAdminActividadesPage() {
                               {a.name}
                             </p>
                           </td>
+
+                          {selectedActivityGroups.length > 0 && (
+                            <td className="px-2 py-3">
+                              {a.activityGroup ? (
+                                <span className="rounded bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+                                  {a.activityGroup.name}
+                                </span>
+                              ) : (
+                                <span className="rounded bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600">
+                                  Sin grupo
+                                </span>
+                              )}
+                            </td>
+                          )}
 
                           {/* Unit */}
                           <td className="px-2 py-3">
@@ -735,7 +825,7 @@ export function PprAdminActividadesPage() {
                     <tfoot>
                       <tr className="border-t-2 border-[#e2e8f0] bg-slate-50">
                         <td
-                          colSpan={4}
+                          colSpan={selectedActivityGroups.length > 0 ? 5 : 4}
                           className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400"
                         >
                           Total · {actividades.length} actividad{actividades.length !== 1 ? 'es' : ''}
@@ -760,6 +850,7 @@ export function PprAdminActividadesPage() {
         <ActividadModal
           mode={modal.mode}
           initial={getInitialForm()}
+          activityGroups={selectedActivityGroups}
           onSave={handleSave}
           onClose={() => setModal(null)}
           saving={saving}

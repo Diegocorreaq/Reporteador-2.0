@@ -31,6 +31,7 @@ interface ProgramaCardProps {
 
 function ProgramaCard({ programa, onVerActividades, onVerDashboard }: ProgramaCardProps) {
   const { mesesCompletos, sumLogrado, sumMetaEsperada, sumMetaAnual, conDatos, totalActividades } = programa
+  const visibleGroups = programa.activityScope?.length ? programa.activityScope : programa.activityGroups ?? []
 
   const pctCorte = sumMetaEsperada > 0
     ? Math.round((sumLogrado / sumMetaEsperada) * 100)
@@ -76,11 +77,21 @@ function ProgramaCard({ programa, onVerActividades, onVerDashboard }: ProgramaCa
           <Layers className="h-5 w-5 text-indigo-600" />
         </div>
         <div className="min-w-0 flex-1">
-          {programa.code && (
-            <span className="mb-1 inline-block rounded bg-indigo-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-indigo-700">
-              {programa.code}
-            </span>
-          )}
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+            {programa.code && (
+              <span className="inline-block rounded bg-indigo-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-indigo-700">
+                {programa.code}
+              </span>
+            )}
+            {visibleGroups.map((group) => (
+              <span
+                key={group.code}
+                className="inline-flex items-center rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700"
+              >
+                {group.name}
+              </span>
+            ))}
+          </div>
           <p className="text-sm font-bold leading-snug text-slate-900">{programa.name}</p>
         </div>
       </div>
@@ -180,7 +191,12 @@ export function PprProgramasPage() {
   const filtered = programas.filter((p) => {
     if (!search) return true
     const q = search.toLowerCase()
-    return p.name.toLowerCase().includes(q) || (p.code ?? '').toLowerCase().includes(q)
+    return (
+      p.name.toLowerCase().includes(q) ||
+      (p.code ?? '').toLowerCase().includes(q) ||
+      p.activityScope?.some((group) => group.name.toLowerCase().includes(q) || group.code.toLowerCase().includes(q)) ||
+      p.activityGroups?.some((group) => group.name.toLowerCase().includes(q) || group.code.toLowerCase().includes(q))
+    )
   })
 
   const sorted = [...filtered].sort((a, b) => {

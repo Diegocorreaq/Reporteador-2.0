@@ -203,12 +203,12 @@ export function PprReportesPage() {
             </div>
             <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-5 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
-                Programas activos
+                Filas de seguimiento
               </p>
               <p className="mt-1 text-2xl font-bold tabular-nums text-indigo-700">
                 {resumen.length}
               </p>
-              <p className="text-[10px] text-indigo-600/80">en seguimiento</p>
+              <p className="text-[10px] text-indigo-600/80">programas y grupos</p>
             </div>
           </div>
 
@@ -240,11 +240,16 @@ export function PprReportesPage() {
                   {resumen.map((prog) => {
                     const mesByMonth = new Map(prog.meses.map((m) => [m.month, m]))
                     return (
-                      <tr key={prog.programaId} className="border-b border-slate-100 transition-colors last:border-0 hover:bg-indigo-50/20">
+                      <tr key={prog.rowKey ?? prog.programaId} className="border-b border-slate-100 transition-colors last:border-0 hover:bg-indigo-50/20">
                         <td className="py-3 pl-4 pr-3">
                           {prog.code && (
                             <span className="mr-1.5 rounded bg-indigo-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-indigo-700">
                               {prog.code}
+                            </span>
+                          )}
+                          {prog.activityGroup && (
+                            <span className="mr-1.5 rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                              {prog.activityGroup.name}
                             </span>
                           )}
                           <span className="text-xs font-medium text-slate-900">{prog.name}</span>

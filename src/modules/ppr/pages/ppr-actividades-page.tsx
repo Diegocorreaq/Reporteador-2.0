@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { Fragment, useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -49,7 +49,7 @@ import {
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
-// ─── Activity row (desktop table) ─────────────────────────────────────────────
+// --- Activity row (desktop table) ---------------------------------------------
 interface ActividadRowProps {
   actividad: PprActividad
   disabled: boolean
@@ -76,6 +76,35 @@ function validationLabel(actividad: PprActividad) {
 
 function canValidateActivity(actividad: PprActividad, disabled: boolean) {
   return !disabled && actividad.value != null && actividad.validationStatus !== 'validated'
+}
+
+function groupActividades(actividades: PprActividad[]) {
+  if (!actividades.some((actividad) => actividad.activityGroup)) {
+    return [{ key: 'all', name: null, sortOrder: 0, actividades }]
+  }
+
+  const grouped = new Map<string, {
+    key: string
+    name: string
+    sortOrder: number
+    actividades: PprActividad[]
+  }>()
+
+  for (const actividad of actividades) {
+    const group = actividad.activityGroup ?? { code: 'SIN', name: 'Sin grupo', sortOrder: 99 }
+    const key = group.code
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        key,
+        name: group.name,
+        sortOrder: group.sortOrder,
+        actividades: [],
+      })
+    }
+    grouped.get(key)?.actividades.push(actividad)
+  }
+
+  return Array.from(grouped.values()).sort((left, right) => left.sortOrder - right.sortOrder)
 }
 
 function resolveErrorMessage(error: unknown, fallback: string) {
@@ -190,7 +219,7 @@ function ActividadRow({ actividad, disabled, onChange, onValidate, validating }:
   )
 }
 
-// ─── Activity card (mobile) ───────────────────────────────────────────────────
+// --- Activity card (mobile) ---------------------------------------------------
 function ActividadCard({ actividad, disabled, onChange, onValidate, validating }: ActividadRowProps) {
   const [val, setVal] = useState(actividad.value != null ? String(actividad.value) : '')
   const [notes, setNotes] = useState(actividad.notes ?? '')
@@ -300,7 +329,7 @@ function ActividadCard({ actividad, disabled, onChange, onValidate, validating }
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// --- Page ---------------------------------------------------------------------
 export function PprActividadesPage() {
   const { pprUser } = usePprContext()
   const location = useLocation()
@@ -546,6 +575,10 @@ export function PprActividadesPage() {
     && (periodo?.isOpen ?? false)
   const signEnabled = canSign || canForceTestSign
   const programaActual = programas.find((p) => p.id === programaId)
+  const programaActualGroups = programaActual?.activityScope?.length
+    ? programaActual.activityScope
+    : programaActual?.activityGroups ?? []
+  const actividadGroups = groupActividades(actividades)
 
   return (
     <div className="space-y-5">
@@ -575,9 +608,12 @@ export function PprActividadesPage() {
         title="Mis Actividades"
         description={
           periodo
-            ? <>Período: <span className="font-semibold text-slate-900">{periodo.label}</span>
-              {programaActual && <> · Programa: <span className="font-semibold text-slate-900">{programaActual.name}</span></>}</>
-            : 'Cargando período…'
+            ? <>
+              Período: <span className="font-semibold text-slate-900">{periodo.label}</span>
+              {programaActual && <> · Programa: <span className="font-semibold text-slate-900">{programaActual.name}</span></>}
+              {programaActualGroups.length > 0 && <> · Grupo: <span className="font-semibold text-slate-900">{programaActualGroups.map((group) => group.name).join(', ')}</span></>}
+            </>
+            : 'Cargando período...'
         }
         right={
           signed ? (
@@ -657,8 +693,21 @@ export function PprActividadesPage() {
                         : 'border-slate-200 bg-white text-slate-900 hover:border-indigo-300 hover:bg-indigo-50/30',
                     )}
                   >
-                    {p.code && <span className="mr-1 opacity-70">{p.code}</span>}
-                    {p.name}
+                    <span>
+                      {p.code && <span className="mr-1 opacity-70">{p.code}</span>}
+                      {p.name}
+                    </span>
+                    {(p.activityScope?.length ? p.activityScope : p.activityGroups ?? []).map((group) => (
+                      <span
+                        key={group.code}
+                        className={cn(
+                          'ml-1 rounded px-1.5 py-0.5 text-[10px] font-semibold',
+                          programaId === p.id ? 'bg-white/20 text-white' : 'bg-sky-50 text-sky-700',
+                        )}
+                      >
+                        {group.name}
+                      </span>
+                    ))}
                   </button>
                 ))}
               </div>
@@ -727,15 +776,27 @@ export function PprActividadesPage() {
                 <>
                   {/* Mobile cards */}
                   <div className="ppr-stagger space-y-2.5 lg:hidden">
-                    {actividades.map((act) => (
-                      <ActividadCard
-                        key={act.id}
-                        actividad={act}
-                        disabled={signed || !(periodo?.isOpen ?? false)}
-                        onChange={handleValorChange}
-                        onValidate={handleValidar}
-                        validating={validatingId === act.id}
-                      />
+                    {actividadGroups.map((group) => (
+                      <div key={group.key} className="space-y-2.5">
+                        {group.name && (
+                          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                            <span className="text-xs font-bold text-slate-700">{group.name}</span>
+                            <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                              {group.actividades.length}
+                            </span>
+                          </div>
+                        )}
+                        {group.actividades.map((act) => (
+                          <ActividadCard
+                            key={act.id}
+                            actividad={act}
+                            disabled={signed || !(periodo?.isOpen ?? false) || !act.canEdit}
+                            onChange={handleValorChange}
+                            onValidate={handleValidar}
+                            validating={validatingId === act.id}
+                          />
+                        ))}
+                      </div>
                     ))}
                   </div>
 
@@ -756,15 +817,31 @@ export function PprActividadesPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {actividades.map((act) => (
-                            <ActividadRow
-                              key={act.id}
-                              actividad={act}
-                              disabled={signed || !(periodo?.isOpen ?? false)}
-                              onChange={handleValorChange}
-                              onValidate={handleValidar}
-                              validating={validatingId === act.id}
-                            />
+                          {actividadGroups.map((group) => (
+                            <Fragment key={group.key}>
+                              {group.name && (
+                                <tr className="border-b border-slate-200 bg-slate-100">
+                                  <td colSpan={8} className="px-4 py-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-bold text-slate-700">{group.name}</span>
+                                      <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                                        {group.actividades.length} actividades
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                              {group.actividades.map((act) => (
+                                <ActividadRow
+                                  key={act.id}
+                                  actividad={act}
+                                  disabled={signed || !(periodo?.isOpen ?? false) || !act.canEdit}
+                                  onChange={handleValorChange}
+                                  onValidate={handleValidar}
+                                  validating={validatingId === act.id}
+                                />
+                              ))}
+                            </Fragment>
                           ))}
                         </tbody>
                       </table>
