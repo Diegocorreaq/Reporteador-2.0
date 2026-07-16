@@ -127,23 +127,24 @@ function MonthCard({ month, year, periodo, currentMonth, currentYear, onSelect }
 
       {!isFuture && periodo && (
         <button
-          onClick={() => onSelect(periodo)}
+          onClick={() => periodo.isOpen ? onSelect(periodo) : undefined}
+          disabled={!periodo.isOpen}
           className={cn(
             'mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-[11px] font-semibold transition',
-            periodo.isSigned
-              ? 'border-emerald-200 bg-emerald-50/40 text-emerald-700 hover:bg-emerald-100/50'
-              : 'border-slate-200 text-slate-900 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700',
+            periodo.isOpen
+              ? 'border-slate-200 text-slate-900 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700'
+              : 'cursor-default border-slate-200 bg-slate-50 text-slate-400',
           )}
         >
-          {periodo.isSigned ? (
+          {periodo.isOpen ? (
             <>
-              <Lock className="h-3 w-3" />
-              Ver actividades
+              Ingresar datos
+              <ChevronRight className="h-3 w-3" />
             </>
           ) : (
             <>
-              Ver actividades
-              <ChevronRight className="h-3 w-3" />
+              <Lock className="h-3 w-3" />
+              Cerrado
             </>
           )}
         </button>

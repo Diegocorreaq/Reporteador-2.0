@@ -23,7 +23,6 @@ const PPR_0002_COMPLICACIONES_CODES = new Set([
   '3330718',
   '3330719',
   '3330720',
-  '5000502',
 ])
 
 const PPR_0016_TBC_CODES = new Set([

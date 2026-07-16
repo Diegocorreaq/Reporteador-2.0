@@ -47,6 +47,11 @@ const PprActividadesPage = lazy(() =>
 const PprPeriodosPage = lazy(() =>
   import('@/modules/ppr/pages/ppr-periodos-page').then((module) => ({ default: module.PprPeriodosPage })),
 )
+const PprEvaluacionMensualPage = lazy(() =>
+  import('@/modules/ppr/pages/ppr-evaluacion-mensual-page').then((module) => ({
+    default: module.PprEvaluacionMensualPage,
+  })),
+)
 const PprProgramasPage = lazy(() =>
   import('@/modules/ppr/pages/ppr-programas-page').then((module) => ({ default: module.PprProgramasPage })),
 )
@@ -414,6 +419,10 @@ export const router = createBrowserRouter([
           {
             path: 'periodos',
             element: lazyElement(<PprPeriodosPage />),
+          },
+          {
+            path: 'evaluacion-mensual',
+            element: lazyElement(<PprEvaluacionMensualPage />),
           },
           {
             path: 'programas',

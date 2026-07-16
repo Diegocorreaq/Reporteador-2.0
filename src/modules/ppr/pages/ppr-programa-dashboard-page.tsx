@@ -3,19 +3,29 @@ import { useNavigate, useParams } from 'react-router-dom'
 import ReactECharts from 'echarts-for-react'
 import {
   ArrowLeft,
+  Calendar,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  ClipboardList,
+  Clock,
+  Database,
+  Info,
   Layers,
   Loader2,
+  RefreshCw,
   Search,
   X,
 } from 'lucide-react'
 import { usePprContext } from '@/modules/ppr/context/ppr-context'
 import { fetchProgramaDetalle } from '@/modules/ppr/services/ppr.service'
-import type { PprActividadDetalle, PprActividadMes, PprActivityGroup, PprProgramaDetalle } from '@/modules/ppr/types'
+import type {
+  PprActividadDetalle,
+  PprActividadMes,
+  PprActivityGroup,
+  PprProgramaDetalle,
+  PprProgramaPreliminar,
+} from '@/modules/ppr/types'
 import { cn } from '@/lib/utils'
 
 const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
@@ -41,6 +51,22 @@ function cellText(value: number | null) {
   return 'text-emerald-700 font-semibold'
 }
 
+function pctToneClass(value: number | null) {
+  if (value == null) return 'text-slate-400'
+  if (value >= 100) return 'text-emerald-600'
+  if (value >= 80) return 'text-amber-600'
+  return 'text-rose-600'
+}
+
+function displayActivityCode(activity: { code?: string | null; sourceKey?: string | null }) {
+  const sourceKey = String(activity.sourceKey ?? '').trim()
+  if (sourceKey) return sourceKey
+
+  const code = String(activity.code ?? '').trim()
+  if (!code || /^AOI/i.test(code)) return null
+  return code
+}
+
 // ─── Cell detail modal ────────────────────────────────────────────────────────
 interface CellModalProps {
   activity: PprActividadDetalle
@@ -50,6 +76,7 @@ interface CellModalProps {
 }
 
 function CellModal({ activity, monthData, year, onClose }: CellModalProps) {
+  const activityCode = displayActivityCode(activity)
   const monthLabel = MONTHS_LONG[(monthData.month ?? 1) - 1]
   const accum = activity.months
     .filter((m) => m.month <= monthData.month && m.value != null)
@@ -68,9 +95,9 @@ function CellModal({ activity, monthData, year, onClose }: CellModalProps) {
         {/* Header */}
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            {activity.code && (
+            {activityCode && (
               <span className="mb-1 inline-block rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
-                {activity.code}
+                {activityCode}
               </span>
             )}
             {activity.activityGroup && (
@@ -150,10 +177,9 @@ function CellModal({ activity, monthData, year, onClose }: CellModalProps) {
 // ─── Expanded row detail ──────────────────────────────────────────────────────
 interface ExpandedDetailProps {
   activity: PprActividadDetalle
-  onGoToActividades: () => void
 }
 
-function ExpandedDetail({ activity, onGoToActividades }: ExpandedDetailProps) {
+function ExpandedDetail({ activity }: ExpandedDetailProps) {
   const total = activity.months.reduce((s, m) => s + (m.value ?? 0), 0)
   const withValue = activity.months.filter((m) => m.value != null).length
   const maxVal = Math.max(...activity.months.map((m) => m.value ?? 0), 1)
@@ -230,16 +256,6 @@ function ExpandedDetail({ activity, onGoToActividades }: ExpandedDetailProps) {
             ))}
           </div>
 
-          {/* Action */}
-          <div>
-            <button
-              onClick={onGoToActividades}
-              className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-teal-800"
-            >
-              <ClipboardList className="h-3.5 w-3.5" />
-              Ingresar datos en Actividades
-            </button>
-          </div>
         </div>
       </td>
     </tr>
@@ -252,9 +268,10 @@ interface MonthlyBarsProps {
   activeMonth: number | null
   currentMonth: number
   onSelectMonth: (m: number | null) => void
+  onOpenMonth: (m: number) => void
 }
 
-function MonthlyBars({ stats, activeMonth, currentMonth, onSelectMonth }: MonthlyBarsProps) {
+export function MonthlyBars({ stats, activeMonth, currentMonth, onSelectMonth, onOpenMonth }: MonthlyBarsProps) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="mb-3">
@@ -267,17 +284,22 @@ function MonthlyBars({ stats, activeMonth, currentMonth, onSelectMonth }: Monthl
       </div>
       <div className="flex items-end gap-1">
         {stats.map((s) => {
-          const isClosed = s.month < currentMonth   // solo meses cerrados tienen dato real
+          const isAvailable = s.month <= currentMonth
+          const isClosed = s.month < currentMonth
           const isActive = activeMonth === s.month
           const barH = isClosed ? Math.max(s.pct, 2) : 0
           return (
             <button
               key={s.month}
-              onClick={() => isClosed ? onSelectMonth(isActive ? null : s.month) : undefined}
-              disabled={!isClosed}
+              onClick={() => isAvailable ? onOpenMonth(s.month) : undefined}
+              onContextMenu={(event) => {
+                event.preventDefault()
+                if (isClosed) onSelectMonth(isActive ? null : s.month)
+              }}
+              disabled={!isAvailable}
               className={cn(
                 'group flex flex-1 flex-col items-center gap-1 rounded-lg pb-1 pt-2 transition',
-                isClosed ? 'hover:bg-slate-50 cursor-pointer' : 'cursor-default opacity-40',
+                isAvailable ? 'hover:bg-slate-50 cursor-pointer' : 'cursor-default opacity-40',
                 isActive && 'bg-cyan-50 ring-1 ring-cyan-200',
               )}
             >
@@ -317,7 +339,227 @@ function MonthlyBars({ stats, activeMonth, currentMonth, onSelectMonth }: Monthl
   )
 }
 
+interface PreliminaryPanelProps {
+  data: PprProgramaPreliminar | null
+  loading: boolean
+  error: string | null
+  onRefresh: () => void
+}
+
+export function PreliminaryPanel({ data, loading, error, onRefresh }: PreliminaryPanelProps) {
+  const [showAll, setShowAll] = useState(false)
+
+  if (!loading && !data && !error) return null
+
+  const visibleItems = data ? (showAll ? data.items : data.items.slice(0, 5)) : []
+  const pct = data?.monthlyGoalPct ?? null
+
+  return (
+    <div className="rounded-lg border border-cyan-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded bg-cyan-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-cyan-700">
+              <Database className="h-3 w-3" />
+              Preliminar diario
+            </span>
+            <span className="rounded bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500">
+              No consolida
+            </span>
+          </div>
+          <h2 className="mt-2 text-sm font-bold text-slate-950">
+            Seguimiento de fuente institucional
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">
+            {data
+              ? `Corte ${data.cutoffLabel}. Rango consultado: ${data.rangeStart} a ${data.rangeEnd}.`
+              : 'Consultando el ultimo corte disponible.'}
+          </p>
+        </div>
+        <button
+          onClick={onRefresh}
+          disabled={loading}
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700 disabled:opacity-50"
+        >
+          <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+          Actualizar
+        </button>
+      </div>
+
+      {loading && !data ? (
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-20 animate-pulse rounded-lg bg-slate-100" />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="mt-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          <Info className="h-4 w-4 shrink-0" />
+          {error}
+        </div>
+      ) : data ? (
+        <>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Logro preliminar del mes</p>
+              <p className="mt-1 text-2xl font-bold text-slate-950">{fmtK(data.totalValue)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Meta al corte</p>
+              <p className="mt-1 text-2xl font-bold text-slate-950">{fmtK(data.monthlyGoal)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Cumplimiento al corte</p>
+              <p className={cn('mt-1 text-2xl font-bold', pctToneClass(pct))}>{pct != null ? `${pct}%` : '-'}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Actividades vinculadas</p>
+              <p className="mt-1 text-2xl font-bold text-slate-950">{data.rowsMatched} / {data.totalActivities}</p>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                Preliminar vs meta al corte
+              </span>
+              <span className={cn('text-xs font-bold tabular-nums', pctToneClass(pct))}>
+                {pct != null ? `${pct}%` : 'Sin meta'}
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={cn('h-full rounded-full transition-all', pct == null ? 'bg-slate-300' : pct >= 100 ? 'bg-emerald-500' : pct >= 80 ? 'bg-amber-500' : 'bg-rose-500')}
+                style={{ width: `${Math.min(pct ?? 0, 100)}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
+            <div className="grid grid-cols-[1fr_96px_96px] bg-slate-50 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              <span>Actividad</span>
+              <span className="text-right">Preliminar</span>
+              <span className="text-right">% corte</span>
+            </div>
+            {visibleItems.length === 0 ? (
+              <div className="px-3 py-5 text-center text-xs text-slate-400">
+                Sin actividades vinculadas en este corte.
+              </div>
+            ) : (
+              visibleItems.map((item) => (
+                <div
+                  key={item.activityId}
+                  className="grid grid-cols-[1fr_96px_96px] items-center border-t border-slate-100 px-3 py-2 text-xs"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-800" title={item.name}>{item.name}</p>
+                    {displayActivityCode(item) && (
+                      <p className="mt-0.5 font-mono text-[9px] text-slate-400">{displayActivityCode(item)}</p>
+                    )}
+                  </div>
+                  <span className="text-right font-bold text-slate-950">{fmt(item.value)}</span>
+                  <span className={cn('text-right font-bold', pctToneClass(item.monthlyGoalPct))}>
+                    {item.monthlyGoalPct != null ? `${item.monthlyGoalPct}%` : '-'}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400">
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="h-3 w-3" />
+              Fuente: {data.rowsRead} filas leidas - {data.rowsUnmatched} sin vinculo
+            </span>
+            {data.items.length > 5 && (
+              <button
+                onClick={() => setShowAll((value) => !value)}
+                className="rounded-lg border border-slate-200 px-2 py-1 font-semibold text-slate-600 transition hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700"
+              >
+                {showAll ? 'Ver menos' : `Ver ${data.items.length} actividades`}
+              </button>
+            )}
+          </div>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
 // ─── Charts helpers ───────────────────────────────────────────────────────────
+interface MonthlyEvaluationAccessProps {
+  year: number
+  preliminaryMonth: number | null
+  completionByMonth: number[]
+  onOpenMonth: (month: number) => void
+}
+
+function MonthlyEvaluationAccess({ year, preliminaryMonth, completionByMonth, onOpenMonth }: MonthlyEvaluationAccessProps) {
+  const minEvaluationYear = 2025
+  const isAvailable = year >= minEvaluationYear
+  const defaultMonth = preliminaryMonth ?? 12
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-teal-700" />
+            <p className="text-sm font-bold text-slate-950">Evaluacion mensual</p>
+          </div>
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-500">
+            {isAvailable
+              ? 'Revisa el avance del mes contra la meta programada por actividad. El mes actual muestra informacion preliminar con meta proporcional al corte; los meses anteriores muestran la consolidacion registrada.'
+              : `La evaluacion mensual estara disponible desde ${minEvaluationYear}.`}
+          </p>
+        </div>
+        <button
+          onClick={() => onOpenMonth(defaultMonth)}
+          disabled={!isAvailable}
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+        >
+          {preliminaryMonth ? 'Ver mes actual' : 'Ver diciembre'}
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-12">
+        {MONTHS_SHORT.map((label, index) => {
+          const month = index + 1
+          const isOpen = preliminaryMonth === month
+          const stateLabel = isOpen ? 'Preliminar' : preliminaryMonth == null || month < preliminaryMonth ? 'Cerrado' : 'Pendiente'
+          const completedPct = completionByMonth[index] ?? 0
+          return (
+            <button
+              key={label}
+              onClick={() => isAvailable ? onOpenMonth(month) : undefined}
+              disabled={!isAvailable}
+              className={cn(
+                'rounded-lg border px-2 py-2 text-xs font-semibold transition',
+                !isAvailable
+                  ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300'
+                  : isOpen
+                  ? 'border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700',
+              )}
+            >
+              <span className="block">{label}</span>
+              <span className={cn('mt-0.5 block text-[9px] font-medium', isOpen ? 'text-cyan-600' : 'text-slate-400')}>
+                {stateLabel}
+              </span>
+              {isAvailable && (
+                <span className="mt-1 block text-[10px] font-bold tabular-nums text-slate-700">
+                  {completedPct}% completado
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function fmtK(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} M`
   if (n >= 1_000) return `${Math.round(n / 1_000)} mil`
@@ -330,15 +572,26 @@ interface ChartData {
   quarterlyLogrado: number[]
   quarterlyMeta: number[]
   totalLogrado: number
-  totalMeta: number
+  totalMetaCorte: number
+  totalMetaAnnual: number
+  cutoffMonth: number
+  cutoffLabel: string
 }
 
-function buildChartData(activities: PprActividadDetalle[]): ChartData {
-  const currentMonth = new Date().getMonth() + 1  // 1-12, mes en curso (no cerrado)
+function getCutoffMonth(year: number) {
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
+  if (year < currentYear) return 12
+  if (year > currentYear) return 0
+  return Math.max(currentMonth - 1, 0)
+}
 
+function buildChartData(activities: PprActividadDetalle[], year: number): ChartData {
+  const cutoffMonth = getCutoffMonth(year)
   const monthlyLogrado = Array.from({ length: 12 }, (_, i) => {
     const m = i + 1
-    if (m >= currentMonth) return null   // mes actual y futuros: sin dato
+    if (m > cutoffMonth) return null
     return activities.reduce((s, a) => {
       const md = a.months.find((mm) => mm.month === m)
       return s + (md?.value ?? 0)
@@ -348,7 +601,7 @@ function buildChartData(activities: PprActividadDetalle[]): ChartData {
   const totalAnnualGoal = activities.reduce((s, a) => s + (a.annualGoal ?? 0), 0)
   const monthlyMeta = Array.from({ length: 12 }, (_, i) => {
     const m = i + 1
-    if (m >= currentMonth) return null   // sin meta para meses no cerrados
+    if (m > cutoffMonth) return null
     return Math.round(totalAnnualGoal / 12)
   })
 
@@ -363,12 +616,34 @@ function buildChartData(activities: PprActividadDetalle[]): ChartData {
   })
 
   const totalLogrado = (monthlyLogrado.filter((v) => v !== null) as number[]).reduce((s, v) => s + v, 0)
+  const totalMetaCorte = (monthlyMeta.filter((v) => v !== null) as number[]).reduce((s, v) => s + v, 0)
+  const cutoffLabel = cutoffMonth > 0 ? MONTHS_LONG[cutoffMonth - 1] : 'sin corte cerrado'
 
-  return { monthlyLogrado, monthlyMeta, quarterlyLogrado, quarterlyMeta, totalLogrado, totalMeta: totalAnnualGoal }
+  return {
+    monthlyLogrado,
+    monthlyMeta,
+    quarterlyLogrado,
+    quarterlyMeta,
+    totalLogrado,
+    totalMetaCorte,
+    totalMetaAnnual: totalAnnualGoal,
+    cutoffMonth,
+    cutoffLabel,
+  }
 }
 
 function ChartsSection({ chartData, programName, year }: { chartData: ChartData; programName: string; year: number }) {
-  const { monthlyLogrado, monthlyMeta, quarterlyLogrado, quarterlyMeta, totalLogrado, totalMeta } = chartData
+  const {
+    monthlyLogrado,
+    monthlyMeta,
+    quarterlyLogrado,
+    quarterlyMeta,
+    totalLogrado,
+    totalMetaCorte,
+    totalMetaAnnual,
+    cutoffMonth,
+    cutoffLabel,
+  } = chartData
 
   const lineOption = {
     backgroundColor: 'transparent',
@@ -463,8 +738,9 @@ function ChartsSection({ chartData, programName, year }: { chartData: ChartData;
     ],
   }
 
-  const gaugeMax = Math.max(totalMeta, totalLogrado, 1)
-  const gaugePct = totalMeta > 0 ? Math.round((totalLogrado / totalMeta) * 100) : 0
+  const gaugeMax = Math.max(totalMetaCorte, totalLogrado, 1)
+  const gaugePct = totalMetaCorte > 0 ? Math.round((totalLogrado / totalMetaCorte) * 100) : 0
+  const annualPct = totalMetaAnnual > 0 ? Math.round((totalLogrado / totalMetaAnnual) * 100) : null
 
   const gaugeOption = {
     backgroundColor: 'transparent',
@@ -505,7 +781,7 @@ function ChartsSection({ chartData, programName, year }: { chartData: ChartData;
       {/* Line chart — 2 cols */}
       <div className="col-span-1 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] lg:col-span-2">
         <p className="mb-1 text-xs font-bold text-slate-950">
-          Cumplimiento mensual de meta · {programName}
+          Logro mensual vs meta al corte · {programName}
         </p>
         <ReactECharts option={lineOption} style={{ height: '220px' }} />
       </div>
@@ -513,7 +789,7 @@ function ChartsSection({ chartData, programName, year }: { chartData: ChartData;
       {/* Bar chart — 2 cols */}
       <div className="col-span-1 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] lg:col-span-2">
         <p className="mb-1 text-xs font-bold text-slate-950">
-          Cumplimiento trimestral de meta · {year}
+          Logro trimestral vs meta al corte · {year}
         </p>
         <ReactECharts option={barOption} style={{ height: '220px' }} />
       </div>
@@ -523,23 +799,29 @@ function ChartsSection({ chartData, programName, year }: { chartData: ChartData;
         {/* KPI cards */}
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg border border-slate-200 bg-white p-3 text-center">
-            <p className="text-lg font-bold text-slate-950">{fmtK(totalMeta)}</p>
-            <p className="text-[10px] text-slate-400">Meta anual</p>
+            <p className="text-lg font-bold text-slate-950">{fmtK(totalMetaCorte)}</p>
+            <p className="text-[10px] text-slate-400">Meta al corte</p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-white p-3 text-center">
-            <p className="text-lg font-bold text-emerald-600">{fmtK(totalLogrado)}</p>
-            <p className="text-[10px] text-slate-400">Logro acumulado</p>
+            <p className="text-lg font-bold text-slate-950">{fmtK(totalMetaAnnual)}</p>
+            <p className="text-[10px] text-slate-400">Meta anual</p>
           </div>
         </div>
 
         {/* Gauge */}
         <div className="flex-1 rounded-lg border border-slate-200 bg-white p-3">
-          <p className="text-center text-xs font-bold text-slate-950">Cumplimiento de meta anual</p>
+          <p className="text-center text-xs font-bold text-slate-950">Cumplimiento al corte</p>
+          <p className="mt-0.5 text-center text-[10px] text-slate-400">
+            {cutoffMonth > 0 ? `Corte a ${cutoffLabel}` : 'Sin meses cerrados'}
+          </p>
           <ReactECharts option={gaugeOption} style={{ height: '160px' }} />
           <div className="flex justify-between px-2">
             <span className="text-[10px] text-slate-400">0</span>
             <span className="text-[10px] text-slate-400">{fmtK(gaugeMax)}</span>
           </div>
+          <p className="mt-1 text-center text-[10px] text-slate-400">
+            Avance anual: {annualPct != null ? `${annualPct}%` : '-'}
+          </p>
         </div>
       </div>
     </div>
@@ -547,8 +829,12 @@ function ChartsSection({ chartData, programName, year }: { chartData: ChartData;
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
-export function PprProgramaDashboardPage() {
-  const { id } = useParams<{ id: string }>()
+interface PprProgramaDashboardContentProps {
+  programId: number
+  embedded?: boolean
+}
+
+export function PprProgramaDashboardContent({ programId, embedded = false }: PprProgramaDashboardContentProps) {
   const { pprUser } = usePprContext()
   const navigate = useNavigate()
   const currentYear = new Date().getFullYear()
@@ -565,8 +851,6 @@ export function PprProgramaDashboardPage() {
     activity: PprActividadDetalle
     monthData: PprActividadMes
   } | null>(null)
-
-  const programId = Number(id)
 
   useEffect(() => {
     if (!programId) return
@@ -592,15 +876,19 @@ export function PprProgramaDashboardPage() {
     setModalCell({ activity, monthData })
   }
 
-  function handleGoToActividades(programaId: number) {
-    navigate('/ppr/actividades', { state: { programaId } })
-  }
-
   const groupOptions = useMemo<PprActivityGroup[]>(() => {
     if (!data) return []
     return data.activityGroups ?? []
   }, [data])
   const activeGroup = groupOptions.find((group) => group.code === activeGroupCode) ?? null
+  const groupCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const activity of data?.activities ?? []) {
+      const key = activity.activityGroup?.code ?? 'ALL'
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+    return counts
+  }, [data])
 
   useEffect(() => {
     if (activeGroupCode !== 'ALL' && !groupOptions.some((group) => group.code === activeGroupCode)) {
@@ -616,30 +904,15 @@ export function PprProgramaDashboardPage() {
       const matchesGroup = activeGroupCode === 'ALL' || a.activityGroup?.code === activeGroupCode
       const matchesSearch = !q
         || a.name.toLowerCase().includes(q)
-        || a.code.toLowerCase().includes(q)
+        || String(displayActivityCode(a) ?? '').toLowerCase().includes(q)
         || a.activityGroup?.name.toLowerCase().includes(q)
         || a.activityGroup?.code.toLowerCase().includes(q)
       return matchesGroup && matchesSearch
     })
   }, [data, search, activeGroupCode])
 
-  // Derived: monthly stats
-  const monthlyStats = useMemo(() => {
-    if (!data) return []
-    return Array.from({ length: 12 }, (_, i) => {
-      const m = i + 1
-      const total = filteredActivities.length
-      const completadas = filteredActivities.filter((a) => {
-        const md = a.months.find((mm) => mm.month === m)
-        return md?.value != null
-      }).length
-      const pct = total > 0 ? Math.round((completadas / total) * 100) : 0
-      return { month: m, completadas, total, pct }
-    })
-  }, [data, filteredActivities])
-
   // Derived: chart data
-  const chartData = useMemo(() => (data ? buildChartData(filteredActivities) : null), [data, filteredActivities])
+  const chartData = useMemo(() => (data ? buildChartData(filteredActivities, year) : null), [data, filteredActivities, year])
 
   // Derived: global stats
   const globalStats = useMemo(() => {
@@ -655,18 +928,61 @@ export function PprProgramaDashboardPage() {
     return { total, withData, globalPct, totalValues: filledCells }
   }, [data, filteredActivities])
 
+  const goalStats = useMemo(() => {
+    if (!data) {
+      return {
+        totalGoal: 0,
+        totalValue: 0,
+        metaCorte: 0,
+        pctCorte: null as number | null,
+        pctAnnual: null as number | null,
+      }
+    }
+    const totalGoal = filteredActivities.reduce((sum, activity) => sum + (activity.annualGoal ?? 0), 0)
+    const totalValue = filteredActivities.reduce(
+      (sum, activity) => sum + activity.months.reduce((monthSum, month) => {
+        if (month.month > getCutoffMonth(year)) return monthSum
+        return monthSum + (month.value ?? 0)
+      }, 0),
+      0,
+    )
+    const metaCorte = Math.round((totalGoal / 12) * getCutoffMonth(year))
+    return {
+      totalGoal,
+      totalValue,
+      metaCorte,
+      pctCorte: metaCorte > 0 ? Math.round((totalValue / metaCorte) * 100) : null,
+      pctAnnual: totalGoal > 0 ? Math.round((totalValue / totalGoal) * 100) : null,
+    }
+  }, [data, filteredActivities, year])
+
+  const monthlyCompletion = useMemo(() => {
+    const total = filteredActivities.length
+    if (total === 0) return Array.from({ length: 12 }, () => 0)
+    return Array.from({ length: 12 }, (_, index) => {
+      const month = index + 1
+      const completed = filteredActivities.filter((activity) => {
+        const monthData = activity.months.find((item) => item.month === month)
+        return monthData?.value != null
+      }).length
+      return Math.round((completed / total) * 100)
+    })
+  }, [filteredActivities])
+
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/ppr/programas')}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-slate-50"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Programas
-          </button>
+          {!embedded && (
+            <button
+              onClick={() => navigate(pprUser.role === 'admin' ? '/ppr/programas' : '/ppr')}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-slate-50"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              {pprUser.role === 'admin' ? 'Programas' : 'Inicio'}
+            </button>
+          )}
           <div>
             {data ? (
               <>
@@ -731,9 +1047,9 @@ export function PprProgramaDashboardPage() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               { label: 'Actividades', value: globalStats.total, color: 'text-slate-950' },
-              { label: 'Actividades con dato', value: globalStats.withData, color: 'text-emerald-600' },
-              { label: 'Registros consolidados', value: `${globalStats.totalValues} / ${globalStats.total * 12}`, color: 'text-slate-600' },
-              { label: '% consolidación anual', value: `${globalStats.globalPct}%`, color: globalStats.globalPct >= 100 ? 'text-emerald-600' : globalStats.globalPct >= 60 ? 'text-amber-600' : 'text-rose-600' },
+              { label: 'Logro al corte', value: fmtK(goalStats.totalValue), color: 'text-emerald-600' },
+              { label: 'Avance anual', value: goalStats.pctAnnual != null ? `${goalStats.pctAnnual}%` : '-', color: pctToneClass(goalStats.pctAnnual) },
+              { label: 'Cumplimiento al corte', value: goalStats.pctCorte != null ? `${goalStats.pctCorte}%` : '-', color: pctToneClass(goalStats.pctCorte) },
             ].map((s) => (
               <div key={s.label} className="rounded-lg border border-slate-200 bg-white p-3 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                 <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
@@ -751,29 +1067,33 @@ export function PprProgramaDashboardPage() {
             />
           )}
 
-          {/* Monthly bars */}
-          <MonthlyBars
-            stats={monthlyStats}
-            activeMonth={activeMonth}
-            currentMonth={new Date().getMonth() + 1}
-            onSelectMonth={setActiveMonth}
+          <MonthlyEvaluationAccess
+            year={year}
+            preliminaryMonth={year === currentYear ? new Date().getMonth() + 1 : null}
+            completionByMonth={monthlyCompletion}
+            onOpenMonth={(month) => navigate(`/ppr/evaluacion-mensual?programId=${programId}&year=${year}&month=${month}`)}
           />
 
           {/* Search */}
           <div className="flex flex-wrap items-center gap-2">
             {groupOptions.length > 0 && (
-              <select
-                value={activeGroupCode}
-                onChange={(event) => setActiveGroupCode(event.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
-              >
-                <option value="ALL">Todo el programa</option>
-                {groupOptions.map((group) => (
-                  <option key={group.code} value={group.code}>
-                    {group.name}
-                  </option>
-                ))}
-              </select>
+              <label className="flex min-w-[220px] items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-600/15">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                  Agrupación
+                </span>
+                <select
+                  value={activeGroupCode}
+                  onChange={(event) => setActiveGroupCode(event.target.value)}
+                  className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-slate-950 outline-none"
+                >
+                  <option value="ALL">Todo el programa ({data.activities.length})</option>
+                  {groupOptions.map((group) => (
+                    <option key={group.code} value={group.code}>
+                      {group.name} ({groupCounts.get(group.code) ?? 0})
+                    </option>
+                  ))}
+                </select>
+              </label>
             )}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
@@ -794,13 +1114,6 @@ export function PprProgramaDashboardPage() {
                 {MONTHS_SHORT[activeMonth - 1]}
               </button>
             )}
-            <button
-              onClick={() => handleGoToActividades(programId)}
-              className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-800"
-            >
-              <ClipboardList className="h-3.5 w-3.5" />
-              Ingresar datos
-            </button>
           </div>
 
           {/* Table */}
@@ -843,6 +1156,7 @@ export function PprProgramaDashboardPage() {
                     const isExpanded = expandedIds.has(activity.id)
                     const total = activity.months.reduce((s, m) => s + (m.value ?? 0), 0)
                     const monthsMap = new Map(activity.months.map((m) => [m.month, m]))
+                    const activityCode = displayActivityCode(activity)
 
                     return [
                       <tr
@@ -867,9 +1181,9 @@ export function PprProgramaDashboardPage() {
                               <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
                             )}
                             <div className="min-w-0">
-                              {activity.code && (
+                              {activityCode && (
                                 <span className="mb-0.5 inline-block rounded bg-slate-100 px-1 py-px font-mono text-[9px] text-slate-600">
-                                  {activity.code}
+                                  {activityCode}
                                 </span>
                               )}
                               {activity.activityGroup && (
@@ -926,7 +1240,6 @@ export function PprProgramaDashboardPage() {
                         <ExpandedDetail
                           key={`exp-${activity.id}`}
                           activity={activity}
-                          onGoToActividades={() => handleGoToActividades(programId)}
                         />
                       ),
                     ]
@@ -988,4 +1301,9 @@ export function PprProgramaDashboardPage() {
       )}
     </div>
   )
+}
+
+export function PprProgramaDashboardPage() {
+  const { id } = useParams<{ id: string }>()
+  return <PprProgramaDashboardContent programId={Number(id)} />
 }

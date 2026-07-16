@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, ClipboardList, Layers, Search, Target } from 'lucide-react'
+import { BarChart2, Layers, Search, Target } from 'lucide-react'
 import { usePprContext } from '@/modules/ppr/context/ppr-context'
 import { fetchPeriodoActivo, fetchProgramas } from '@/modules/ppr/services/ppr.service'
 import type { PprPeriodo, PprPrograma } from '@/modules/ppr/types'
@@ -25,11 +25,10 @@ function fmtNum(n: number) {
 
 interface ProgramaCardProps {
   programa: PprPrograma
-  onVerActividades: (programaId: number) => void
   onVerDashboard: (programaId: number) => void
 }
 
-function ProgramaCard({ programa, onVerActividades, onVerDashboard }: ProgramaCardProps) {
+function ProgramaCard({ programa, onVerDashboard }: ProgramaCardProps) {
   const { mesesCompletos, sumLogrado, sumMetaEsperada, sumMetaAnual, conDatos, totalActividades } = programa
   const visibleGroups = programa.activityScope?.length ? programa.activityScope : programa.activityGroups ?? []
 
@@ -137,13 +136,6 @@ function ProgramaCard({ programa, onVerActividades, onVerDashboard }: ProgramaCa
           <BarChart2 className="h-3.5 w-3.5" />
           Dashboard
         </button>
-        <button
-          onClick={() => onVerActividades(programa.id)}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-900 transition hover:border-teal-700 hover:bg-teal-50 hover:text-teal-800"
-        >
-          <ClipboardList className="h-3.5 w-3.5" />
-          Ingresar datos
-        </button>
       </div>
     </div>
   )
@@ -174,10 +166,6 @@ export function PprProgramasPage() {
       .catch(() => setError('No se pudieron cargar los programas.'))
       .finally(() => setLoading(false))
   }, [pprUser.employeeId])
-
-  function handleVerActividades(programaId: number) {
-    navigate('/ppr/actividades', { state: { programaId } })
-  }
 
   function handleVerDashboard(programaId: number) {
     navigate(`/ppr/programas/${programaId}`)
@@ -338,7 +326,6 @@ export function PprProgramasPage() {
                 <ProgramaCard
                   key={p.id}
                   programa={p}
-                  onVerActividades={handleVerActividades}
                   onVerDashboard={handleVerDashboard}
                 />
               ))}

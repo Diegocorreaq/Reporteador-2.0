@@ -118,6 +118,7 @@ export interface PprActividadMes {
 export interface PprActividadDetalle {
   id: number
   code: string
+  sourceKey: string | null
   name: string
   activityGroup: PprActivityGroup | null
   unit: string
@@ -133,6 +134,90 @@ export interface PprProgramaDetalle {
   activityGroups?: PprActivityGroup[]
   activityScope?: PprActivityGroup[]
   activities: PprActividadDetalle[]
+}
+
+export interface PprPreliminarActividad {
+  activityId: number
+  code: string
+  name: string
+  unit: string
+  annualGoal: number | null
+  monthlyGoal: number | null
+  monthlyGoalFull?: number | null
+  monthlyGoalPct: number | null
+  sourceKey: string | null
+  value: number
+}
+
+export interface PprProgramaPreliminar {
+  programId: number
+  programCode: string
+  programName: string
+  sourceId: string
+  sourceLabel: string
+  isPreliminary: boolean
+  generatedAt: string
+  cutoffAt: string
+  cutoffLabel: string
+  timeZone: string
+  rangeStart: string
+  rangeEnd: string
+  totalActivities: number
+  rowsRead: number
+  rowsMatched: number
+  rowsUnmatched: number
+  totalValue: number
+  monthlyGoal: number
+  monthlyGoalFull?: number
+  cutoffGoalFactor?: number
+  cutoffDay?: number | null
+  daysInMonth?: number | null
+  monthlyGoalPct: number | null
+  items: PprPreliminarActividad[]
+  unmatchedSourceRows: Array<{ sourceKey: string; sourceValue: number }>
+  manualActivities: Array<{ activityId: number; activityName: string; sourceKey: string | null }>
+}
+
+export interface PprEvaluacionMensualActividad {
+  activityId: number
+  code: string
+  name: string
+  unit: string
+  annualGoal: number | null
+  monthlyGoal: number | null
+  monthlyGoalFull?: number | null
+  value: number | null
+  monthlyGoalPct: number | null
+  status: 'en_meta' | 'seguimiento' | 'critico' | 'sin_dato' | 'con_avance' | 'sin_meta' | string
+  sourceKey: string | null
+}
+
+export interface PprEvaluacionMensual {
+  programId: number
+  programCode: string
+  programName: string
+  year: number
+  month: number
+  monthLabel: string
+  sourceMode: 'preliminary' | 'consolidated' | string
+  periodId: number | null
+  periodIsOpen: boolean
+  isPreliminary: boolean
+  cutoffAt: string | null
+  cutoffLabel: string | null
+  rangeStart: string | null
+  rangeEnd: string | null
+  totalActivities: number
+  withValue: number
+  totalValue: number
+  monthlyGoal: number
+  monthlyGoalFull?: number
+  cutoffGoalFactor?: number
+  cutoffDay?: number | null
+  daysInMonth?: number | null
+  monthlyGoalPct: number | null
+  statusCounts: Record<string, number>
+  activities: PprEvaluacionMensualActividad[]
 }
 
 export interface PprValidationSummary {

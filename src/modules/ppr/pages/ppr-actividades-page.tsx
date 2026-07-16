@@ -565,16 +565,17 @@ export function PprActividadesPage() {
     }
   }
 
-  const validadasActuales = actividades.filter((a) => a.validationStatus === 'validated').length
-  const conValorActuales = actividades.filter((a) => a.value != null).length
-  const pendientesActuales = actividades.filter((a) => a.value == null).length
-  const visibleActividades = actividades.filter((a) => {
+  const editableActividades = actividades.filter((a) => a.canEdit)
+  const validadasActuales = editableActividades.filter((a) => a.validationStatus === 'validated').length
+  const conValorActuales = editableActividades.filter((a) => a.value != null).length
+  const pendientesActuales = editableActividades.filter((a) => a.value == null).length
+  const visibleActividades = editableActividades.filter((a) => {
     if (activityView === 'pending') return a.value == null
     if (activityView === 'filled') return a.value != null && a.validationStatus !== 'validated'
     if (activityView === 'validated') return a.validationStatus === 'validated'
     return true
   })
-  const total = validationSummary?.total ?? actividades.length
+  const total = validationSummary?.total ?? editableActividades.length
   const completadas = validationSummary?.validated ?? validadasActuales
   const conValor = validationSummary?.withValue ?? conValorActuales
   const pctTotal = total > 0 ? Math.round((completadas / total) * 100) : 0
@@ -590,7 +591,7 @@ export function PprActividadesPage() {
     : programaActual?.activityGroups ?? []
   const actividadGroups = groupActividades(visibleActividades)
   const activityViewOptions: Array<{ value: ActivityView; label: string; count: number }> = [
-    { value: 'all', label: 'Todas', count: actividades.length },
+    { value: 'all', label: 'Todas', count: editableActividades.length },
     { value: 'pending', label: 'Pendientes', count: pendientesActuales },
     { value: 'filled', label: 'Con valor', count: Math.max(conValorActuales - validadasActuales, 0) },
     { value: 'validated', label: 'Validadas', count: validadasActuales },
@@ -610,18 +611,18 @@ export function PprActividadesPage() {
       )}
       {!periodoFromNav && programaIdFromNav && (
         <Link
-          to="/ppr/programas"
+          to="/ppr"
           className="inline-flex items-center gap-1.5 text-xs text-slate-400 transition hover:text-teal-700"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Volver a Programas
+          Volver al dashboard
         </Link>
       )}
 
       {/* Header */}
       <PprSectionHeader
         eyebrow="Registro mensual"
-        title="Mis Actividades"
+        title="Ingreso de datos"
         description={
           periodo
             ? <>
@@ -773,7 +774,7 @@ export function PprActividadesPage() {
             </div>
           )}
 
-          {actividades.length > 0 && (
+          {editableActividades.length > 0 && (
             <div className="flex flex-wrap gap-1.5 rounded-lg border border-slate-200 bg-white p-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
               {activityViewOptions.map((option) => (
                 <button
@@ -802,11 +803,11 @@ export function PprActividadesPage() {
                     <PprSkeleton key={i} className="h-16 w-full rounded-lg" />
                   ))}
                 </div>
-              ) : actividades.length === 0 ? (
+              ) : editableActividades.length === 0 ? (
                 <PprEmptyState
                   icon={ClipboardCheck}
-                  title="Sin actividades registradas"
-                  description="No hay actividades para este programa y período."
+                  title="Sin actividades asignadas para registro"
+                  description="Este programa tiene actividades, pero ninguna pertenece al alcance editable de este coordinador."
                 />
               ) : visibleActividades.length === 0 ? (
                 <PprEmptyState

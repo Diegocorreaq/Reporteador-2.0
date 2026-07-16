@@ -4,6 +4,7 @@ import type {
   PprActividadAdmin,
   PprCoordinador,
   PprEmpleadoResult,
+  PprEvaluacionMensual,
   PprImportResult,
   PprImportSource,
   PprPeriodo,
@@ -11,6 +12,7 @@ import type {
   PprPrograma,
   PprProgramaAdmin,
   PprProgramaDetalle,
+  PprProgramaPreliminar,
   PprResumenPrograma,
   PprValidationSummary,
 } from '@/modules/ppr/types'
@@ -209,6 +211,26 @@ export async function fetchProgramaDetalle(
     params: { programId, year, employeeId },
   })
   return res.data.detalle
+}
+
+export async function fetchProgramaPreliminar(programId: number): Promise<PprProgramaPreliminar> {
+  const res = await httpClient.get<{ preliminar: PprProgramaPreliminar }>('/ppr/programa-preliminar', {
+    params: { programId },
+    timeout: 120000,
+  })
+  return res.data.preliminar
+}
+
+export async function fetchEvaluacionMensual(
+  programId: number,
+  year: number,
+  month: number,
+): Promise<PprEvaluacionMensual> {
+  const res = await httpClient.get<{ evaluacion: PprEvaluacionMensual }>('/ppr/evaluacion-mensual', {
+    params: { programId, year, month },
+    timeout: 120000,
+  })
+  return res.data.evaluacion
 }
 
 // ─── Admin ────────────────────────────────────────────────────────────────────

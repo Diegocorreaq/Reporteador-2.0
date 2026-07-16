@@ -18,6 +18,13 @@ const MONTHS_ES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
+const WEEKDAYS_ES = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+const PPR_PRELIMINARY_TIME_ZONE = 'America/Bogota'
+const PPR_PRELIMINARY_CUTOFF_HOUR = 8
+const PPR_PRELIMINARY_SOURCE_IDS = new Set([
+  'ppr_0129_condiciones_secundarias',
+])
+
 const PPR_IMPORT_SOURCES = [
   {
     id: 'ppr_0002_salud_materno_neonatal',
@@ -120,6 +127,199 @@ function readRowValue(row, keys) {
 function normalizeProgramCode(value) {
   const normalized = String(value ?? '').trim().replace(/^0+/, '')
   return normalized || '0'
+}
+
+function pad2(value) {
+  return String(value).padStart(2, '0')
+}
+
+function toIsoDate({ year, month, day }) {
+  return `${year}-${pad2(month)}-${pad2(day)}`
+}
+
+function getBogotaDateTimeParts(referenceDate = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: PPR_PRELIMINARY_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(referenceDate)
+
+  const get = (type) => Number(parts.find((part) => part.type === type)?.value ?? 0)
+  return {
+    year: get('year'),
+    month: get('month'),
+    day: get('day'),
+    hour: get('hour'),
+    minute: get('minute'),
+    second: get('second'),
+  }
+}
+
+function addDays(dateParts, days) {
+  const date = new Date(Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day + days))
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+  }
+}
+
+function getWeekday(dateParts) {
+  return new Date(Date.UTC(dateParts.year, dateParts.month - 1, dateParts.day)).getUTCDay()
+}
+
+function isBusinessDate(dateParts) {
+  const day = getWeekday(dateParts)
+  return day >= 1 && day <= 5
+}
+
+function getPreviousBusinessDate(dateParts) {
+  let candidate = addDays(dateParts, -1)
+  while (!isBusinessDate(candidate)) {
+    candidate = addDays(candidate, -1)
+  }
+  return candidate
+}
+
+function getPprPreliminaryCutoff(referenceDate = new Date()) {
+  const now = getBogotaDateTimeParts(referenceDate)
+  const today = { year: now.year, month: now.month, day: now.day }
+  const hasCurrentBusinessCutoff = isBusinessDate(today)
+    && (now.hour > PPR_PRELIMINARY_CUTOFF_HOUR
+      || (now.hour === PPR_PRELIMINARY_CUTOFF_HOUR && now.minute >= 0))
+  const monthStart = { year: today.year, month: today.month, day: 1 }
+  let cutoffDate = hasCurrentBusinessCutoff ? today : getPreviousBusinessDate(today)
+  if (compareDateParts(cutoffDate, monthStart) < 0) {
+    cutoffDate = monthStart
+  }
+  const cutoffDateSql = toIsoDate(cutoffDate)
+  const daysInMonth = getDaysInMonth(cutoffDate.year, cutoffDate.month)
+
+  return {
+    cutoffAt: `${cutoffDateSql}T${pad2(PPR_PRELIMINARY_CUTOFF_HOUR)}:00:00-05:00`,
+    cutoffDate: cutoffDateSql,
+    cutoffLabel: `${WEEKDAYS_ES[getWeekday(cutoffDate)]} ${pad2(cutoffDate.day)}/${pad2(cutoffDate.month)} ${pad2(PPR_PRELIMINARY_CUTOFF_HOUR)}:00`,
+    rangeStart: `${cutoffDate.year}-${pad2(cutoffDate.month)}-01`,
+    rangeEnd: cutoffDateSql,
+    year: cutoffDate.year,
+    month: cutoffDate.month,
+    cutoffDay: cutoffDate.day,
+    daysInMonth,
+    timeZone: PPR_PRELIMINARY_TIME_ZONE,
+  }
+}
+
+function compareDateParts(a, b) {
+  const aValue = (Number(a.year) * 10000) + (Number(a.month) * 100) + Number(a.day)
+  const bValue = (Number(b.year) * 10000) + (Number(b.month) * 100) + Number(b.day)
+  return aValue - bValue
+}
+
+function getDaysInMonth(year, month) {
+  return new Date(Date.UTC(Number(year), Number(month), 0)).getUTCDate()
+}
+
+function getCutoffGoalFactor(cutoffInfo, year, month) {
+  if (!cutoffInfo) return 1
+  const cutoffYear = Number(cutoffInfo.year ?? String(cutoffInfo.rangeEnd ?? '').slice(0, 4))
+  const cutoffMonth = Number(cutoffInfo.month ?? String(cutoffInfo.rangeEnd ?? '').slice(5, 7))
+  if (cutoffYear !== Number(year) || cutoffMonth !== Number(month)) return 1
+  const daysInMonth = Number(cutoffInfo.daysInMonth ?? getDaysInMonth(year, month))
+  const cutoffDay = Math.min(
+    Math.max(Number(cutoffInfo.cutoffDay ?? String(cutoffInfo.rangeEnd ?? '').slice(8, 10)) || 1, 1),
+    daysInMonth,
+  )
+  return daysInMonth > 0 ? cutoffDay / daysInMonth : 1
+}
+
+function findPreliminarySourceForProgramCode(programCode) {
+  const normalizedProgramCode = normalizeProgramCode(programCode)
+  return PPR_IMPORT_SOURCES.find((source) => {
+    if (!PPR_PRELIMINARY_SOURCE_IDS.has(source.id)) return false
+    return source.programCodes?.map(normalizeProgramCode).includes(normalizedProgramCode)
+  }) ?? null
+}
+
+function matchSourceRowsToActivities(rawRows, activities) {
+  const sourceTotalsByKey = new Map()
+  const sourceTotalsByName = new Map()
+  const sourceNameLabels = new Map()
+
+  for (const row of rawRows) {
+    const activityLabel = readRowValue(row, ['ACTIVIDAD', 'actividad'])
+    const total = Number(readRowValue(row, ['TOTAL', 'total']) ?? 0)
+    const explicitSourceKey = readRowValue(row, ['SOURCE_KEY', 'source_key', 'CODIGO', 'codigo', 'CODE', 'code'])
+    const sourceKey = String(explicitSourceKey ?? extractActivitySourceKey(activityLabel) ?? '').trim()
+
+    if (sourceKey) {
+      sourceTotalsByKey.set(sourceKey, (sourceTotalsByKey.get(sourceKey) ?? 0) + total)
+      continue
+    }
+
+    const sourceNameKey = normalizeActivityName(activityLabel)
+    if (!sourceNameKey) continue
+    sourceTotalsByName.set(sourceNameKey, (sourceTotalsByName.get(sourceNameKey) ?? 0) + total)
+    sourceNameLabels.set(sourceNameKey, String(activityLabel ?? sourceNameKey))
+  }
+
+  const matchedRows = []
+  const matchedKeys = new Set()
+  const matchedNames = new Set()
+
+  for (const activity of activities) {
+    let sourceKey = activity.sourceKey
+    let sourceValue = null
+
+    if (activity.sourceKey && sourceTotalsByKey.has(activity.sourceKey)) {
+      sourceValue = sourceTotalsByKey.get(activity.sourceKey)
+      matchedKeys.add(activity.sourceKey)
+    } else if (activity.sourceNameKey && sourceTotalsByName.has(activity.sourceNameKey)) {
+      sourceValue = sourceTotalsByName.get(activity.sourceNameKey)
+      sourceKey = activity.sourceKey || `NAME:${activity.id}`
+      matchedNames.add(activity.sourceNameKey)
+    }
+
+    if (sourceValue == null) continue
+    matchedRows.push({
+      activityId: activity.id,
+      activityName: activity.name,
+      sourceKey,
+      sourceValue: Number(sourceValue ?? 0),
+    })
+  }
+
+  const unmatchedSourceRows = Array.from(sourceTotalsByKey.entries())
+    .filter(([sourceKey]) => !matchedKeys.has(sourceKey))
+    .map(([sourceKey, sourceValue]) => ({ sourceKey, sourceValue: Number(sourceValue) }))
+    .concat(Array.from(sourceTotalsByName.entries())
+      .filter(([sourceNameKey]) => !matchedNames.has(sourceNameKey))
+      .map(([sourceNameKey, sourceValue]) => ({
+        sourceKey: sourceNameLabels.get(sourceNameKey)?.slice(0, 50) ?? sourceNameKey.slice(0, 50),
+        sourceValue: Number(sourceValue),
+      })))
+
+  const manualActivities = activities
+    .filter((activity) => {
+      const hasKeyMatch = activity.sourceKey && sourceTotalsByKey.has(activity.sourceKey)
+      const hasNameMatch = activity.sourceNameKey && sourceTotalsByName.has(activity.sourceNameKey)
+      return !hasKeyMatch && !hasNameMatch
+    })
+    .map((activity) => ({
+      activityId: activity.id,
+      activityName: activity.name,
+      sourceKey: activity.sourceKey,
+    }))
+
+  return {
+    matchedRows,
+    unmatchedSourceRows,
+    manualActivities,
+  }
 }
 
 async function ensurePprImportInfrastructure() {
@@ -233,6 +433,81 @@ async function ensurePprImportInfrastructure() {
         CONSTRAINT PK_ppr_periodo_firma PRIMARY KEY (employee_id, period_id)
       );
     END;
+  `, [], { timeoutMs: 120000 })
+}
+
+async function ensurePprPreliminaryInfrastructure() {
+  await executeQuery(`
+    IF NOT EXISTS (
+      SELECT 1
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = 'dbo'
+        AND TABLE_NAME = 'ppr_preliminary_runs'
+    )
+    BEGIN
+      CREATE TABLE dbo.ppr_preliminary_runs (
+        id               INT IDENTITY(1,1) PRIMARY KEY,
+        program_id       INT NOT NULL,
+        source_id        NVARCHAR(80) NOT NULL,
+        source_label     NVARCHAR(200) NOT NULL,
+        source_procedure NVARCHAR(200) NOT NULL,
+        range_start      DATE NOT NULL,
+        range_end        DATE NOT NULL,
+        cutoff_at        DATETIMEOFFSET NOT NULL,
+        cutoff_label     NVARCHAR(80) NOT NULL,
+        started_at       DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+        completed_at     DATETIME2 NULL,
+        status           NVARCHAR(30) NOT NULL DEFAULT 'running',
+        rows_read        INT NOT NULL DEFAULT 0,
+        rows_matched     INT NOT NULL DEFAULT 0,
+        rows_unmatched   INT NOT NULL DEFAULT 0,
+        unmatched_json   NVARCHAR(MAX) NULL,
+        manual_json      NVARCHAR(MAX) NULL,
+        error_message    NVARCHAR(MAX) NULL
+      );
+    END;
+
+    IF NOT EXISTS (
+      SELECT 1
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = 'dbo'
+        AND TABLE_NAME = 'ppr_preliminary_values'
+    )
+    BEGIN
+      CREATE TABLE dbo.ppr_preliminary_values (
+        id           INT IDENTITY(1,1) PRIMARY KEY,
+        run_id       INT NOT NULL,
+        program_id   INT NOT NULL,
+        activity_id  INT NOT NULL,
+        source_key   NVARCHAR(80) NULL,
+        source_value DECIMAL(18,2) NOT NULL,
+        loaded_at    DATETIME2 NOT NULL DEFAULT SYSDATETIME()
+      );
+    END;
+
+    IF COL_LENGTH('dbo.ppr_preliminary_runs', 'unmatched_json') IS NULL
+      ALTER TABLE dbo.ppr_preliminary_runs ADD unmatched_json NVARCHAR(MAX) NULL;
+
+    IF COL_LENGTH('dbo.ppr_preliminary_runs', 'manual_json') IS NULL
+      ALTER TABLE dbo.ppr_preliminary_runs ADD manual_json NVARCHAR(MAX) NULL;
+
+    IF NOT EXISTS (
+      SELECT 1
+      FROM sys.indexes
+      WHERE name = 'IX_ppr_preliminary_runs_program_cutoff'
+        AND object_id = OBJECT_ID('dbo.ppr_preliminary_runs')
+    )
+      CREATE INDEX IX_ppr_preliminary_runs_program_cutoff
+        ON dbo.ppr_preliminary_runs(program_id, source_id, cutoff_at DESC, status);
+
+    IF NOT EXISTS (
+      SELECT 1
+      FROM sys.indexes
+      WHERE name = 'IX_ppr_preliminary_values_run_activity'
+        AND object_id = OBJECT_ID('dbo.ppr_preliminary_values')
+    )
+      CREATE INDEX IX_ppr_preliminary_values_run_activity
+        ON dbo.ppr_preliminary_values(run_id, activity_id);
   `, [], { timeoutMs: 120000 })
 }
 
@@ -398,30 +673,33 @@ export async function getActividadesPrograma({ programaId, periodoId, employeeId
     program_code: programCode,
     activity_group_code: row.activity_group_code ?? groupByActivityId.get(Number(row.id)) ?? null,
   }))
-  return activityRows.map((r) => ({
-    id: Number(r.id),
-    code: String(r.code ?? ''),
-    name: String(r.name ?? ''),
-    activityGroup: resolvePprActivityGroup(programCode, r.name, r.activity_group_code),
-    canEdit: canPprEmployeeEditActivity({
+  return activityRows.map((r) => {
+    const canEdit = canPprEmployeeEditActivity({
       programCode,
       activityName: r.name,
       activityGroupCode: r.activity_group_code,
       employeeId,
-    }),
-    unit: String(r.unit ?? ''),
-    annualGoal: r.annual_goal != null ? Number(r.annual_goal) : null,
-    sortOrder: Number(r.sort_order ?? 0),
-    value: r.value != null ? Number(r.value) : null,
-    notes: String(r.notes ?? ''),
-    signed: Boolean(signedAt),
-    valueSource: String(r.value_source ?? (r.value != null ? 'manual' : 'manual')),
-    sourceKey: r.source_key != null ? String(r.source_key) : null,
-    sourceValue: r.source_value != null ? Number(r.source_value) : null,
-    loadedAt: r.loaded_at ?? null,
-    validatedAt: r.validated_at ?? null,
-    validationStatus: String(r.validation_status ?? 'pending'),
-  }))
+    })
+    return {
+      id: Number(r.id),
+      code: String(r.code ?? ''),
+      name: String(r.name ?? ''),
+      activityGroup: resolvePprActivityGroup(programCode, r.name, r.activity_group_code),
+      canEdit,
+      unit: String(r.unit ?? ''),
+      annualGoal: r.annual_goal != null ? Number(r.annual_goal) : null,
+      sortOrder: Number(r.sort_order ?? 0),
+      value: r.value != null ? Number(r.value) : null,
+      notes: String(r.notes ?? ''),
+      signed: Boolean(signedAt),
+      valueSource: String(r.value_source ?? (r.value != null ? 'manual' : 'manual')),
+      sourceKey: r.source_key != null ? String(r.source_key) : null,
+      sourceValue: r.source_value != null ? Number(r.source_value) : null,
+      loadedAt: r.loaded_at ?? null,
+      validatedAt: r.validated_at ?? null,
+      validationStatus: String(r.validation_status ?? 'pending'),
+    }
+  }).filter((activity) => activity.canEdit)
 }
 
 async function ensureCanEditPprActivity({ activityId, employeeId }) {
@@ -639,13 +917,20 @@ export function getPprImportSources() {
 async function getProgramActivitiesForImport(programId) {
   const rows = await executeQuery(`
     SELECT
-      id,
-      ISNULL(code, '') AS code,
-      name
-    FROM dbo.ppr_activities
-    WHERE program_id = @program_id
-      AND ISNULL(is_active, 1) = 1
-    ORDER BY sort_order, id;
+      a.id,
+      ISNULL(a.code, '') AS code,
+      a.name,
+      a.unit,
+      a.annual_goal,
+      a.sort_order,
+      a.activity_group_code,
+      p.code AS program_code
+    FROM dbo.ppr_activities a
+    INNER JOIN dbo.ppr_programs p
+      ON p.id = a.program_id
+    WHERE a.program_id = @program_id
+      AND ISNULL(a.is_active, 1) = 1
+    ORDER BY a.sort_order, a.id;
   `, [
     { name: 'program_id', type: sql.Int, value: Number(programId) },
   ])
@@ -653,6 +938,11 @@ async function getProgramActivitiesForImport(programId) {
     id: Number(r.id),
     code: String(r.code ?? ''),
     name: String(r.name ?? ''),
+    unit: String(r.unit ?? ''),
+    annualGoal: r.annual_goal != null ? Number(r.annual_goal) : null,
+    sortOrder: Number(r.sort_order ?? 0),
+    activityGroupCode: r.activity_group_code == null ? null : String(r.activity_group_code),
+    programCode: String(r.program_code ?? ''),
     sourceKey: extractActivitySourceKey(r.name) ?? String(r.code ?? '').trim() ?? null,
     sourceNameKey: normalizeActivityName(r.name),
   }))
@@ -887,72 +1177,8 @@ export async function runPprImport({ programId, sourceId, adminId }) {
     { name: 'FechaFin', type: sql.Date, value: endDate },
   ], { timeoutMs: 120000 })
 
-  const sourceTotalsByKey = new Map()
-  const sourceTotalsByName = new Map()
-  const sourceNameLabels = new Map()
-  for (const row of rawRows) {
-    const activityLabel = readRowValue(row, ['ACTIVIDAD', 'actividad'])
-    const total = Number(readRowValue(row, ['TOTAL', 'total']) ?? 0)
-    const explicitSourceKey = readRowValue(row, ['SOURCE_KEY', 'source_key', 'CODIGO', 'codigo', 'CODE', 'code'])
-    const sourceKey = String(explicitSourceKey ?? extractActivitySourceKey(activityLabel) ?? '').trim()
-    if (sourceKey) {
-      sourceTotalsByKey.set(sourceKey, (sourceTotalsByKey.get(sourceKey) ?? 0) + total)
-      continue
-    }
-
-    const sourceNameKey = normalizeActivityName(activityLabel)
-    if (!sourceNameKey) continue
-    sourceTotalsByName.set(sourceNameKey, (sourceTotalsByName.get(sourceNameKey) ?? 0) + total)
-    sourceNameLabels.set(sourceNameKey, String(activityLabel ?? sourceNameKey))
-  }
-
   const activities = await getProgramActivitiesForImport(programId)
-  const matchedRows = []
-  const matchedKeys = new Set()
-  const matchedNames = new Set()
-  for (const activity of activities) {
-    let sourceKey = activity.sourceKey
-    let sourceValue = null
-
-    if (activity.sourceKey && sourceTotalsByKey.has(activity.sourceKey)) {
-      sourceValue = sourceTotalsByKey.get(activity.sourceKey)
-      matchedKeys.add(activity.sourceKey)
-    } else if (activity.sourceNameKey && sourceTotalsByName.has(activity.sourceNameKey)) {
-      sourceValue = sourceTotalsByName.get(activity.sourceNameKey)
-      sourceKey = activity.sourceKey || `NAME:${activity.id}`
-      matchedNames.add(activity.sourceNameKey)
-    }
-
-    if (sourceValue == null) continue
-    matchedRows.push({
-      activityId: activity.id,
-      activityName: activity.name,
-      sourceKey,
-      sourceValue: Number(sourceValue ?? 0),
-    })
-  }
-
-  const unmatchedSourceRows = Array.from(sourceTotalsByKey.entries())
-    .filter(([sourceKey]) => !matchedKeys.has(sourceKey))
-    .map(([sourceKey, sourceValue]) => ({ sourceKey, sourceValue: Number(sourceValue) }))
-    .concat(Array.from(sourceTotalsByName.entries())
-      .filter(([sourceNameKey]) => !matchedNames.has(sourceNameKey))
-      .map(([sourceNameKey, sourceValue]) => ({
-        sourceKey: sourceNameLabels.get(sourceNameKey)?.slice(0, 50) ?? sourceNameKey.slice(0, 50),
-        sourceValue: Number(sourceValue),
-      })))
-
-  const manualActivities = activities
-    .filter((activity) => {
-      const hasKeyMatch = activity.sourceKey && sourceTotalsByKey.has(activity.sourceKey)
-      const hasNameMatch = activity.sourceNameKey && sourceTotalsByName.has(activity.sourceNameKey)
-      return !hasKeyMatch && !hasNameMatch
-    })
-    .map((activity) => ({
-      activityId: activity.id,
-      activityName: activity.name,
-      sourceKey: activity.sourceKey,
-    }))
+  const { matchedRows, unmatchedSourceRows, manualActivities } = matchSourceRowsToActivities(rawRows, activities)
 
   const run = await applyImportRows({
     periodId: periodo.id,
@@ -980,6 +1206,486 @@ export async function runPprImport({ programId, sourceId, adminId }) {
     unmatchedSourceRows,
     manualActivities,
   }
+}
+
+async function getAccessiblePprProgram(programId, employeeId) {
+  await ensurePprActivityGroupInfrastructure()
+  const isAdmin = await verificarAdmin(employeeId)
+  const programRows = await executeQuery(`
+    SELECT TOP 1
+      p.id,
+      p.code,
+      p.name
+    FROM dbo.ppr_programs p
+    WHERE p.id = @program_id
+      AND (
+        @is_admin = 1
+        OR EXISTS (
+          SELECT 1
+          FROM dbo.ppr_user_programs up
+          WHERE up.program_id = p.id
+            AND up.employee_id = @employee_id
+            AND up.is_active = 1
+        )
+      );
+  `, [
+    { name: 'program_id', type: sql.Int, value: Number(programId) },
+    { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
+    { name: 'is_admin', type: sql.Bit, value: isAdmin ? 1 : 0 },
+  ])
+
+  const program = programRows[0]
+  if (!program) {
+    const error = new Error('No tiene acceso al programa PPR solicitado.')
+    error.code = 'PPR_PROGRAM_FORBIDDEN'
+    throw error
+  }
+
+  return {
+    id: Number(program.id),
+    code: String(program.code ?? ''),
+    name: String(program.name ?? ''),
+  }
+}
+
+function scopedImportActivitiesForEmployee(activities, program, employeeId) {
+  return filterPprActivitiesForEmployee(activities.map((activity) => ({
+    ...activity,
+    program_code: activity.programCode || program.code,
+    activity_name: activity.name,
+    activity_group_code: activity.activityGroupCode,
+  })), {
+    programCodeKey: 'program_code',
+    activityNameKey: 'activity_name',
+    employeeId,
+  })
+}
+
+function buildPreliminarPayload({ program, source, cutoff, activities, valueRows, run }) {
+  const valueByActivityId = new Map(valueRows.map((row) => [Number(row.activity_id ?? row.activityId), row]))
+  const matchedRows = valueRows.map((row) => ({
+    activityId: Number(row.activity_id ?? row.activityId),
+    sourceValue: Number(row.source_value ?? row.sourceValue ?? 0),
+  }))
+  const totalValue = matchedRows.reduce((sum, row) => sum + Number(row.sourceValue ?? 0), 0)
+  const monthlyGoalFull = activities.reduce((sum, activity) => (
+    sum + (activity.annualGoal != null ? Number(activity.annualGoal) / 12 : 0)
+  ), 0)
+  const cutoffGoalFactor = getCutoffGoalFactor(cutoff, cutoff.year, cutoff.month)
+  const monthlyGoal = monthlyGoalFull * cutoffGoalFactor
+
+  const parseJson = (value, fallback) => {
+    try {
+      return value ? JSON.parse(String(value)) : fallback
+    } catch {
+      return fallback
+    }
+  }
+
+  const items = activities
+    .map((activity) => {
+      const matched = valueByActivityId.get(activity.id)
+      const activityMonthlyGoalFull = activity.annualGoal != null ? Number(activity.annualGoal) / 12 : null
+      const activityMonthlyGoal = activityMonthlyGoalFull != null
+        ? activityMonthlyGoalFull * cutoffGoalFactor
+        : null
+      const value = matched ? Number(matched.source_value ?? matched.sourceValue ?? 0) : null
+      return {
+        activityId: activity.id,
+        code: activity.code,
+        name: activity.name,
+        unit: activity.unit,
+        annualGoal: activity.annualGoal,
+        monthlyGoal: activityMonthlyGoal,
+        monthlyGoalFull: activityMonthlyGoalFull,
+        monthlyGoalPct: activityMonthlyGoal && activityMonthlyGoal > 0 && value != null
+          ? Math.round((value / activityMonthlyGoal) * 100)
+          : null,
+        sourceKey: matched?.source_key ?? matched?.sourceKey ?? activity.sourceKey ?? null,
+        value,
+      }
+    })
+    .filter((activity) => activity.value != null)
+    .sort((a, b) => Number(b.value ?? 0) - Number(a.value ?? 0))
+
+  return {
+    programId: Number(program.id),
+    programCode: String(program.code ?? ''),
+    programName: String(program.name ?? ''),
+    sourceId: source.id,
+    sourceLabel: source.label,
+    isPreliminary: true,
+    generatedAt: run?.completed_at ?? run?.completedAt ?? new Date().toISOString(),
+    cutoffAt: cutoff.cutoffAt,
+    cutoffLabel: cutoff.cutoffLabel,
+    timeZone: cutoff.timeZone,
+    rangeStart: cutoff.rangeStart,
+    rangeEnd: cutoff.rangeEnd,
+    totalActivities: activities.length,
+    rowsRead: Number(run?.rows_read ?? run?.rowsRead ?? 0),
+    rowsMatched: Number(run?.rows_matched ?? run?.rowsMatched ?? valueRows.length),
+    rowsUnmatched: Number(run?.rows_unmatched ?? run?.rowsUnmatched ?? 0),
+    totalValue,
+    monthlyGoal,
+    monthlyGoalFull,
+    cutoffGoalFactor,
+    cutoffDay: cutoff.cutoffDay,
+    daysInMonth: cutoff.daysInMonth,
+    monthlyGoalPct: monthlyGoal > 0 ? Math.round((totalValue / monthlyGoal) * 100) : null,
+    items,
+    unmatchedSourceRows: parseJson(run?.unmatched_json ?? run?.unmatchedJson, []).slice(0, 30),
+    manualActivities: parseJson(run?.manual_json ?? run?.manualJson, []).slice(0, 30),
+  }
+}
+
+async function readPprPreliminaryCache({ program, source, cutoff, employeeId }) {
+  await ensurePprPreliminaryInfrastructure()
+  const runRows = await executeQuery(`
+    SELECT TOP 1
+      id,
+      program_id,
+      source_id,
+      source_label,
+      source_procedure,
+      range_start,
+      range_end,
+      cutoff_at,
+      cutoff_label,
+      started_at,
+      completed_at,
+      status,
+      rows_read,
+      rows_matched,
+      rows_unmatched,
+      unmatched_json,
+      manual_json
+    FROM dbo.ppr_preliminary_runs
+    WHERE program_id = @program_id
+      AND source_id = @source_id
+      AND cutoff_at = CONVERT(DATETIMEOFFSET, @cutoff_at)
+      AND status = 'completed'
+    ORDER BY completed_at DESC, id DESC;
+  `, [
+    { name: 'program_id', type: sql.Int, value: Number(program.id) },
+    { name: 'source_id', type: sql.NVarChar(80), value: source.id },
+    { name: 'cutoff_at', type: sql.NVarChar(40), value: cutoff.cutoffAt },
+  ], { timeoutMs: 120000 })
+
+  const run = runRows[0]
+  if (!run) return null
+
+  const activities = scopedImportActivitiesForEmployee(
+    await getProgramActivitiesForImport(program.id),
+    program,
+    employeeId,
+  )
+  const valueRows = await executeQuery(`
+    SELECT
+      activity_id,
+      source_key,
+      source_value
+    FROM dbo.ppr_preliminary_values
+    WHERE run_id = @run_id;
+  `, [
+    { name: 'run_id', type: sql.Int, value: Number(run.id) },
+  ], { timeoutMs: 120000 })
+
+  return buildPreliminarPayload({ program, source, cutoff, activities, valueRows, run })
+}
+
+async function refreshPprPreliminaryCache({ program, source, cutoff, employeeId }) {
+  await ensurePprPreliminaryInfrastructure()
+  await ensureSourceMatchesProgram(source, program.id)
+
+  const rawRows = await executeProcedure(source.procedureName, [
+    { name: 'FechaInicio', type: sql.Date, value: cutoff.rangeStart },
+    { name: 'FechaFin', type: sql.Date, value: cutoff.rangeEnd },
+  ], { timeoutMs: 120000 })
+
+  const activities = scopedImportActivitiesForEmployee(
+    await getProgramActivitiesForImport(program.id),
+    program,
+    employeeId,
+  )
+  const { matchedRows, unmatchedSourceRows, manualActivities } = matchSourceRowsToActivities(rawRows, activities)
+  const runRows = await executeQuery(`
+    DECLARE @run TABLE (id INT);
+
+    UPDATE dbo.ppr_preliminary_runs
+    SET status = 'replaced'
+    WHERE program_id = @program_id
+      AND source_id = @source_id
+      AND cutoff_at = CONVERT(DATETIMEOFFSET, @cutoff_at)
+      AND status = 'completed';
+
+    INSERT INTO dbo.ppr_preliminary_runs (
+      program_id,
+      source_id,
+      source_label,
+      source_procedure,
+      range_start,
+      range_end,
+      cutoff_at,
+      cutoff_label,
+      started_at,
+      completed_at,
+      status,
+      rows_read,
+      rows_matched,
+      rows_unmatched,
+      unmatched_json,
+      manual_json
+    )
+    OUTPUT INSERTED.id INTO @run
+    VALUES (
+      @program_id,
+      @source_id,
+      @source_label,
+      @source_procedure,
+      @range_start,
+      @range_end,
+      CONVERT(DATETIMEOFFSET, @cutoff_at),
+      @cutoff_label,
+      SYSDATETIME(),
+      SYSDATETIME(),
+      'completed',
+      @rows_read,
+      @rows_matched,
+      @rows_unmatched,
+      @unmatched_json,
+      @manual_json
+    );
+
+    SELECT id FROM @run;
+  `, [
+    { name: 'program_id', type: sql.Int, value: Number(program.id) },
+    { name: 'source_id', type: sql.NVarChar(80), value: source.id },
+    { name: 'source_label', type: sql.NVarChar(200), value: source.label },
+    { name: 'source_procedure', type: sql.NVarChar(200), value: source.procedureName },
+    { name: 'range_start', type: sql.Date, value: cutoff.rangeStart },
+    { name: 'range_end', type: sql.Date, value: cutoff.rangeEnd },
+    { name: 'cutoff_at', type: sql.NVarChar(40), value: cutoff.cutoffAt },
+    { name: 'cutoff_label', type: sql.NVarChar(80), value: cutoff.cutoffLabel },
+    { name: 'rows_read', type: sql.Int, value: rawRows.length },
+    { name: 'rows_matched', type: sql.Int, value: matchedRows.length },
+    { name: 'rows_unmatched', type: sql.Int, value: unmatchedSourceRows.length },
+    { name: 'unmatched_json', type: sql.NVarChar(sql.MAX), value: JSON.stringify(unmatchedSourceRows) },
+    { name: 'manual_json', type: sql.NVarChar(sql.MAX), value: JSON.stringify(manualActivities) },
+  ], { timeoutMs: 120000 })
+
+  const runId = Number(runRows[0]?.id ?? 0)
+  for (const row of matchedRows) {
+    await executeQuery(`
+      INSERT INTO dbo.ppr_preliminary_values (
+        run_id,
+        program_id,
+        activity_id,
+        source_key,
+        source_value,
+        loaded_at
+      )
+      VALUES (
+        @run_id,
+        @program_id,
+        @activity_id,
+        @source_key,
+        @source_value,
+        SYSDATETIME()
+      );
+    `, [
+      { name: 'run_id', type: sql.Int, value: runId },
+      { name: 'program_id', type: sql.Int, value: Number(program.id) },
+      { name: 'activity_id', type: sql.Int, value: Number(row.activityId) },
+      { name: 'source_key', type: sql.NVarChar(80), value: row.sourceKey == null ? null : String(row.sourceKey) },
+      { name: 'source_value', type: sql.Decimal(18, 2), value: Number(row.sourceValue ?? 0) },
+    ], { timeoutMs: 120000 })
+  }
+
+  return readPprPreliminaryCache({ program, source, cutoff, employeeId })
+}
+
+export async function refreshProgramaPreliminar(programId, employeeId) {
+  const program = await getAccessiblePprProgram(programId, employeeId)
+  const source = findPreliminarySourceForProgramCode(program.code)
+  if (!source) {
+    const error = new Error('Este programa aun no tiene consulta preliminar diaria configurada.')
+    error.code = 'PPR_PRELIMINARY_SOURCE_NOT_FOUND'
+    throw error
+  }
+  const cutoff = getPprPreliminaryCutoff()
+  return refreshPprPreliminaryCache({ program, source, cutoff, employeeId })
+}
+
+export async function getProgramaPreliminar(programId, employeeId, { refreshIfMissing = true } = {}) {
+  const program = await getAccessiblePprProgram(programId, employeeId)
+  const source = findPreliminarySourceForProgramCode(program.code)
+  if (!source) {
+    const error = new Error('Este programa aun no tiene consulta preliminar diaria configurada.')
+    error.code = 'PPR_PRELIMINARY_SOURCE_NOT_FOUND'
+    throw error
+  }
+
+  const cutoff = getPprPreliminaryCutoff()
+  const cached = await readPprPreliminaryCache({ program, source, cutoff, employeeId })
+  if (cached || !refreshIfMissing) return cached
+  return refreshPprPreliminaryCache({ program, source, cutoff, employeeId })
+}
+
+function monthlyActivityStatus(value, monthlyGoal) {
+  if (value == null) return 'sin_dato'
+  if (!monthlyGoal || monthlyGoal <= 0) return value > 0 ? 'con_avance' : 'sin_meta'
+  const pct = Math.round((Number(value) / Number(monthlyGoal)) * 100)
+  if (pct >= 100) return 'en_meta'
+  if (pct >= 80) return 'seguimiento'
+  return 'critico'
+}
+
+function buildMonthlyEvaluationPayload({
+  program,
+  year,
+  month,
+  sourceMode,
+  periodId,
+  periodIsOpen,
+  cutoffInfo = null,
+  activities,
+  values,
+}) {
+  const valueByActivityId = new Map(values.map((row) => [Number(row.activityId ?? row.activity_id), row]))
+  const cutoffGoalFactor = sourceMode === 'preliminary'
+    ? getCutoffGoalFactor(cutoffInfo, year, month)
+    : 1
+  const items = activities.map((activity) => {
+    const row = valueByActivityId.get(activity.id)
+    const value = row ? Number(row.value ?? row.source_value ?? row.sourceValue ?? 0) : null
+    const monthlyGoalFull = activity.annualGoal != null ? Number(activity.annualGoal) / 12 : null
+    const monthlyGoal = monthlyGoalFull != null ? monthlyGoalFull * cutoffGoalFactor : null
+    const monthlyGoalPct = monthlyGoal && monthlyGoal > 0 && value != null
+      ? Math.round((value / monthlyGoal) * 100)
+      : null
+    return {
+      activityId: activity.id,
+      code: activity.code,
+      name: activity.name,
+      unit: activity.unit,
+      annualGoal: activity.annualGoal,
+      monthlyGoal,
+      monthlyGoalFull,
+      value,
+      monthlyGoalPct,
+      status: monthlyActivityStatus(value, monthlyGoal),
+      sourceKey: row?.sourceKey ?? row?.source_key ?? activity.sourceKey ?? null,
+    }
+  }).sort((a, b) => {
+    const order = { critico: 0, seguimiento: 1, sin_dato: 2, con_avance: 3, sin_meta: 4, en_meta: 5 }
+    return (order[a.status] ?? 9) - (order[b.status] ?? 9)
+      || Number(a.monthlyGoalPct ?? -1) - Number(b.monthlyGoalPct ?? -1)
+  })
+
+  const totalValue = items.reduce((sum, item) => sum + Number(item.value ?? 0), 0)
+  const monthlyGoal = items.reduce((sum, item) => sum + Number(item.monthlyGoal ?? 0), 0)
+  const monthlyGoalFull = items.reduce((sum, item) => sum + Number(item.monthlyGoalFull ?? 0), 0)
+  const withValue = items.filter((item) => item.value != null).length
+  const statusCounts = items.reduce((acc, item) => {
+    acc[item.status] = (acc[item.status] ?? 0) + 1
+    return acc
+  }, {})
+
+  return {
+    programId: Number(program.id),
+    programCode: String(program.code ?? ''),
+    programName: String(program.name ?? ''),
+    year: Number(year),
+    month: Number(month),
+    monthLabel: periodLabel(year, month),
+    sourceMode,
+    periodId,
+    periodIsOpen,
+    isPreliminary: sourceMode === 'preliminary',
+    cutoffAt: cutoffInfo?.cutoffAt ?? null,
+    cutoffLabel: cutoffInfo?.cutoffLabel ?? null,
+    rangeStart: cutoffInfo?.rangeStart ?? null,
+    rangeEnd: cutoffInfo?.rangeEnd ?? null,
+    totalActivities: items.length,
+    withValue,
+    totalValue,
+    monthlyGoal,
+    monthlyGoalFull,
+    cutoffGoalFactor,
+    cutoffDay: sourceMode === 'preliminary' ? cutoffInfo?.cutoffDay ?? null : null,
+    daysInMonth: sourceMode === 'preliminary' ? cutoffInfo?.daysInMonth ?? null : null,
+    monthlyGoalPct: monthlyGoal > 0 ? Math.round((totalValue / monthlyGoal) * 100) : null,
+    statusCounts,
+    activities: items,
+  }
+}
+
+export async function getEvaluacionMensual({ programId, year, month, employeeId }) {
+  const program = await getAccessiblePprProgram(programId, employeeId)
+  const source = findPreliminarySourceForProgramCode(program.code)
+  const currentPreliminaryCutoff = getPprPreliminaryCutoff()
+  const isPreliminaryMonth = currentPreliminaryCutoff.year === Number(year)
+    && currentPreliminaryCutoff.month === Number(month)
+  const activities = scopedImportActivitiesForEmployee(
+    await getProgramActivitiesForImport(program.id),
+    program,
+    employeeId,
+  )
+  const periodRows = await executeQuery(`
+    SELECT TOP 1
+      id,
+      is_open
+    FROM dbo.ppr_periods
+    WHERE [year] = @year
+      AND [month] = @month;
+  `, [
+    { name: 'year', type: sql.Int, value: Number(year) },
+    { name: 'month', type: sql.Int, value: Number(month) },
+  ])
+  const period = periodRows[0] ?? null
+
+  if (isPreliminaryMonth && source) {
+    const preliminar = await getProgramaPreliminar(program.id, employeeId)
+    const values = (preliminar?.items ?? []).map((item) => ({
+      activityId: item.activityId,
+      sourceValue: item.value,
+      sourceKey: item.sourceKey,
+    }))
+    return buildMonthlyEvaluationPayload({
+      program,
+      year,
+      month,
+      sourceMode: 'preliminary',
+      periodId: period ? Number(period.id) : null,
+      periodIsOpen: Boolean(period?.is_open),
+      cutoffInfo: preliminar,
+      activities,
+      values,
+    })
+  }
+
+  const valueRows = period
+    ? await executeQuery(`
+        SELECT
+          activity_id,
+          value
+        FROM dbo.ppr_monthly_values
+        WHERE period_id = @period_id;
+      `, [
+      { name: 'period_id', type: sql.Int, value: Number(period.id) },
+    ])
+    : []
+
+  return buildMonthlyEvaluationPayload({
+    program,
+    year,
+    month,
+    sourceMode: 'consolidated',
+    periodId: period ? Number(period.id) : null,
+    periodIsOpen: Boolean(period?.is_open),
+    activities,
+    values: valueRows.map((row) => ({ activityId: row.activity_id, value: row.value })),
+  })
 }
 
 // SP_PPR_PERIODOS_USUARIO(@employee_id INT)
@@ -1208,6 +1914,7 @@ export async function getProgramaDetalle(programId, year, employeeId) {
       activityMap.set(aid, {
         id: aid,
         code: String(r.activity_code ?? ''),
+        sourceKey: extractActivitySourceKey(r.activity_name) ?? null,
         name: String(r.activity_name ?? ''),
         activityGroup,
         unit: String(r.unit ?? ''),

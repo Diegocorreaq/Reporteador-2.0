@@ -13,6 +13,9 @@ import {
   getResumenValidacion,
   getResumenAnual,
   getProgramaDetalle,
+  getEvaluacionMensual,
+  getProgramaPreliminar,
+  refreshProgramaPreliminar,
   buscarEmpleados,
   verificarAdmin,
   getCoordinadores,
@@ -434,7 +437,56 @@ pprRouter.get('/ppr/programa-detalle', requireAuth, async (request, response) =>
   }
 })
 
+pprRouter.get('/ppr/programa-preliminar', requireAuth, async (request, response) => {
+  const programId = Number(request.query.programId)
+  const requesterEmployeeId = Number(request.user?.employeeId)
+  if (!programId || !requesterEmployeeId) {
+    return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere programId.' })
+  }
+  try {
+    const preliminar = await getProgramaPreliminar(programId, requesterEmployeeId)
+    response.json({ preliminar })
+  } catch (error) {
+    const status = error?.code === 'PPR_PRELIMINARY_SOURCE_NOT_FOUND'
+      ? 404
+      : error?.code === 'PPR_PROGRAM_FORBIDDEN'
+        ? 403
+        : 500
+    logger.error({ correlationId: request.correlationId, event: 'ppr:programa-preliminar:error', message: String(error) })
+    response.status(status).json({
+      code: error?.code ?? 'PPR_ERROR',
+      message: error?.message ?? 'Error al obtener informacion preliminar.',
+    })
+  }
+})
+
 // GET /ppr/empleados/search?q= — search employees by name or DNI (admin only)
+pprRouter.get('/ppr/evaluacion-mensual', requireAuth, async (request, response) => {
+  const programId = Number(request.query.programId)
+  const year = Number(request.query.year) || new Date().getFullYear()
+  const month = Number(request.query.month) || (new Date().getMonth() + 1)
+  const requesterEmployeeId = Number(request.user?.employeeId)
+  if (!programId || !requesterEmployeeId || month < 1 || month > 12) {
+    return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere programId, year y month validos.' })
+  }
+  try {
+    const evaluacion = await getEvaluacionMensual({
+      programId,
+      year,
+      month,
+      employeeId: requesterEmployeeId,
+    })
+    response.json({ evaluacion })
+  } catch (error) {
+    const status = error?.code === 'PPR_PROGRAM_FORBIDDEN' ? 403 : 500
+    logger.error({ correlationId: request.correlationId, event: 'ppr:evaluacion-mensual:error', message: String(error) })
+    response.status(status).json({
+      code: error?.code ?? 'PPR_ERROR',
+      message: error?.message ?? 'Error al obtener evaluacion mensual.',
+    })
+  }
+})
+
 pprRouter.get('/ppr/empleados/search', requireAuth, requirePprAdmin, async (request, response) => {
   const q = String(request.query.q ?? '').trim()
   if (q.length < 2) {
@@ -481,6 +533,30 @@ pprRouter.post('/ppr/admin/cargas/run', requireAuth, requirePprAdmin, async (req
     response.status(isConflict ? 409 : 500).json({
       code: error?.code ?? 'PPR_ERROR',
       message: error?.message ?? 'Error al ejecutar la carga mensual.',
+    })
+  }
+})
+
+pprRouter.post('/ppr/admin/preliminar/run', requireAuth, requirePprAdmin, async (request, response) => {
+  const { programId } = request.body ?? {}
+  if (!programId) {
+    return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere programId.' })
+  }
+  try {
+    const result = await refreshProgramaPreliminar(Number(programId), request.pprAdminId)
+    logger.info({
+      correlationId: request.correlationId,
+      event: 'ppr:admin:preliminar:run',
+      programId,
+      rowsMatched: result?.rowsMatched ?? 0,
+    })
+    response.json({ ok: true, result })
+  } catch (error) {
+    const isNotFound = error?.code === 'PPR_PRELIMINARY_SOURCE_NOT_FOUND'
+    logger.error({ correlationId: request.correlationId, event: 'ppr:admin:preliminar:run:error', message: String(error) })
+    response.status(isNotFound ? 404 : 500).json({
+      code: error?.code ?? 'PPR_ERROR',
+      message: error?.message ?? 'Error al ejecutar la carga preliminar.',
     })
   }
 })

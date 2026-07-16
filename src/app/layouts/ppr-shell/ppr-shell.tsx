@@ -1,9 +1,24 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
-import { Eye, EyeOff, Loader2, Lock, Menu, ShieldCheck, User } from 'lucide-react'
+import { Link, Outlet, useNavigate } from 'react-router-dom'
+import {
+  BookOpen,
+  ChevronLeft,
+  Download,
+  Eye,
+  EyeOff,
+  FileSpreadsheet,
+  Loader2,
+  Lock,
+  LogOut,
+  Menu,
+  ShieldCheck,
+  User,
+} from 'lucide-react'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
+import { clearCentroOrientacionOnboardingSession } from '@/modules/onboarding/hooks/use-centro-orientacion-onboarding'
 import { validatePprUser } from '@/modules/ppr/services/ppr.service'
 import { PprContext, type PprUser } from '@/modules/ppr/context/ppr-context'
+import { cn } from '@/lib/utils'
 import { PprSidebar } from './ppr-sidebar'
 
 // ---------------------------------------------------------------------------
@@ -153,17 +168,30 @@ function ValidationOverlay({ onAuthorized }: ValidationOverlayProps) {
 // ---------------------------------------------------------------------------
 
 export function PprShell() {
+  const navigate = useNavigate()
+  const signOut = useAuthStore((state) => state.signOut)
   const [pprUser, setPprUser] = useState<PprUser | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const isAdmin = pprUser?.role === 'admin'
+
+  function handleLogout() {
+    import('@/services/auth/auth.service').then(({ authService }) => {
+      authService.signOut().catch(() => {})
+    })
+    clearCentroOrientacionOnboardingSession()
+    signOut()
+    setPprUser(null)
+    navigate('/login')
+  }
 
   return (
     <div className="ppr-portal relative flex h-screen overflow-hidden bg-slate-100 text-slate-900">
-      {/* Sidebar — always visible even during validation */}
-      {pprUser ? (
+      {/* Sidebar */}
+      {pprUser && isAdmin ? (
         <PprContext.Provider value={{ pprUser }}>
           <PprSidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
         </PprContext.Provider>
-      ) : (
+      ) : !pprUser ? (
         /* Skeleton sidebar shown while validating */
         <aside className="hidden w-64 shrink-0 bg-slate-950 lg:block">
           <div className="px-5 py-5">
@@ -178,14 +206,20 @@ export function PprShell() {
             </div>
           </div>
         </aside>
-      )}
+      ) : null}
 
       {/* Content area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile topbar */}
-        <header className="flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-4 lg:hidden">
+        <header className={cn(
+          'flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-4 lg:hidden',
+          pprUser && !isAdmin && 'hidden',
+        )}>
           <button
-            className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            className={cn(
+              'rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900',
+              !isAdmin && 'hidden',
+            )}
             onClick={() => setMobileOpen(true)}
             aria-label="Abrir menú"
           >
@@ -198,6 +232,71 @@ export function PprShell() {
             <span className="text-sm font-bold text-slate-900">Portal PPR</span>
           </div>
         </header>
+
+        {pprUser && !isAdmin && (
+          <header className="border-b border-slate-200 bg-white px-4 py-3">
+            <div className="mx-auto flex max-w-[1500px] flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <Link
+                  to="/app"
+                  className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Reporteador
+                </Link>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-teal-700 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">
+                      PPR
+                    </span>
+                    <p className="truncate text-sm font-bold text-slate-950">Portal PPR</p>
+                  </div>
+                  <p className="truncate text-[10px] text-slate-400">
+                    Recursos y seguimiento por estrategia
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-0.5 lg:justify-end lg:overflow-visible">
+                <button
+                  type="button"
+                  disabled
+                  title="Pendiente de cargar: guia HIS MINSA de la estrategia."
+                  className="inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-400"
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Guía HIS MINSA
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  title="Pendiente de cargar: guia SISGALEN / HIS MINSA."
+                  className="inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-400"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Guía SISGALEN HIS
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  title="Pendiente de cargar: Excel de criterios de programación."
+                  className="inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-400"
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
+                  Criterios de programación
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 py-2 text-[11px] font-semibold text-rose-600 transition hover:bg-rose-50 hover:text-rose-700"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Cerrar sesión
+                </button>
+              </div>
+            </div>
+          </header>
+        )}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto ppr-scroll">

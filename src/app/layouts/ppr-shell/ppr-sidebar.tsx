@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   BarChart2,
   Calendar,
-  ClipboardList,
+  ChartNoAxesCombined,
   ExternalLink,
   Home,
   Layers,
@@ -29,10 +29,15 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { key: 'inicio',      label: 'Inicio',          icon: Home,          to: '/ppr', end: true },
-  { key: 'actividades', label: 'Mis Actividades', icon: ClipboardList, to: '/ppr/actividades' },
-  { key: 'programas',   label: 'Programas',       icon: Layers,        to: '/ppr/programas' },
+  { key: 'eval-mensual', label: 'Evaluación mensual', icon: ChartNoAxesCombined, to: '/ppr/evaluacion-mensual' },
   { key: 'periodos',    label: 'Períodos',        icon: Calendar,      to: '/ppr/periodos' },
   { key: 'reportes',    label: 'Reportes',        icon: BarChart2,     to: '/ppr/reportes' },
+]
+
+const ADMIN_NAV_ITEMS: NavItem[] = [
+  NAV_ITEMS[0],
+  { key: 'programas', label: 'Programas', icon: Layers, to: '/ppr/programas' },
+  ...NAV_ITEMS.slice(1),
 ]
 
 const ADMIN_ITEMS: NavItem[] = [
@@ -51,6 +56,9 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
   const signOut = useAuthStore((state) => state.signOut)
   const { pprUser } = usePprContext()
   const isAdmin = pprUser.role === 'admin'
+  const mainNavItems = isAdmin
+    ? ADMIN_NAV_ITEMS
+    : NAV_ITEMS.filter((item) => !['periodos', 'reportes'].includes(item.key))
 
   function handleLogout() {
     import('@/services/auth/auth.service').then(({ authService }) => {
@@ -115,7 +123,7 @@ export function PprSidebar({ mobileOpen, onCloseMobile }: PprSidebarProps) {
           Menú
         </p>
 
-        {NAV_ITEMS.map((item) => (
+        {mainNavItems.map((item) => (
           <NavLink
             key={item.key}
             to={item.to}

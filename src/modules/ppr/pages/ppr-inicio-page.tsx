@@ -1,16 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   AlertCircle,
   Calendar,
   ChevronRight,
+  Database,
   Layers,
+  RefreshCw,
   TrendingDown,
   TrendingUp,
 } from 'lucide-react'
 import { usePprContext } from '@/modules/ppr/context/ppr-context'
-import { fetchPeriodoActivo, fetchProgramas } from '@/modules/ppr/services/ppr.service'
-import type { PprPeriodo, PprPrograma } from '@/modules/ppr/types'
+import { fetchPeriodoActivo, fetchProgramaPreliminar, fetchProgramas } from '@/modules/ppr/services/ppr.service'
+import { PprProgramaDashboardContent } from '@/modules/ppr/pages/ppr-programa-dashboard-page'
+import type { PprPeriodo, PprPrograma, PprProgramaPreliminar } from '@/modules/ppr/types'
 import {
   PprAvatar,
   PprPill,
@@ -35,6 +38,22 @@ function fmtNum(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000)     return `${Math.round(n / 1_000)}k`
   return n.toLocaleString('es-PE')
+}
+
+function normalizePprCode(value: string | null | undefined) {
+  return String(value ?? '').trim().replace(/^0+/, '') || '0'
+}
+
+function isPreliminarUnavailable(error: unknown) {
+  const response = (error as { response?: { status?: number } })?.response
+  return response?.status === 404
+}
+
+function pctToneClass(value: number | null) {
+  if (value == null) return 'text-slate-400'
+  if (value >= 100) return 'text-emerald-700'
+  if (value >= 80) return 'text-amber-700'
+  return 'text-rose-700'
 }
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
@@ -148,6 +167,36 @@ function CoordinatorInicioView({
   periodo: PprPeriodo | null
   activeMonth: number
 }) {
+  const [preliminar, setPreliminar] = useState<PprProgramaPreliminar | null>(null)
+  const [preliminarLoading, setPreliminarLoading] = useState(false)
+  const [preliminarError, setPreliminarError] = useState<string | null>(null)
+  const canLoadPreliminar = Boolean(programa && normalizePprCode(programa.code) === '129')
+
+  const loadPreliminar = useCallback(() => {
+    if (!programa?.id || !canLoadPreliminar) {
+      setPreliminar(null)
+      setPreliminarError(null)
+      setPreliminarLoading(false)
+      return
+    }
+
+    setPreliminarLoading(true)
+    setPreliminarError(null)
+    fetchProgramaPreliminar(programa.id)
+      .then(setPreliminar)
+      .catch((fetchError: unknown) => {
+        setPreliminar(null)
+        if (!isPreliminarUnavailable(fetchError)) {
+          setPreliminarError('No se pudo consultar el corte preliminar.')
+        }
+      })
+      .finally(() => setPreliminarLoading(false))
+  }, [canLoadPreliminar, programa?.id])
+
+  useEffect(() => {
+    loadPreliminar()
+  }, [loadPreliminar])
+
   if (!programa) {
     return (
       <div className="rounded-lg border border-dashed border-slate-300 bg-white px-5 py-10 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
@@ -212,8 +261,7 @@ function CoordinatorInicioView({
 
           <div className="grid grid-cols-2 gap-2 sm:w-auto sm:min-w-[280px]">
             <Link
-              to="/ppr/actividades"
-              state={{ programaId: programa.id }}
+              to="/ppr/periodos"
               className={cn(
                 'flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-semibold transition',
                 periodo?.isOpen
@@ -221,7 +269,7 @@ function CoordinatorInicioView({
                   : 'pointer-events-none bg-slate-100 text-slate-400',
               )}
             >
-              Registrar
+              Ingresar datos
               <ChevronRight className="h-4 w-4" />
             </Link>
             <Link
@@ -289,6 +337,90 @@ function CoordinatorInicioView({
         </div>
       </div>
 
+      {(preliminarLoading || preliminar || preliminarError) && (
+        <div className="rounded-lg border border-cyan-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded bg-cyan-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-cyan-700">
+                  <Database className="h-3 w-3" />
+                  Preliminar diario
+                </span>
+                <span className="rounded bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500">
+                  No consolida
+                </span>
+              </div>
+              <h3 className="mt-2 text-sm font-bold text-slate-950">
+                Corte de fuente institucional
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                {preliminar
+                  ? `Corte ${preliminar.cutoffLabel}. ${preliminar.rangeStart} a ${preliminar.rangeEnd}.`
+                  : 'Consultando el ultimo corte disponible.'}
+              </p>
+            </div>
+            <button
+              onClick={loadPreliminar}
+              disabled={preliminarLoading}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-700 disabled:opacity-50"
+            >
+              <RefreshCw className={cn('h-3.5 w-3.5', preliminarLoading && 'animate-spin')} />
+              Actualizar
+            </button>
+          </div>
+
+          {preliminarLoading && !preliminar ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="h-16 animate-pulse rounded-lg bg-slate-100" />
+              ))}
+            </div>
+          ) : preliminarError ? (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              {preliminarError}
+            </div>
+          ) : preliminar ? (
+            <>
+              <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Logro preliminar</p>
+                  <p className="mt-1 text-xl font-bold text-slate-950">{fmtNum(preliminar.totalValue)}</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Meta al corte</p>
+                  <p className="mt-1 text-xl font-bold text-slate-950">{fmtNum(preliminar.monthlyGoal)}</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Cumplimiento</p>
+                  <p className={cn('mt-1 text-xl font-bold', pctToneClass(preliminar.monthlyGoalPct))}>
+                    {preliminar.monthlyGoalPct != null ? `${preliminar.monthlyGoalPct}%` : '—'}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Vinculadas</p>
+                  <p className="mt-1 text-xl font-bold text-slate-950">{preliminar.rowsMatched}/{preliminar.totalActivities}</p>
+                </div>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded bg-slate-100">
+                <div
+                  className={cn(
+                    'h-full rounded transition-all',
+                    preliminar.monthlyGoalPct == null
+                      ? 'bg-slate-300'
+                      : preliminar.monthlyGoalPct >= 100
+                        ? 'bg-emerald-500'
+                        : preliminar.monthlyGoalPct >= 80
+                          ? 'bg-amber-500'
+                          : 'bg-rose-500',
+                  )}
+                  style={{ width: `${Math.min(preliminar.monthlyGoalPct ?? 0, 100)}%` }}
+                />
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Meta anual</p>
@@ -342,6 +474,7 @@ export function PprInicioPage() {
 
   const [periodo, setPeriodo] = useState<PprPeriodo | null>(null)
   const [programas, setProgramas] = useState<PprPrograma[]>([])
+  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -353,6 +486,24 @@ export function PprInicioPage() {
       setProgramas(progs)
     }).finally(() => setLoading(false))
   }, [pprUser.employeeId])
+
+  useEffect(() => {
+    if (pprUser.role === 'admin') return
+    if (!programas.length) {
+      setSelectedProgramId(null)
+      return
+    }
+
+    setSelectedProgramId((current) => {
+      if (current && programas.some((programa) => programa.id === current)) return current
+      const sorted = [...programas].sort((a, b) => {
+        const pa = a.sumMetaEsperada > 0 ? a.sumLogrado / a.sumMetaEsperada : 1
+        const pb = b.sumMetaEsperada > 0 ? b.sumLogrado / b.sumMetaEsperada : 1
+        return pa - pb
+      })
+      return sorted[0]?.id ?? programas[0].id
+    })
+  }, [programas, pprUser.role])
 
   // Derived stats
   const activeMonth = periodo?.month ?? currentMonth
@@ -420,6 +571,12 @@ export function PprInicioPage() {
   })
 
   const isAdmin = pprUser.role === 'admin'
+  const selectedCoordinatorProgram = programasSorted.find((programa) => programa.id === selectedProgramId)
+    ?? programasSorted[0]
+    ?? null
+  const evaluationYear = now.getFullYear()
+  const evaluationMonth = currentMonth
+  const canRegisterData = Boolean(periodo?.isOpen && selectedCoordinatorProgram)
 
   return (
     <div className="space-y-6">
@@ -491,12 +648,90 @@ export function PprInicioPage() {
           </div>
         </>
       ) : !isAdmin ? (
-        <CoordinatorInicioView
-          programa={programasSorted[0] ?? null}
-          programCount={programas.length}
-          periodo={periodo}
-          activeMonth={activeMonth}
-        />
+        selectedCoordinatorProgram ? (
+          <div className="space-y-5">
+            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                    Dashboard del coordinador
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {selectedCoordinatorProgram.code && (
+                      <span className="rounded bg-slate-100 px-2 py-1 font-mono text-[11px] font-bold text-teal-700">
+                        {selectedCoordinatorProgram.code}
+                      </span>
+                    )}
+                    <h2 className="text-base font-bold leading-tight text-slate-950 sm:text-lg">
+                      {selectedCoordinatorProgram.name}
+                    </h2>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {periodo?.isOpen
+                      ? `Periodo ${periodo.label} abierto para ingresar datos.`
+                      : periodo
+                        ? `Periodo ${periodo.label} cerrado para registro.`
+                        : 'Sin periodo activo disponible.'}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:justify-end">
+                  {programasSorted.length > 1 && (
+                    <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                        Programa
+                      </span>
+                      <select
+                        value={selectedCoordinatorProgram.id}
+                        onChange={(event) => setSelectedProgramId(Number(event.target.value))}
+                        className="max-w-[260px] bg-transparent text-xs font-semibold text-slate-900 outline-none"
+                      >
+                        {programasSorted.map((programa) => (
+                          <option key={programa.id} value={programa.id}>
+                            {programa.code ? `${programa.code} - ` : ''}{programa.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+
+                  <Link
+                    to={`/ppr/evaluacion-mensual?programId=${selectedCoordinatorProgram.id}&year=${evaluationYear}&month=${evaluationMonth}`}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
+                  >
+                    Evaluación mensual
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+
+                  {canRegisterData ? (
+                    <Link
+                      to="/ppr/actividades"
+                      state={{ programaId: selectedCoordinatorProgram.id }}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-800"
+                    >
+                      Ingresar datos
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Link>
+                  ) : (
+                    <span className="inline-flex cursor-not-allowed items-center justify-center gap-1.5 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-400">
+                      Ingresar datos
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <PprProgramaDashboardContent programId={selectedCoordinatorProgram.id} embedded />
+          </div>
+        ) : (
+          <CoordinatorInicioView
+            programa={null}
+            programCount={programas.length}
+            periodo={periodo}
+            activeMonth={activeMonth}
+          />
+        )
       ) : (
         <>
           {/* ── Alerts ── */}
