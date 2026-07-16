@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs'
-import { executeProcedure, sql } from './legacy-sql.service.js'
+import { executeProcedure, executeQuery, sql } from './legacy-sql.service.js'
 
 const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -1303,6 +1303,75 @@ function valueForAny(row, keys) {
   return ''
 }
 
+const DENGUE_DNI_KEYS = ['DNI', 'NroDocumento', 'Nro_Documento', 'NumeroDocumento', 'Documento', 'NroDoc']
+const DENGUE_DNI_LOOKUP_CHUNK_SIZE = 1000
+
+function normalizeDenguePatientId(value) {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
+function dengueDniFor(row) {
+  const dni = valueForAny(row, DENGUE_DNI_KEYS)
+  return dni === '' ? '' : String(dni)
+}
+
+async function hydrateDengueDni(rows, connection) {
+  if (!Array.isArray(rows) || !rows.length) return rows
+
+  const patientIds = [
+    ...new Set(
+      rows
+        .filter((row) => dengueDniFor(row) === '')
+        .map((row) => normalizeDenguePatientId(valueForAny(row, ['IdPaciente'])))
+        .filter((id) => id !== null),
+    ),
+  ]
+
+  if (!patientIds.length) return rows
+
+  const dniByPatientId = new Map()
+
+  for (let index = 0; index < patientIds.length; index += DENGUE_DNI_LOOKUP_CHUNK_SIZE) {
+    const chunk = patientIds.slice(index, index + DENGUE_DNI_LOOKUP_CHUNK_SIZE)
+    const params = chunk.map((id, paramIndex) => ({
+      name: `id${paramIndex}`,
+      type: sql.Int,
+      value: id,
+    }))
+    const placeholders = params.map((param) => `@${param.name}`).join(', ')
+    const dniRows = await executeQuery(
+      `
+        SELECT
+          P.IdPaciente,
+          ISNULL(CONVERT(VARCHAR(20), P.NroDocumento), '') AS DNI
+        FROM SIGH..Pacientes P
+        WHERE P.IdPaciente IN (${placeholders})
+      `,
+      params,
+      { connection, timeoutMs: TIMEOUT_MS },
+    )
+
+    dniRows.forEach((row) => {
+      const patientId = normalizeDenguePatientId(row.IdPaciente)
+      const dni = cleanCellValue(row.DNI)
+      if (patientId !== null && dni !== '') {
+        dniByPatientId.set(patientId, String(dni))
+      }
+    })
+  }
+
+  if (!dniByPatientId.size) return rows
+
+  return rows.map((row) => {
+    if (dengueDniFor(row) !== '') return row
+
+    const patientId = normalizeDenguePatientId(valueForAny(row, ['IdPaciente']))
+    const dni = patientId !== null ? dniByPatientId.get(patientId) : ''
+    return dni ? { ...row, DNI: dni } : row
+  })
+}
+
 async function buildCirugiaProcedimientoWorkbook({ start, end, rows }) {
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet('Bai_Transm')
@@ -1385,7 +1454,7 @@ async function exportCirugiaProcedimiento({ startDate, endDate }) {
 const DENGUE_CORTE_COLUMNS = [
   { header: 'IdAtencion', value: (row) => valueForAny(row, ['IdAtencion']) },
   { header: 'IdPaciente', value: (row) => valueForAny(row, ['IdPaciente']) },
-  { header: 'DNI', value: (row) => valueForAny(row, ['DNI']) },
+  { header: 'DNI', value: dengueDniFor },
   { header: 'IdCuentaAtencion', value: (row) => valueForAny(row, ['IdCuentaAtencion']) },
   { header: 'FechaIngreso', value: (row) => formatDateForDengue(valueForAny(row, ['FechaIngreso'])) },
   { header: 'HoraIngreso', value: (row) => formatTimeAmPmForDengue(valueForAny(row, ['HoraIngreso'])) },
@@ -1633,7 +1702,8 @@ async function exportDengue({ startDate, endDate, date }) {
       params: [{ name: 'fecha', type: sql.NVarChar, value: start }],
       connection: 'sigh1',
     })
-    return buildDengueCorteWorkbook({ day: start, rows })
+    const rowsWithDni = await hydrateDengueDni(rows, 'sigh1')
+    return buildDengueCorteWorkbook({ day: start, rows: rowsWithDni })
   }
 
   const rows = await procedureRows({
@@ -1644,7 +1714,8 @@ async function exportDengue({ startDate, endDate, date }) {
     ],
     connection: 'sigh2',
   })
-  return buildDengueRangoWorkbook({ start, end, rows })
+  const rowsWithDni = await hydrateDengueDni(rows, 'sigh2')
+  return buildDengueRangoWorkbook({ start, end, rows: rowsWithDni })
 }
 
 export async function exportEpidemiologiaReporte({ report, subtype, startDate, endDate, date }) {
