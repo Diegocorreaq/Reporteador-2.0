@@ -2,6 +2,7 @@ import {
   executeProcedure_General as executeProcedure,
   sql,
 } from './sigh-sql-helpers.js'
+import { getSqlPool } from '../db/sql-server.js'
 import { ensurePprSignedDocumentInfrastructure } from './ppr-signature-document.service.js'
 import {
   canPprEmployeeEditActivity,
@@ -364,7 +365,11 @@ export async function getProgramasUsuario(employeeId) {
 }
 
 async function ensurePprActivityGroupInfrastructure() {
-  await executeProcedure('SP_APP_PPR_ENSURE_ACTIVITY_GROUP_INFRASTRUCTURE')
+  const pool = await getSqlPool('general')
+  await pool.request().batch(`
+    IF COL_LENGTH('dbo.ppr_activities', 'activity_group_code') IS NULL
+      ALTER TABLE dbo.ppr_activities ADD activity_group_code NVARCHAR(30) NULL;
+  `)
 }
 
 async function getScopedProgramMetrics({ employeeId, programId, programCode, mesesCompletos }) {
