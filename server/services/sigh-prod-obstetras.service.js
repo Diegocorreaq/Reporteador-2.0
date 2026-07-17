@@ -1,6 +1,7 @@
 import {
   executeProcedure_Cnv,
   executeProcedure_Sigh1 as executeProcedure,
+  executeQuery_Sigh1 as executeQuery,
   sql,
 } from './sigh-sql-helpers.js'
 import { buildProduccionObstetrasWorkbook, MIME_XLSX } from './excel-export.service.js'
@@ -158,7 +159,7 @@ function normalizeFilters(filters) {
 export function createObstetricProductionService(dependencies = {}) {
   const deps = {
     executeMainProcedure: executeProcedure,
-    executeMainQuery: executeProcedure,
+    executeMainQuery: executeQuery,
     executeCnvProcedure: executeProcedure_Cnv,
     buildWorkbook: buildProduccionObstetrasWorkbook,
     buildPdf: buildProduccionObstetrasPdf,
@@ -168,7 +169,14 @@ export function createObstetricProductionService(dependencies = {}) {
 
   async function getObstetra(empleadoId) {
     const rows = await deps.executeMainQuery(
-      'SP_APP_PROD_OBSTETRAS_EMPLEADO',
+      `SELECT TOP 1
+         E.IdEmpleado AS idEmpleado,
+         E.DNI AS dni,
+         UPPER(E.ApellidoPaterno + ' ' + E.ApellidoMaterno + ' ' + E.Nombres) AS nombre,
+         UPPER(TE.Descripcion) AS tipoEmpleado
+       FROM SIGH..Empleados E
+       INNER JOIN SIGH..TiposEmpleado TE ON TE.IdTipoEmpleado = E.IdTipoEmpleado
+       WHERE E.IdEmpleado = @empleadoId AND E.IdTipoEmpleado = 28`,
       [{ name: 'empleadoId', type: sql.Int, value: Number(empleadoId ?? 0) }],
       { timeoutMs: REPORT_TIMEOUT_MS },
     )
@@ -316,8 +324,17 @@ const obstetricProductionService = createObstetricProductionService()
 export async function searchProduccionObstetras(term) {
   const queryTerm = String(term ?? '').trim()
   if (queryTerm.length < 3) return []
-  const rows = await executeProcedure(
-    'SP_APP_PROD_OBSTETRAS_BUSCAR',
+  const rows = await executeQuery(
+    `SELECT TOP 30
+       E.IdEmpleado AS idEmpleado,
+       E.DNI AS dni,
+       UPPER(E.ApellidoPaterno + ' ' + E.ApellidoMaterno + ' ' + E.Nombres) AS nombre,
+       UPPER(TE.Descripcion) AS tipoEmpleado
+     FROM SIGH..Empleados E
+     INNER JOIN SIGH..TiposEmpleado TE ON TE.IdTipoEmpleado = E.IdTipoEmpleado
+     WHERE E.IdTipoEmpleado = 28
+       AND UPPER(E.ApellidoPaterno + ' ' + E.ApellidoMaterno + ' ' + E.Nombres) LIKE UPPER(@term) + '%'
+     ORDER BY E.ApellidoPaterno, E.ApellidoMaterno, E.Nombres`,
     [{ name: 'term', type: sql.NVarChar, value: queryTerm }],
     { timeoutMs: REPORT_TIMEOUT_MS },
   )

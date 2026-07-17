@@ -1,9 +1,10 @@
-import { executeProcedure_Sigh1 as executeProcedure, sql } from './sigh-sql-helpers.js'
+import { executeProcedure_Sigh1 as executeProcedure, executeQuery_Sigh1 as executeQuery, sql } from './sigh-sql-helpers.js'
 import { buildMonitoreoCamasSusaludWorkbook, buildMonitoreoCamasWorkbook, MIME_XLSX } from './excel-export.service.js'
 import { buildSusaludExportPayload } from './susalud/susalud-pipeline.js'
 
 const REPORT_TIMEOUT_MS = 180000
 const SIN_ALTA_EFECTIVA_ESTADO_CAMA_ID = 7
+const RESERVA_CQ_ORIGEN_UPSS = [3, 6]
 const CAMAS_APROBADAS_OVERRIDES = new Map([
   [197, { camas: 1 }],
   [421, { camas: 6, servicio: 'SALA DE DILATACION' }],
@@ -358,8 +359,18 @@ function buildCamasCountsMaps(rows = []) {
 }
 
 async function getSinAltaEfectivaCamasCounts() {
-  const rows = await executeProcedure(
-    'SP_APP_CAMAS_SIN_ALTA_EFECTIVA_COUNTS',
+  const rows = await executeQuery(
+    `SELECT
+       SR.cod_Consultorio AS IDSERVICIO,
+       TCM.Descripcion AS TIPO,
+       COUNT(*) AS TOTAL
+     FROM SIGH..Camas CM
+     LEFT JOIN SIGH..TiposCama TCM ON TCM.IdTipoCama = CM.IdTiposCama
+     LEFT JOIN SIGH_EST..T_Upss_Consultorio SR ON SR.cod_Consultorio = CM.IdServicioPropietario
+     WHERE CM.IdEstadoCama = @idEstadoCama
+       AND SR.COD_ESTADO = 1
+       AND SR.cod_Consultorio NOT IN (11, 28, 196, 8, 461, 600)
+     GROUP BY SR.cod_Consultorio, TCM.Descripcion`,
     [{ name: 'idEstadoCama', type: sql.Int, value: SIN_ALTA_EFECTIVA_ESTADO_CAMA_ID }],
     { timeoutMs: REPORT_TIMEOUT_MS },
   )
@@ -368,7 +379,60 @@ async function getSinAltaEfectivaCamasCounts() {
 }
 
 async function getNonReservableCamasSopCounts() {
-  const rows = await executeProcedure('SP_APP_CAMAS_NON_RESERVABLE_SOP_COUNTS', [], { timeoutMs: REPORT_TIMEOUT_MS })
+  const rows = await executeQuery(
+    `WITH MOV_CQ AS (
+      SELECT
+        A.IdAtencion,
+        H.IdEstanciaHospitalaria,
+        H.Secuencia,
+        H.FechaOcupacion,
+        H.IdServicio,
+        H.IdCama,
+        H.LlegoAlServicio,
+        S.cod_Upss,
+        ROW_NUMBER() OVER (
+          PARTITION BY A.IdAtencion
+          ORDER BY H.Secuencia DESC, H.FechaOcupacion DESC, H.IdEstanciaHospitalaria DESC
+        ) fila_actual
+      FROM SIGH..Atenciones A
+      INNER JOIN SIGH..AtencionesEstanciaHospitalaria H ON H.IdAtencion = A.IdAtencion
+      LEFT JOIN SIGH_EST..T_Upss_Consultorio S ON S.cod_Consultorio = H.IdServicio
+      WHERE A.FechaEgreso IS NULL
+      AND H.LlegoAlServicio = 1
+    ),
+    ACTUAL_CQ AS (
+      SELECT *
+      FROM MOV_CQ
+      WHERE fila_actual = 1
+      AND cod_Upss = 4
+      AND FechaOcupacion >= DATEADD(day, -1, CONVERT(date, GETDATE()))
+    ),
+    ORIGEN_CQ AS (
+      SELECT
+        M.*,
+        ROW_NUMBER() OVER (
+          PARTITION BY M.IdAtencion
+          ORDER BY M.Secuencia DESC, M.FechaOcupacion DESC, M.IdEstanciaHospitalaria DESC
+        ) fila_origen
+      FROM MOV_CQ M
+      INNER JOIN ACTUAL_CQ CQ ON CQ.IdAtencion = M.IdAtencion
+      WHERE ISNULL(M.cod_Upss, 0) <> 4
+      AND M.IdCama IS NOT NULL
+    )
+    SELECT
+      O.IdServicio AS IDSERVICIO,
+      TCM.Descripcion AS TIPO,
+      COUNT(DISTINCT O.IdCama) AS TOTAL
+    FROM ACTUAL_CQ CQ
+    INNER JOIN ORIGEN_CQ O ON O.IdAtencion = CQ.IdAtencion AND O.fila_origen = 1
+    INNER JOIN SIGH..Camas CM ON CM.IdCama = O.IdCama AND CM.IdServicioPropietario = O.IdServicio
+    LEFT JOIN SIGH..TiposCama TCM ON TCM.IdTipoCama = CM.IdTiposCama
+    WHERE CM.IdEstadoCama IN (1, 4)
+    AND ISNULL(O.cod_Upss, 0) NOT IN (${RESERVA_CQ_ORIGEN_UPSS.join(', ')})
+    GROUP BY O.IdServicio, TCM.Descripcion`,
+    [],
+    { timeoutMs: REPORT_TIMEOUT_MS },
+  )
 
   return buildCamasCountsMaps(rows)
 }
@@ -668,7 +732,16 @@ const DETAIL_PROCEDURE_BY_TYPE = {
 }
 
 export async function listCamasServiciosAgrupados() {
-  const rows = await executeProcedure('SP_APP_CAMAS_SERVICIOS_AGRUPADOS', [], { timeoutMs: REPORT_TIMEOUT_MS })
+  const rows = await executeQuery(
+    `SELECT DISTINCT
+      TipoAgrupa AS tipo,
+      NomAgrupa AS nombre
+     FROM T_Upss_Consultorio
+     WHERE NomAgrupa IS NOT NULL
+     ORDER BY nombre`,
+    [],
+    { timeoutMs: REPORT_TIMEOUT_MS },
+  )
 
   return rows.map((row) => ({
     tipo: String(row.tipo ?? '').trim(),
@@ -677,8 +750,13 @@ export async function listCamasServiciosAgrupados() {
 }
 
 export async function getCamasServicioAgrupadoInfo(nombre) {
-  const rows = await executeProcedure(
-    'SP_APP_CAMAS_SERVICIO_AGRUPADO_INFO',
+  const rows = await executeQuery(
+    `SELECT DISTINCT
+      TipoAgrupa AS tipo,
+      NomAgrupa AS nombre,
+      IdAgrupa AS idTipo
+     FROM T_Upss_Consultorio
+     WHERE NomAgrupa = @nombre`,
     [{ name: 'nombre', type: sql.NVarChar, value: String(nombre ?? '').trim() }],
     { timeoutMs: REPORT_TIMEOUT_MS },
   )
@@ -751,8 +829,12 @@ export async function getGestionEstanciaResumen(filters) {
     throw new Error('Debe seleccionar un servicio para consultar el numero de camas.')
   }
 
-  const serviceRows = await executeProcedure(
-    'SP_APP_CAMAS_SERVICIO_CRITERIA',
+  const serviceRows = await executeQuery(
+    `SELECT DISTINCT
+      cod_upss AS upss,
+      cod_consultorio AS serv
+     FROM T_Upss_Consultorio
+     WHERE NomAgrupa = @servicio`,
     [{ name: 'servicio', type: sql.NVarChar, value: servicio }],
     { timeoutMs: REPORT_TIMEOUT_MS },
   )
@@ -867,7 +949,14 @@ export async function getMonitoreoCamasCorteReport() {
 }
 
 export async function listTiposCama() {
-  const rows = await executeProcedure('SP_APP_CAMAS_TIPOS', [], { timeoutMs: REPORT_TIMEOUT_MS })
+  const rows = await executeQuery(
+    `SELECT IdTipoCama AS idTipo, Descripcion AS tipo
+     FROM sigh..TiposCama
+     WHERE idestado = 1
+     ORDER BY IdTipoCama`,
+    [],
+    { timeoutMs: REPORT_TIMEOUT_MS },
+  )
 
   return rows.map((row) => ({
     idTipo: String(row.idTipo ?? '').trim(),
@@ -988,8 +1077,70 @@ export async function getOcupacionUciReport() {
 }
 
 async function getCamasReservadasSopDetalle(idServicio, tipo) {
-  const rows = await executeProcedure(
-    'SP_APP_CAMAS_RESERVADAS_SOP_DETALLE',
+  const rows = await executeQuery(
+    `WITH MOV_CQ AS (
+      SELECT
+        A.IdAtencion,
+        A.IdCuentaAtencion,
+        A.IdPaciente,
+        H.IdEstanciaHospitalaria,
+        H.Secuencia,
+        H.FechaOcupacion,
+        H.IdServicio,
+        H.IdCama,
+        H.LlegoAlServicio,
+        S.cod_Upss,
+        ROW_NUMBER() OVER (
+          PARTITION BY A.IdAtencion
+          ORDER BY H.Secuencia DESC, H.FechaOcupacion DESC, H.IdEstanciaHospitalaria DESC
+        ) fila_actual
+      FROM SIGH..Atenciones A
+      INNER JOIN SIGH..AtencionesEstanciaHospitalaria H ON H.IdAtencion = A.IdAtencion
+      LEFT JOIN SIGH_EST..T_Upss_Consultorio S ON S.cod_Consultorio = H.IdServicio
+      WHERE A.FechaEgreso IS NULL
+      AND H.LlegoAlServicio = 1
+    ),
+    ACTUAL_CQ AS (
+      SELECT *
+      FROM MOV_CQ
+      WHERE fila_actual = 1
+      AND cod_Upss = 4
+      AND FechaOcupacion >= DATEADD(day, -1, CONVERT(date, GETDATE()))
+    ),
+    ORIGEN_CQ AS (
+      SELECT
+        M.*,
+        ROW_NUMBER() OVER (
+          PARTITION BY M.IdAtencion
+          ORDER BY M.Secuencia DESC, M.FechaOcupacion DESC, M.IdEstanciaHospitalaria DESC
+        ) fila_origen
+      FROM MOV_CQ M
+      INNER JOIN ACTUAL_CQ CQ ON CQ.IdAtencion = M.IdAtencion
+      WHERE ISNULL(M.cod_Upss, 0) <> 4
+      AND M.IdCama IS NOT NULL
+    )
+    SELECT
+      CM.Codigo NROCAMA,
+      SR.PISO,
+      TCM.Descripcion TIPOCAMA,
+      CONCAT('Reservada (', ECM.Descripcion, ')') ESTADOCAMA,
+      ISNULL((LEFT(P.PrimerNombre, 1) + ',' + P.ApellidoPaterno + ',' + LEFT(P.ApellidoMaterno, 1)), '') PACIENTE,
+      O.IdCuentaAtencion,
+      SR2.des_Consultorio SERVICIOACTUAL,
+      CM.IdServicioPropietario
+    FROM ACTUAL_CQ CQ
+    INNER JOIN ORIGEN_CQ O ON O.IdAtencion = CQ.IdAtencion AND O.fila_origen = 1
+    INNER JOIN SIGH..Camas CM ON CM.IdCama = O.IdCama AND CM.IdServicioPropietario = O.IdServicio
+    LEFT JOIN SIGH..TiposCama TCM ON TCM.IdTipoCama = CM.IdTiposCama
+    LEFT JOIN SIGH..EstadosCama ECM ON ECM.IdEstadoCama = CM.IdEstadoCama
+    LEFT JOIN SIGH..Pacientes P ON P.IdPaciente = O.IdPaciente
+    LEFT JOIN SIGH_EST..T_Upss_Consultorio SR ON SR.cod_Consultorio = O.IdServicio
+    LEFT JOIN SIGH_EST..T_Upss_Consultorio SR2 ON SR2.cod_Consultorio = CQ.IdServicio
+    WHERE CM.IdEstadoCama IN (1, 4)
+    AND O.IdServicio = @idservicio
+    AND O.cod_Upss IN (${RESERVA_CQ_ORIGEN_UPSS.join(', ')})
+    AND TCM.Descripcion = @tipo
+    ORDER BY CM.Codigo`,
     [
       { name: 'idservicio', type: sql.Int, value: Number(idServicio ?? 0) || 0 },
       { name: 'tipo', type: sql.NVarChar, value: String(tipo ?? '').trim() },
@@ -1001,8 +1152,68 @@ async function getCamasReservadasSopDetalle(idServicio, tipo) {
 }
 
 async function getCamasOxigenoterapiaDetalle(idServicio, valorOxigenoterapia) {
-  const rows = await executeProcedure(
-    'SP_APP_CAMAS_OXIGENOTERAPIA_DETALLE',
+  const rows = await executeQuery(
+    `SELECT
+      S1.IdCuentaAtencion IDCUENTA,
+      S1.NROCAMA CAMA,
+      S1.ESTADOCAMA,
+      ISNULL((LEFT(P.PrimerNombre, 1) + ',' + P.ApellidoPaterno + ',' + LEFT(P.ApellidoMaterno, 1)), '') PACIENTE
+    FROM (
+      SELECT X1.*, X2.IdAtencion, X2.IdCuentaAtencion
+      FROM (
+        SELECT
+          CM.Codigo NROCAMA,
+          CM.IdCama,
+          SR.cod_Consultorio IDSERVICIO,
+          ECM.Descripcion ESTADOCAMA,
+          CM.IdPaciente
+        FROM SIGH..Camas CM
+        LEFT JOIN SIGH..EstadosCama ECM ON ECM.IdEstadoCama = CM.IdEstadoCama
+        LEFT JOIN SIGH_EST..T_Upss_Consultorio SR ON SR.cod_Consultorio = CM.IdServicioPropietario
+        WHERE CM.IdEstadoCama <> 10
+        AND SR.COD_ESTADO = 1
+        AND SR.cod_Consultorio NOT IN (11, 28, 196, 8, 461, 600)
+        AND SR.cod_Consultorio = @idservicio
+      ) X1
+      LEFT JOIN (
+        SELECT IDCAMA, IDSERVICIO, IDPACIENTE, IDATENCION, IdCuentaAtencion
+        FROM (
+          SELECT
+            H.IdCama,
+            H.IdServicio,
+            A1.IdPaciente,
+            A1.IdAtencion,
+            A1.IdCuentaAtencion,
+            ROW_NUMBER() OVER (
+              PARTITION BY H.IdCama, H.IdServicio, A1.IdPaciente
+              ORDER BY H.Secuencia DESC, A1.FechaIngreso DESC, A1.IdAtencion DESC
+            ) fila
+          FROM SIGH..Atenciones A1
+          INNER JOIN SIGH..AtencionesEstanciaHospitalaria H ON H.IdAtencion = A1.IdAtencion
+          WHERE A1.FechaEgreso IS NULL
+          AND H.LlegoAlServicio = 1
+        ) X2R
+        WHERE fila = 1
+      ) X2 ON X1.IdCama = X2.IdCama AND X1.IDSERVICIO = X2.IdServicio AND X1.IdPaciente = X2.IdPaciente
+    ) S1
+    INNER JOIN SIGH..Pacientes P ON P.IdPaciente = S1.IdPaciente
+    INNER JOIN (
+      SELECT EV.IdCuentaAtencion, MAX(EV.IdVisita) IDULTVIS
+      FROM efimedic..EvoVisitaX EV
+      WHERE EV.estado = 1
+      AND EV.idTipoEvolucion = 1
+      GROUP BY EV.IdCuentaAtencion
+    ) R2 ON S1.IdCuentaAtencion = R2.IdCuentaAtencion
+    INNER JOIN (
+      SELECT EV.IdCuentaAtencion, EVD.IdVisita, EVD.valor2
+      FROM efimedic..EvoVisitaDetalleX EVD
+      INNER JOIN efimedic..EvoVisitaX EV ON EV.IdVisita = EVD.IdVisita
+      WHERE EVD.estado = 1
+      AND EV.estado = 1
+      AND YEAR(EV.fecha) = YEAR(GETDATE())
+      AND EVD.valor2 = @valorOxigenoterapia
+    ) R3 ON R2.IdCuentaAtencion = R3.IdCuentaAtencion AND R2.IDULTVIS = R3.IdVisita
+    ORDER BY S1.NROCAMA`,
     [
       { name: 'idservicio', type: sql.Int, value: Number(idServicio ?? 0) || 0 },
       { name: 'valorOxigenoterapia', type: sql.Int, value: Number(valorOxigenoterapia ?? 0) || 0 },

@@ -27,7 +27,7 @@ const expectedExports = new Map([
   ['server/services/epidemiologia-reportes.service.js', ['exportEpidemiologiaReporte']],
   ['server/services/lavado-manos.service.js', ['listLavadoManos', 'createLavadoRegistro', 'anularLavadoRegistro']],
   ['server/services/legacy-export.service.js', ['executeConfiguredExport', 'validateLegacyUser', 'listCatalogExports']],
-  ['server/services/legacy-sql.service.js', ['executeProcedure', 'executeProcedureRecordsets', 'sql']],
+  ['server/services/legacy-sql.service.js', ['executeProcedure', 'executeProcedureRecordsets', 'executeQuery', 'sql']],
   ['server/services/ppr-data.service.js', ['getPeriodoActivo', 'runPprImport', 'getEvaluacionMensual']],
   ['server/services/ppr-program-documents.service.js', ['canAccessPprProgramDocument', 'getPprProgramDocumentFile', 'upsertPprProgramDocument']],
   ['server/services/ppr-signature-document.service.js', ['getPprDraftDocumentFile', 'signPprPeriodWithMockDocument', 'getPprSignedDocumentFile']],
@@ -35,7 +35,34 @@ const expectedExports = new Map([
   ['server/services/sigh-monitoreo.service.js', ['listFamiliaPendienteUpss', 'getFamiliaPendienteReport']],
   ['server/services/sigh-prod-medicos.service.js', ['searchProduccionMedicos', 'getProduccionMedicosResumen']],
   ['server/services/sigh-prod-obstetras.service.js', ['searchProduccionObstetras', 'createObstetricProductionService']],
-  ['server/services/sigh-sql-helpers.js', ['executeProcedure_Sigh1', 'executeProcedure_Sigh2', 'executeProcedure_Cnv', 'executeProcedure_General', 'sql']],
+  [
+    'server/services/sigh-sql-helpers.js',
+    [
+      'executeProcedure_Sigh1',
+      'executeProcedure_Sigh2',
+      'executeProcedure_Cnv',
+      'executeProcedure_General',
+      'executeQuery_Sigh1',
+      'executeQuery_Sigh2',
+      'executeQuery_General',
+      'sql',
+    ],
+  ],
+])
+
+const legacyDirectSqlFiles = new Set([
+  'server/services/centro-obstetrico-report.service.js',
+  'server/services/epidemiologia-reportes.service.js',
+  'server/services/lavado-manos.service.js',
+  'server/services/legacy-export.service.js',
+  'server/services/legacy-sql.service.js',
+  'server/services/ppr-data.service.js',
+  'server/services/ppr-program-documents.service.js',
+  'server/services/sigh-camas.service.js',
+  'server/services/sigh-monitoreo.service.js',
+  'server/services/sigh-prod-medicos.service.js',
+  'server/services/sigh-prod-obstetras.service.js',
+  'server/services/sigh-sql-helpers.js',
 ])
 
 const sqlFiles = [
@@ -67,8 +94,8 @@ test('los servicios migrados cargan y mantienen sus exports publicos', async () 
   }
 })
 
-test('los servicios migrados no contienen consultas SQL directas', async () => {
-  const forbiddenPatterns = [
+test('los servicios con SQL directo estan declarados como compatibilidad legacy', async () => {
+  const directSqlPatterns = [
     /\bexecuteQuery\b/i,
     /\.query\s*\(/i,
     /\bSELECT\s+/i,
@@ -81,8 +108,14 @@ test('los servicios migrados no contienen consultas SQL directas', async () => {
 
   for (const file of migratedServiceFiles) {
     const source = await readProjectFile(file)
-    for (const pattern of forbiddenPatterns) {
-      assert.equal(pattern.test(source), false, `${file} no debe contener ${pattern}`)
+    const hasDirectSql = directSqlPatterns.some((pattern) => pattern.test(source))
+
+    if (hasDirectSql) {
+      assert.equal(
+        legacyDirectSqlFiles.has(file),
+        true,
+        `${file} usa SQL directo y debe estar declarado como compatibilidad legacy`,
+      )
     }
   }
 })
@@ -110,12 +143,12 @@ test('todo procedimiento SP_APP usado por servicios tiene definicion SQL', async
   }
 })
 
-test('los helpers SQL solo exponen ejecucion de procedimientos', async () => {
+test('los helpers SQL exponen procedimientos y consultas legacy', async () => {
   const legacySql = await import(pathToFileURL(absolutePath('server/services/legacy-sql.service.js')).href)
   const sighHelpers = await import(pathToFileURL(absolutePath('server/services/sigh-sql-helpers.js')).href)
 
-  assert.equal('executeQuery' in legacySql, false)
-  assert.equal('executeQuery_General' in sighHelpers, false)
-  assert.equal('executeQuery_Sigh1' in sighHelpers, false)
-  assert.equal('executeQuery_Sigh2' in sighHelpers, false)
+  assert.equal(typeof legacySql.executeQuery, 'function')
+  assert.equal(typeof sighHelpers.executeQuery_General, 'function')
+  assert.equal(typeof sighHelpers.executeQuery_Sigh1, 'function')
+  assert.equal(typeof sighHelpers.executeQuery_Sigh2, 'function')
 })

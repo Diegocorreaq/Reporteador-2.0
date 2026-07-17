@@ -1,4 +1,67 @@
-import { executeProcedure_General as executeProcedure, sql } from './sigh-sql-helpers.js'
+import { getSqlPool, sql } from '../db/sql-server.js'
+
+const lastUpdatedQuery = `
+SELECT MAX(CAST(A.Fecha AS date)) AS [lastUpdated]
+FROM SIGH_DEPURA..Rpt_MovimientoHospitalario A
+INNER JOIN T_Upss_Consultorio C
+  ON C.cod_Consultorio = A.idservicio
+WHERE YEAR(A.fecha) >= 2019
+  AND C.des_Consultorio LIKE '%obstetrico%';
+`.trim()
+
+const rowsQuery = `
+SELECT
+  D1.FECHA AS [fecha],
+  D1.ANIO AS [anio],
+  D1.MES AS [mesNumero],
+  D1.INGRESOS AS [totalIngresos],
+  D1.TRAN_HOSP AS [nroTransferidosHospObstetricia],
+  D1.TRAN_UCI AS [nroTransferidosUci],
+  D1.TRANSOTROS AS [nroTransferidosOtrosServicios],
+  (D1.EGRESOS - D1.NROREFERIDO - D1.FALLMAY - D1.FALLMEN - D1.FALL12M) AS [altaMedica],
+  D1.NROREFERIDO AS [totalReferidos],
+  D1.TRAN_VILLA AS [destinoVillaPanamericana],
+  (D1.NROREFERIDO - D1.TRAN_VILLA) AS [destinoOtros],
+  ISNULL(D1.FALLMEN + D1.FALLMAY + D1.FALL12M, 0) AS [fallecidos],
+  ISNULL(D1.FALL12M, 0) AS [fallecidoMenor12Horas],
+  ISNULL(D1.FALLMEN, 0) AS [fallecidos12a48Horas],
+  ISNULL(D1.FALLMAY, 0) AS [fallecidosMayorIgual48Horas],
+  ISNULL(D1.EGRESOS + D1.TRANSF, 0) AS [egresos],
+  D1.ESTANCIA AS [estancia],
+  D1.PACIENTEDIA AS [pacienteDia],
+  D1.CAMADIA AS [camaDia],
+  (D1.CAMADIA - D1.PACIENTEDIA) AS [diferenciaCamasPacientes],
+  D1.CAMASDIS2 AS [camasDisponiblesPromedio]
+FROM (
+  SELECT
+    YEAR(A.FECHA) AS ANIO,
+    MONTH(A.FECHA) AS MES,
+    CAST(A.FECHA AS date) AS FECHA,
+    SUM(A.TotIng) AS INGRESOS,
+    SUM(ISNULL(A.Altas, 0)) AS EGRESOS,
+    SUM(A.Estancia) AS ESTANCIA,
+    SUM(A.PacienteDia) AS PACIENTEDIA,
+    SUM(A.CamasDis) AS CAMADIA,
+    AVG(CASE WHEN A.camafija <> 0 THEN A.camafija ELSE NULL END) AS CAMASDIS2,
+    ISNULL(SUM(A.fall_men12), 0) AS FALL12M,
+    ISNULL(SUM(A.fall_men48), 0) AS FALLMEN,
+    ISNULL(SUM(A.fall_may48), 0) AS FALLMAY,
+    SUM(A.transf_uci) AS TRAN_UCI,
+    SUM(A.Transf) AS TRANSF,
+    SUM(A.transf_villa) AS TRAN_VILLA,
+    ISNULL(SUM(A.REFERIDOS), 0) AS NROREFERIDO,
+    SUM(A.transf_obs) AS TRAN_HOSP,
+    SUM(ISNULL(A.Transf, 0) - ISNULL(A.transf_obs, 0)) AS TRANSOTROS
+  FROM sigh_depura..Rpt_MovimientoHospitalario A
+  INNER JOIN T_Upss_Consultorio C
+    ON C.cod_Consultorio = A.idservicio
+  WHERE YEAR(A.fecha) >= 2019
+    AND CAST(A.fecha AS date) BETWEEN @fechaInicio AND @fechaFin
+    AND C.des_Consultorio LIKE '%obstetrico%'
+  GROUP BY CAST(A.FECHA AS date), YEAR(A.FECHA), MONTH(A.FECHA)
+) D1
+ORDER BY D1.FECHA;
+`.trim()
 
 function buildDefaultDateRange() {
   const currentYear = new Date().getFullYear()
@@ -72,17 +135,18 @@ function mapRow(record) {
 
 export async function getCentroObstetricoReport(rawFilters) {
   const filters = parseDateRange(rawFilters)
-  const [lastUpdatedRows, rows] = await Promise.all([
-    executeProcedure('SP_APP_CENTRO_OBSTETRICO_LAST_UPDATED'),
-    executeProcedure('SP_APP_CENTRO_OBSTETRICO_ROWS', [
-      { name: 'fechaInicio', type: sql.Date, value: filters.fechaInicio },
-      { name: 'fechaFin', type: sql.Date, value: filters.fechaFin },
-    ]),
-  ])
+  const pool = await getSqlPool('general')
+
+  const lastUpdatedResult = await pool.request().query(lastUpdatedQuery)
+  const rowsResult = await pool
+    .request()
+    .input('fechaInicio', sql.Date, filters.fechaInicio)
+    .input('fechaFin', sql.Date, filters.fechaFin)
+    .query(rowsQuery)
 
   return {
     filters,
-    lastUpdated: normalizeDate(lastUpdatedRows[0]?.lastUpdated ?? filters.fechaFin),
-    rows: rows.map(mapRow),
+    lastUpdated: normalizeDate(lastUpdatedResult.recordset[0]?.lastUpdated ?? filters.fechaFin),
+    rows: rowsResult.recordset.map(mapRow),
   }
 }
