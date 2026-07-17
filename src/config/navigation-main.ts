@@ -20,6 +20,7 @@ import {
   Syringe,
 } from 'lucide-react'
 import { group, item, section } from '@/config/navigation-builders'
+import { PPR_PORTAL_FALLBACK_EMPLOYEE_IDS } from '@/config/access-control'
 import type { NavigationSection, WorkspaceHomeContent, WorkspaceQuickLink } from '@/types/navigation'
 
 const homeItem = item({
@@ -644,7 +645,7 @@ export const mainQuickLinks: WorkspaceQuickLink[] = [
     to: '/ppr',
     description: 'Acceso directo al portal de validacion PPR.',
     icon: ClipboardList,
-    access: { pprRoles: ['ppr_admin', 'ppr_coordinador'] },
+    access: { pprRoles: ['ppr_admin', 'ppr_coordinador'], employeeIds: PPR_PORTAL_FALLBACK_EMPLOYEE_IDS },
   },
   {
     key: 'manuales',

@@ -49,18 +49,26 @@ function hasAccess(user: AuthUser | null | undefined, access?: NavigationAccessR
   }
 
   const dniMatch = userMatchesAllowedDnis(user, access.allowedDnis)
+  const employeeIds = access.employeeIds ?? []
+  const pprRoles = access.pprRoles ?? []
+  const employeeIdRulePresent = employeeIds.length > 0
+  const pprRoleRulePresent = pprRoles.length > 0
+  const explicitEmployeeIdMatch =
+    user.employeeId !== null && user.employeeId !== undefined && employeeIds.includes(user.employeeId)
   const employeeIdMatch =
-    !access.employeeIds?.length ||
-    (user.employeeId !== null && user.employeeId !== undefined && access.employeeIds.includes(user.employeeId))
+    !employeeIdRulePresent || explicitEmployeeIdMatch
   const roleMatch = !access.roles?.length || access.roles.includes(user.role)
   const permissionMatch =
     !access.permissions?.length ||
     access.permissions.some((permission) => matchesPermission(grantedPermissions, permission))
   const pprRoleMatch =
-    !access.pprRoles?.length ||
-    (user.pprRole !== null && user.pprRole !== undefined && access.pprRoles.includes(user.pprRole))
+    !pprRoleRulePresent ||
+    (user.pprRole !== null && user.pprRole !== undefined && pprRoles.includes(user.pprRole))
+  const pprAccessMatch = pprRoleRulePresent && employeeIdRulePresent
+    ? pprRoleMatch || explicitEmployeeIdMatch
+    : pprRoleMatch && employeeIdMatch
 
-  return dniMatch && employeeIdMatch && roleMatch && permissionMatch && pprRoleMatch
+  return dniMatch && roleMatch && permissionMatch && pprAccessMatch
 }
 
 function filterEntry(entry: NavigationEntry, user: AuthUser | null | undefined) {

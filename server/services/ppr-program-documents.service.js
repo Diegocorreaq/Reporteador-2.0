@@ -7,6 +7,8 @@ export const PPR_PROGRAM_DOCUMENT_TYPES = new Set([
   'criterios_programacion',
 ])
 
+let programDocumentInfrastructurePromise = null
+
 function normalizeProgramCode(value) {
   const normalized = String(value ?? '').trim()
   if (!normalized) return ''
@@ -167,7 +169,13 @@ async function ensureProgramDocumentMetadataInfrastructure() {
 }
 
 export async function ensurePprProgramDocumentInfrastructure() {
-  await ensureProgramDocumentMetadataInfrastructure()
+  if (!programDocumentInfrastructurePromise) {
+    programDocumentInfrastructurePromise = ensureProgramDocumentMetadataInfrastructure().catch((error) => {
+      programDocumentInfrastructurePromise = null
+      throw error
+    })
+  }
+  await programDocumentInfrastructurePromise
 }
 
 async function findProgramByCode(request, programCode) {

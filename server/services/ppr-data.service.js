@@ -12,6 +12,7 @@ import {
   getPprProgramActivityGroups,
   resolvePprActivityGroup,
 } from './ppr-activity-scope.service.js'
+import { logger } from '../utils/logger.js'
 
 const MONTHS_ES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -372,6 +373,25 @@ async function ensurePprActivityGroupInfrastructure() {
   `)
 }
 
+async function getActivityGroupByActivityId(programId) {
+  try {
+    const groupRows = await executeProcedure('SP_APP_PPR_ACTIVITY_GROUPS_BY_PROGRAM', [
+      { name: 'program_id', type: sql.Int, value: Number(programId) },
+    ])
+    return new Map(groupRows.map((row) => [
+      Number(row.id),
+      row.activity_group_code == null ? null : String(row.activity_group_code),
+    ]))
+  } catch (error) {
+    logger.warn({
+      event: 'ppr:activity-groups:fallback',
+      programId: Number(programId),
+      message: error instanceof Error ? error.message : String(error),
+    })
+    return new Map()
+  }
+}
+
 async function getScopedProgramMetrics({ employeeId, programId, programCode, mesesCompletos }) {
   await ensurePprActivityGroupInfrastructure()
   const metricRows = await executeProcedure('SP_APP_PPR_SCOPED_PROGRAM_METRICS', [
@@ -415,13 +435,7 @@ export async function getActividadesPrograma({ programaId, periodoId, employeeId
     { name: 'program_id', type: sql.Int, value: Number(programaId) },
   ])
   const programCode = String(programRows[0]?.code ?? '')
-  const groupRows = await executeProcedure('SP_APP_PPR_ACTIVITY_GROUPS_BY_PROGRAM', [
-    { name: 'program_id', type: sql.Int, value: Number(programaId) },
-  ])
-  const groupByActivityId = new Map(groupRows.map((row) => [
-    Number(row.id),
-    row.activity_group_code == null ? null : String(row.activity_group_code),
-  ]))
+  const groupByActivityId = await getActivityGroupByActivityId(programaId)
   const signatureRows = await executeProcedure('SP_APP_PPR_SIGNATURE_FOR_PROGRAM_PERIOD', [
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
     { name: 'period_id', type: sql.Int, value: Number(periodoId) },
@@ -1255,13 +1269,7 @@ export async function getProgramaDetalle(programId, year, employeeId) {
   ])
   if (!rows.length) return null
   const first = rows[0]
-  const groupRows = await executeProcedure('SP_APP_PPR_ACTIVITY_GROUPS_BY_PROGRAM', [
-    { name: 'program_id', type: sql.Int, value: Number(programId) },
-  ])
-  const groupByActivityId = new Map(groupRows.map((row) => [
-    Number(row.id),
-    row.activity_group_code == null ? null : String(row.activity_group_code),
-  ]))
+  const groupByActivityId = await getActivityGroupByActivityId(programId)
   const detailRows = rows.map((row) => ({
     ...row,
     activity_group_code: row.activity_group_code ?? groupByActivityId.get(Number(row.activity_id)) ?? null,
