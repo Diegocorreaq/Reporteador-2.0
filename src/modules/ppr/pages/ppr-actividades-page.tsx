@@ -117,6 +117,10 @@ function resolveErrorMessage(error: unknown, fallback: string) {
 
 type ActivityView = 'all' | 'pending' | 'filled' | 'validated'
 
+const PPR_DATA_ENTRY_LOCKED = true
+const PPR_DATA_ENTRY_LOCKED_MESSAGE =
+  'El registro de informacion esta bloqueado temporalmente. Puede visualizar el modulo, pero no enviar datos.'
+
 function ActividadRow({ actividad, disabled, onChange, onValidate, validating }: ActividadRowProps) {
   const [val, setVal] = useState(actividad.value != null ? String(actividad.value) : '')
   const [notes, setNotes] = useState(actividad.notes ?? '')
@@ -436,6 +440,10 @@ export function PprActividadesPage() {
 
   async function handleValorChange(activityId: number, rawValue: string, notes: string) {
     if (!periodo) return
+    if (PPR_DATA_ENTRY_LOCKED) {
+      setError(PPR_DATA_ENTRY_LOCKED_MESSAGE)
+      return
+    }
     const numVal = parseFloat(rawValue)
     if (isNaN(numVal)) return
     setSaving(true)
@@ -471,6 +479,10 @@ export function PprActividadesPage() {
 
   async function handleValidar(activityId: number) {
     if (!periodo) return
+    if (PPR_DATA_ENTRY_LOCKED) {
+      setError(PPR_DATA_ENTRY_LOCKED_MESSAGE)
+      return
+    }
     setValidatingId(activityId)
     setError(null)
     try {
@@ -494,6 +506,11 @@ export function PprActividadesPage() {
 
   async function handleFirmar(forceForTesting = false) {
     if (!periodo || !programaId) return
+    if (PPR_DATA_ENTRY_LOCKED) {
+      setError(PPR_DATA_ENTRY_LOCKED_MESSAGE)
+      setConfirmSignOpen(false)
+      return
+    }
     setSigning(true)
     setError(null)
     try {
@@ -584,7 +601,9 @@ export function PprActividadesPage() {
     && !signed
     && !canSign
     && (periodo?.isOpen ?? false)
-  const signEnabled = canSign || canForceTestSign
+  const canPrepareDocument = canSign || canForceTestSign
+  const signEnabled = canPrepareDocument && !PPR_DATA_ENTRY_LOCKED
+  const dataEntryDisabled = PPR_DATA_ENTRY_LOCKED || signed || !(periodo?.isOpen ?? false)
   const programaActual = programas.find((p) => p.id === programaId)
   const programaActualGroups = programaActual?.activityScope?.length
     ? programaActual.activityScope
@@ -659,8 +678,14 @@ export function PprActividadesPage() {
           ) : (
             <button
               onClick={handleOpenDocument}
-              disabled={!signEnabled || signing || loadingDraft}
-              title={!signEnabled ? 'Valide todas las actividades para preparar el documento' : 'Revisar documento'}
+              disabled={!canPrepareDocument || signing || loadingDraft}
+              title={
+                !canPrepareDocument
+                  ? 'Valide todas las actividades para preparar el documento'
+                  : PPR_DATA_ENTRY_LOCKED
+                    ? 'Puede revisar el documento, pero la firma esta bloqueada temporalmente'
+                    : 'Revisar documento'
+              }
               className={cn(
                 'flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none',
                 canForceTestSign
@@ -676,6 +701,13 @@ export function PprActividadesPage() {
           )
         }
       />
+
+      {PPR_DATA_ENTRY_LOCKED && (
+        <PprAlert tone="warning" title="Registro temporalmente bloqueado">
+          El modulo esta en modo solo lectura. Puede revisar programas, actividades y documentos, pero no registrar,
+          validar ni firmar informacion.
+        </PprAlert>
+      )}
 
       {/* Error */}
       {error && (
@@ -833,7 +865,7 @@ export function PprActividadesPage() {
                           <ActividadCard
                             key={act.id}
                             actividad={act}
-                            disabled={signed || !(periodo?.isOpen ?? false) || !act.canEdit}
+                            disabled={dataEntryDisabled || !act.canEdit}
                             onChange={handleValorChange}
                             onValidate={handleValidar}
                             validating={validatingId === act.id}
@@ -878,7 +910,7 @@ export function PprActividadesPage() {
                                 <ActividadRow
                                   key={act.id}
                                   actividad={act}
-                                  disabled={signed || !(periodo?.isOpen ?? false) || !act.canEdit}
+                                  disabled={dataEntryDisabled || !act.canEdit}
                                   onChange={handleValorChange}
                                   onValidate={handleValidar}
                                   validating={validatingId === act.id}
@@ -934,7 +966,8 @@ export function PprActividadesPage() {
             <Button
               variant={canForceTestSign ? 'danger' : 'brand'}
               onClick={() => setConfirmSignOpen(true)}
-              disabled={signing}
+              disabled={!signEnabled || signing}
+              title={!signEnabled ? PPR_DATA_ENTRY_LOCKED_MESSAGE : undefined}
             >
               <PenLine className="h-4 w-4" />
               Firmar
@@ -959,7 +992,8 @@ export function PprActividadesPage() {
             <Button
               variant={canForceTestSign ? 'danger' : 'brand'}
               onClick={() => handleFirmar(canForceTestSign)}
-              disabled={signing}
+              disabled={!signEnabled || signing}
+              title={!signEnabled ? PPR_DATA_ENTRY_LOCKED_MESSAGE : undefined}
             >
               {signing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
               {canForceTestSign ? 'Sí, firmar con pendientes' : 'Sí, firmar y descargar'}

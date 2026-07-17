@@ -44,6 +44,12 @@ import { logger } from '../utils/logger.js'
 
 export const pprRouter = Router()
 
+const PPR_DATA_ENTRY_LOCKED = true
+const PPR_DATA_ENTRY_LOCKED_RESPONSE = {
+  code: 'PPR_DATA_ENTRY_LOCKED',
+  message: 'El registro de informacion PPR esta bloqueado temporalmente. Puede visualizar el modulo, pero no enviar datos.',
+}
+
 // Verifies the requesting employee is a PPR admin before allowing admin operations
 async function requirePprAdmin(request, response, next) {
   const adminId = Number(request.user?.employeeId)
@@ -79,6 +85,19 @@ function contentDispositionAttachment(fileName) {
     || 'documento-ppr'
 
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(String(fileName ?? fallback))}`
+}
+
+function blockPprDataEntryIfLocked(request, response, next) {
+  if (!PPR_DATA_ENTRY_LOCKED) {
+    return next()
+  }
+  logger.warn({
+    correlationId: request.correlationId,
+    event: 'ppr:data-entry:locked',
+    userId: request.user?.id,
+    path: request.originalUrl,
+  })
+  return response.status(423).json(PPR_DATA_ENTRY_LOCKED_RESPONSE)
 }
 
 function sendProgramDocument(response, file) {
@@ -181,7 +200,7 @@ pprRouter.get('/ppr/actividades', requireAuth, async (request, response) => {
 })
 
 // POST /ppr/valores — save or update a monthly value
-pprRouter.post('/ppr/valores', requireAuth, async (request, response) => {
+pprRouter.post('/ppr/valores', requireAuth, blockPprDataEntryIfLocked, async (request, response) => {
   const { activityId, periodId, employeeId, value, notes } = request.body ?? {}
   if (activityId == null || periodId == null || employeeId == null || value == null) {
     return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere activityId, periodId, employeeId y value.' })
@@ -209,7 +228,7 @@ pprRouter.post('/ppr/valores', requireAuth, async (request, response) => {
 
 // GET /ppr/periodos — all periods for the year with signing/progress status per employee
 // POST /ppr/valores/validar — validate one monthly value before signing
-pprRouter.post('/ppr/valores/validar', requireAuth, async (request, response) => {
+pprRouter.post('/ppr/valores/validar', requireAuth, blockPprDataEntryIfLocked, async (request, response) => {
   const { activityId, periodId, employeeId } = request.body ?? {}
   if (activityId == null || periodId == null || employeeId == null) {
     return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere activityId, periodId y employeeId.' })
@@ -285,7 +304,7 @@ pprRouter.get('/ppr/resumen', requireAuth, async (request, response) => {
 })
 
 // POST /ppr/firmar — sign the active period
-pprRouter.post('/ppr/firmar', requireAuth, async (request, response) => {
+pprRouter.post('/ppr/firmar', requireAuth, blockPprDataEntryIfLocked, async (request, response) => {
   const { periodId, employeeId, programId, forceForTesting } = request.body ?? {}
   if (periodId == null || employeeId == null || programId == null) {
     return response.status(400).json({
