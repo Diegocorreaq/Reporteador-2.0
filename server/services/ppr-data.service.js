@@ -1,6 +1,5 @@
 import {
   executeProcedure_General as executeProcedure,
-  executeQuery_General as executeQuery,
   sql,
 } from './sigh-sql-helpers.js'
 import { ensurePprSignedDocumentInfrastructure } from './ppr-signature-document.service.js'
@@ -21,9 +20,7 @@ const MONTHS_ES = [
 const WEEKDAYS_ES = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
 const PPR_PRELIMINARY_TIME_ZONE = 'America/Bogota'
 const PPR_PRELIMINARY_CUTOFF_HOUR = 8
-const PPR_PRELIMINARY_SOURCE_IDS = new Set([
-  'ppr_0129_condiciones_secundarias',
-])
+const PPR_PRELIMINARY_MANUAL_ONLY_PROGRAM_CODES = new Set(['16', '17'])
 
 const PPR_IMPORT_SOURCES = [
   {
@@ -239,8 +236,8 @@ function getCutoffGoalFactor(cutoffInfo, year, month) {
 
 function findPreliminarySourceForProgramCode(programCode) {
   const normalizedProgramCode = normalizeProgramCode(programCode)
+  if (PPR_PRELIMINARY_MANUAL_ONLY_PROGRAM_CODES.has(normalizedProgramCode)) return null
   return PPR_IMPORT_SOURCES.find((source) => {
-    if (!PPR_PRELIMINARY_SOURCE_IDS.has(source.id)) return false
     return source.programCodes?.map(normalizeProgramCode).includes(normalizedProgramCode)
   }) ?? null
 }
@@ -323,192 +320,11 @@ function matchSourceRowsToActivities(rawRows, activities) {
 }
 
 async function ensurePprImportInfrastructure() {
-  await executeQuery(`
-    IF COL_LENGTH('dbo.ppr_monthly_values', 'value_source') IS NULL
-      ALTER TABLE dbo.ppr_monthly_values ADD value_source NVARCHAR(30) NULL;
-
-    IF COL_LENGTH('dbo.ppr_monthly_values', 'source_key') IS NULL
-      ALTER TABLE dbo.ppr_monthly_values ADD source_key NVARCHAR(50) NULL;
-
-    IF COL_LENGTH('dbo.ppr_monthly_values', 'source_value') IS NULL
-      ALTER TABLE dbo.ppr_monthly_values ADD source_value DECIMAL(18,2) NULL;
-
-    IF COL_LENGTH('dbo.ppr_monthly_values', 'loaded_by') IS NULL
-      ALTER TABLE dbo.ppr_monthly_values ADD loaded_by INT NULL;
-
-    IF COL_LENGTH('dbo.ppr_monthly_values', 'loaded_at') IS NULL
-      ALTER TABLE dbo.ppr_monthly_values ADD loaded_at DATETIME2 NULL;
-
-    IF COL_LENGTH('dbo.ppr_monthly_values', 'validated_by') IS NULL
-      ALTER TABLE dbo.ppr_monthly_values ADD validated_by INT NULL;
-
-    IF COL_LENGTH('dbo.ppr_monthly_values', 'validated_at') IS NULL
-      ALTER TABLE dbo.ppr_monthly_values ADD validated_at DATETIME2 NULL;
-
-    IF COL_LENGTH('dbo.ppr_monthly_values', 'validation_status') IS NULL
-      ALTER TABLE dbo.ppr_monthly_values ADD validation_status NVARCHAR(30) NULL;
-
-    IF COL_LENGTH('dbo.ppr_monthly_values', 'import_run_id') IS NULL
-      ALTER TABLE dbo.ppr_monthly_values ADD import_run_id INT NULL;
-
-    IF NOT EXISTS (
-      SELECT 1
-      FROM INFORMATION_SCHEMA.TABLES
-      WHERE TABLE_SCHEMA = 'dbo'
-        AND TABLE_NAME = 'ppr_import_runs'
-    )
-    BEGIN
-      CREATE TABLE dbo.ppr_import_runs (
-        id               INT IDENTITY(1,1) PRIMARY KEY,
-        period_id        INT NOT NULL,
-        program_id       INT NOT NULL,
-        source_id        NVARCHAR(80) NOT NULL,
-        source_label     NVARCHAR(200) NOT NULL,
-        source_procedure NVARCHAR(200) NOT NULL,
-        admin_id         INT NOT NULL,
-        started_at       DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
-        completed_at     DATETIME2 NULL,
-        status           NVARCHAR(30) NOT NULL DEFAULT 'running',
-        rows_read        INT NOT NULL DEFAULT 0,
-        rows_matched     INT NOT NULL DEFAULT 0,
-        rows_updated     INT NOT NULL DEFAULT 0,
-        rows_unmatched   INT NOT NULL DEFAULT 0,
-        error_message    NVARCHAR(MAX) NULL
-      );
-    END;
-
-    IF COL_LENGTH('dbo.ppr_import_runs', 'period_id') IS NULL
-      ALTER TABLE dbo.ppr_import_runs ADD period_id INT NULL;
-
-    IF COL_LENGTH('dbo.ppr_import_runs', 'program_id') IS NULL
-      ALTER TABLE dbo.ppr_import_runs ADD program_id INT NULL;
-
-    IF COL_LENGTH('dbo.ppr_import_runs', 'source_id') IS NULL
-      ALTER TABLE dbo.ppr_import_runs ADD source_id NVARCHAR(80) NULL;
-
-    IF COL_LENGTH('dbo.ppr_import_runs', 'source_label') IS NULL
-      ALTER TABLE dbo.ppr_import_runs ADD source_label NVARCHAR(200) NULL;
-
-    IF COL_LENGTH('dbo.ppr_import_runs', 'source_procedure') IS NULL
-      ALTER TABLE dbo.ppr_import_runs ADD source_procedure NVARCHAR(200) NULL;
-
-    IF COL_LENGTH('dbo.ppr_import_runs', 'admin_id') IS NULL
-      ALTER TABLE dbo.ppr_import_runs ADD admin_id INT NULL;
-
-    IF COL_LENGTH('dbo.ppr_import_runs', 'started_at') IS NULL
-      ALTER TABLE dbo.ppr_import_runs ADD started_at DATETIME2 NULL;
-
-    IF COL_LENGTH('dbo.ppr_import_runs', 'completed_at') IS NULL
-      ALTER TABLE dbo.ppr_import_runs ADD completed_at DATETIME2 NULL;
-
-    IF COL_LENGTH('dbo.ppr_import_runs', 'status') IS NULL
-      ALTER TABLE dbo.ppr_import_runs ADD status NVARCHAR(30) NULL;
-
-    IF COL_LENGTH('dbo.ppr_import_runs', 'rows_read') IS NULL
-      ALTER TABLE dbo.ppr_import_runs ADD rows_read INT NULL;
-
-    IF COL_LENGTH('dbo.ppr_import_runs', 'rows_matched') IS NULL
-      ALTER TABLE dbo.ppr_import_runs ADD rows_matched INT NULL;
-
-    IF COL_LENGTH('dbo.ppr_import_runs', 'rows_updated') IS NULL
-      ALTER TABLE dbo.ppr_import_runs ADD rows_updated INT NULL;
-
-    IF COL_LENGTH('dbo.ppr_import_runs', 'rows_unmatched') IS NULL
-      ALTER TABLE dbo.ppr_import_runs ADD rows_unmatched INT NULL;
-
-    IF COL_LENGTH('dbo.ppr_import_runs', 'error_message') IS NULL
-      ALTER TABLE dbo.ppr_import_runs ADD error_message NVARCHAR(MAX) NULL;
-
-    IF NOT EXISTS (
-      SELECT 1
-      FROM INFORMATION_SCHEMA.TABLES
-      WHERE TABLE_SCHEMA = 'dbo'
-        AND TABLE_NAME = 'ppr_periodo_firma'
-    )
-    BEGIN
-      CREATE TABLE dbo.ppr_periodo_firma (
-        employee_id INT NOT NULL,
-        period_id   INT NOT NULL,
-        signed_at   DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
-        CONSTRAINT PK_ppr_periodo_firma PRIMARY KEY (employee_id, period_id)
-      );
-    END;
-  `, [], { timeoutMs: 120000 })
+  await executeProcedure('SP_APP_PPR_ENSURE_IMPORT_INFRASTRUCTURE', [], { timeoutMs: 120000 })
 }
 
 async function ensurePprPreliminaryInfrastructure() {
-  await executeQuery(`
-    IF NOT EXISTS (
-      SELECT 1
-      FROM INFORMATION_SCHEMA.TABLES
-      WHERE TABLE_SCHEMA = 'dbo'
-        AND TABLE_NAME = 'ppr_preliminary_runs'
-    )
-    BEGIN
-      CREATE TABLE dbo.ppr_preliminary_runs (
-        id               INT IDENTITY(1,1) PRIMARY KEY,
-        program_id       INT NOT NULL,
-        source_id        NVARCHAR(80) NOT NULL,
-        source_label     NVARCHAR(200) NOT NULL,
-        source_procedure NVARCHAR(200) NOT NULL,
-        range_start      DATE NOT NULL,
-        range_end        DATE NOT NULL,
-        cutoff_at        DATETIMEOFFSET NOT NULL,
-        cutoff_label     NVARCHAR(80) NOT NULL,
-        started_at       DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
-        completed_at     DATETIME2 NULL,
-        status           NVARCHAR(30) NOT NULL DEFAULT 'running',
-        rows_read        INT NOT NULL DEFAULT 0,
-        rows_matched     INT NOT NULL DEFAULT 0,
-        rows_unmatched   INT NOT NULL DEFAULT 0,
-        unmatched_json   NVARCHAR(MAX) NULL,
-        manual_json      NVARCHAR(MAX) NULL,
-        error_message    NVARCHAR(MAX) NULL
-      );
-    END;
-
-    IF NOT EXISTS (
-      SELECT 1
-      FROM INFORMATION_SCHEMA.TABLES
-      WHERE TABLE_SCHEMA = 'dbo'
-        AND TABLE_NAME = 'ppr_preliminary_values'
-    )
-    BEGIN
-      CREATE TABLE dbo.ppr_preliminary_values (
-        id           INT IDENTITY(1,1) PRIMARY KEY,
-        run_id       INT NOT NULL,
-        program_id   INT NOT NULL,
-        activity_id  INT NOT NULL,
-        source_key   NVARCHAR(80) NULL,
-        source_value DECIMAL(18,2) NOT NULL,
-        loaded_at    DATETIME2 NOT NULL DEFAULT SYSDATETIME()
-      );
-    END;
-
-    IF COL_LENGTH('dbo.ppr_preliminary_runs', 'unmatched_json') IS NULL
-      ALTER TABLE dbo.ppr_preliminary_runs ADD unmatched_json NVARCHAR(MAX) NULL;
-
-    IF COL_LENGTH('dbo.ppr_preliminary_runs', 'manual_json') IS NULL
-      ALTER TABLE dbo.ppr_preliminary_runs ADD manual_json NVARCHAR(MAX) NULL;
-
-    IF NOT EXISTS (
-      SELECT 1
-      FROM sys.indexes
-      WHERE name = 'IX_ppr_preliminary_runs_program_cutoff'
-        AND object_id = OBJECT_ID('dbo.ppr_preliminary_runs')
-    )
-      CREATE INDEX IX_ppr_preliminary_runs_program_cutoff
-        ON dbo.ppr_preliminary_runs(program_id, source_id, cutoff_at DESC, status);
-
-    IF NOT EXISTS (
-      SELECT 1
-      FROM sys.indexes
-      WHERE name = 'IX_ppr_preliminary_values_run_activity'
-        AND object_id = OBJECT_ID('dbo.ppr_preliminary_values')
-    )
-      CREATE INDEX IX_ppr_preliminary_values_run_activity
-        ON dbo.ppr_preliminary_values(run_id, activity_id);
-  `, [], { timeoutMs: 120000 })
+  await executeProcedure('SP_APP_PPR_ENSURE_PRELIMINARY_INFRASTRUCTURE', [], { timeoutMs: 120000 })
 }
 
 export async function getPeriodoActivo() {
@@ -548,57 +364,12 @@ export async function getProgramasUsuario(employeeId) {
 }
 
 async function ensurePprActivityGroupInfrastructure() {
-  await executeQuery(`
-    IF COL_LENGTH('dbo.ppr_activities', 'activity_group_code') IS NULL
-      ALTER TABLE dbo.ppr_activities ADD activity_group_code NVARCHAR(30) NULL;
-  `)
+  await executeProcedure('SP_APP_PPR_ENSURE_ACTIVITY_GROUP_INFRASTRUCTURE')
 }
 
 async function getScopedProgramMetrics({ employeeId, programId, programCode, mesesCompletos }) {
   await ensurePprActivityGroupInfrastructure()
-  const metricRows = await executeQuery(`
-    DECLARE @active_year INT = YEAR(GETDATE());
-    DECLARE @active_month INT = MONTH(GETDATE());
-
-    SELECT TOP 1
-      @active_year = [year],
-      @active_month = [month]
-    FROM dbo.ppr_periods
-    WHERE is_open = 1
-    ORDER BY [year] DESC, [month] DESC;
-
-    SELECT
-      @active_year AS active_year,
-      @active_month AS active_month,
-      p.code AS program_code,
-      a.id AS activity_id,
-      a.name AS activity_name,
-      a.activity_group_code,
-      ISNULL(a.annual_goal, 0) AS annual_goal,
-      SUM(CASE
-          WHEN per.year = @active_year
-            AND per.month < @active_month
-          THEN ISNULL(mv.value, 0)
-          ELSE 0
-      END) AS logrado,
-      MAX(CASE
-          WHEN per.year = @active_year
-            AND per.month < @active_month
-            AND mv.value IS NOT NULL
-          THEN 1
-          ELSE 0
-      END) AS tiene_dato
-    FROM dbo.ppr_programs p
-    INNER JOIN dbo.ppr_activities a
-      ON a.program_id = p.id
-      AND ISNULL(a.is_active, 1) = 1
-    LEFT JOIN dbo.ppr_monthly_values mv
-      ON mv.activity_id = a.id
-    LEFT JOIN dbo.ppr_periods per
-      ON per.id = mv.period_id
-    WHERE p.id = @program_id
-    GROUP BY p.code, a.id, a.name, a.activity_group_code, a.annual_goal;
-  `, [
+  const metricRows = await executeProcedure('SP_APP_PPR_SCOPED_PROGRAM_METRICS', [
     { name: 'program_id', type: sql.Int, value: Number(programId) },
   ])
 
@@ -635,34 +406,18 @@ export async function getActividadesPrograma({ programaId, periodoId, employeeId
     { name: 'period_id', type: sql.Int, value: Number(periodoId) },
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
   ])
-  const programRows = await executeQuery(`
-    SELECT code
-    FROM dbo.ppr_programs
-    WHERE id = @program_id;
-  `, [
+  const programRows = await executeProcedure('SP_APP_PPR_PROGRAM_CODE', [
     { name: 'program_id', type: sql.Int, value: Number(programaId) },
   ])
   const programCode = String(programRows[0]?.code ?? '')
-  const groupRows = await executeQuery(`
-    SELECT id, activity_group_code
-    FROM dbo.ppr_activities
-    WHERE program_id = @program_id;
-  `, [
+  const groupRows = await executeProcedure('SP_APP_PPR_ACTIVITY_GROUPS_BY_PROGRAM', [
     { name: 'program_id', type: sql.Int, value: Number(programaId) },
   ])
   const groupByActivityId = new Map(groupRows.map((row) => [
     Number(row.id),
     row.activity_group_code == null ? null : String(row.activity_group_code),
   ]))
-  const signatureRows = await executeQuery(`
-    SELECT TOP 1 signed_at
-    FROM dbo.ppr_signatures
-    WHERE employee_id = @employee_id
-      AND period_id = @period_id
-      AND is_valid = 1
-      AND (program_id = @program_id OR program_id IS NULL)
-    ORDER BY CASE WHEN program_id = @program_id THEN 0 ELSE 1 END, signed_at DESC;
-  `, [
+  const signatureRows = await executeProcedure('SP_APP_PPR_SIGNATURE_FOR_PROGRAM_PERIOD', [
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
     { name: 'period_id', type: sql.Int, value: Number(periodoId) },
     { name: 'program_id', type: sql.Int, value: Number(programaId) },
@@ -704,17 +459,7 @@ export async function getActividadesPrograma({ programaId, periodoId, employeeId
 
 async function ensureCanEditPprActivity({ activityId, employeeId }) {
   await ensurePprActivityGroupInfrastructure()
-  const rows = await executeQuery(`
-    SELECT
-      p.code AS program_code,
-      a.name AS activity_name,
-      a.activity_group_code
-    FROM dbo.ppr_activities a
-    INNER JOIN dbo.ppr_programs p
-      ON p.id = a.program_id
-    WHERE a.id = @activity_id
-      AND ISNULL(a.is_active, 1) = 1;
-  `, [
+  const rows = await executeProcedure('SP_APP_PPR_ACTIVITY_SCOPE_INFO', [
     { name: 'activity_id', type: sql.Int, value: Number(activityId) },
   ])
   const row = rows[0]
@@ -737,46 +482,7 @@ async function ensureCanEditPprActivity({ activityId, employeeId }) {
 
 export async function guardarValor({ activityId, periodId, employeeId, value, notes }) {
   await ensureCanEditPprActivity({ activityId, employeeId })
-  await executeQuery(`
-    DECLARE @now DATETIME2 = SYSDATETIME();
-
-    UPDATE dbo.ppr_monthly_values
-    SET
-      employee_id = @employee_id,
-      value = @value,
-      notes = @notes,
-      value_source = CASE
-        WHEN value_source = 'source' THEN 'manual_override'
-        ELSE ISNULL(value_source, 'manual')
-      END,
-      validation_status = 'pending',
-      validated_by = NULL,
-      validated_at = NULL
-    WHERE activity_id = @activity_id
-      AND period_id = @period_id;
-
-    IF @@ROWCOUNT = 0
-    BEGIN
-      INSERT INTO dbo.ppr_monthly_values (
-        activity_id,
-        period_id,
-        employee_id,
-        value,
-        notes,
-        value_source,
-        validation_status
-      )
-      VALUES (
-        @activity_id,
-        @period_id,
-        @employee_id,
-        @value,
-        @notes,
-        'manual',
-        'pending'
-      );
-    END
-  `, [
+  await executeProcedure('SP_APP_PPR_GUARDAR_VALOR', [
     { name: 'activity_id', type: sql.Int, value: Number(activityId) },
     { name: 'period_id', type: sql.Int, value: Number(periodId) },
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
@@ -787,24 +493,7 @@ export async function guardarValor({ activityId, periodId, employeeId, value, no
 
 export async function validarValor({ activityId, periodId, employeeId }) {
   await ensureCanEditPprActivity({ activityId, employeeId })
-  const rows = await executeQuery(`
-    UPDATE dbo.ppr_monthly_values
-    SET
-      validation_status = 'validated',
-      validated_by = @employee_id,
-      validated_at = SYSDATETIME(),
-      value_source = ISNULL(value_source, 'manual')
-    WHERE activity_id = @activity_id
-      AND period_id = @period_id
-      AND value IS NOT NULL;
-
-    SELECT
-      @@ROWCOUNT AS affected,
-      validated_at
-    FROM dbo.ppr_monthly_values
-    WHERE activity_id = @activity_id
-      AND period_id = @period_id;
-  `, [
+  const rows = await executeProcedure('SP_APP_PPR_VALIDAR_VALOR', [
     { name: 'activity_id', type: sql.Int, value: Number(activityId) },
     { name: 'period_id', type: sql.Int, value: Number(periodId) },
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
@@ -820,28 +509,7 @@ export async function validarValor({ activityId, periodId, employeeId }) {
 
 export async function getResumenValidacion(employeeId, periodId, programId = null) {
   await ensurePprActivityGroupInfrastructure()
-  const rows = await executeQuery(`
-    SELECT
-      p.code AS program_code,
-      a.id AS activity_id,
-      a.name AS activity_name,
-      a.activity_group_code,
-      mv.value,
-      mv.validation_status,
-      mv.value_source
-    FROM dbo.ppr_user_programs up
-    INNER JOIN dbo.ppr_programs p
-      ON p.id = up.program_id
-    INNER JOIN dbo.ppr_activities a
-      ON a.program_id = up.program_id
-      AND ISNULL(a.is_active, 1) = 1
-    LEFT JOIN dbo.ppr_monthly_values mv
-      ON mv.activity_id = a.id
-      AND mv.period_id = @period_id
-    WHERE up.employee_id = @employee_id
-      AND up.is_active = 1
-      AND (@program_id IS NULL OR a.program_id = @program_id);
-  `, [
+  const rows = await executeProcedure('SP_APP_PPR_RESUMEN_VALIDACION', [
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
     { name: 'period_id', type: sql.Int, value: Number(periodId) },
     { name: 'program_id', type: sql.Int, value: programId == null ? null : Number(programId) },
@@ -870,22 +538,7 @@ export async function getResumenValidacion(employeeId, periodId, programId = nul
 
 async function firmarPeriodoForTesting({ employeeId, periodId }) {
   await ensurePprImportInfrastructure()
-  const rows = await executeQuery(`
-    MERGE dbo.ppr_periodo_firma AS target
-    USING (SELECT @employee_id AS employee_id, @period_id AS period_id) AS source
-      ON target.employee_id = source.employee_id
-      AND target.period_id = source.period_id
-    WHEN MATCHED THEN
-      UPDATE SET signed_at = SYSDATETIME()
-    WHEN NOT MATCHED THEN
-      INSERT (employee_id, period_id, signed_at)
-      VALUES (source.employee_id, source.period_id, SYSDATETIME());
-
-    SELECT signed_at
-    FROM dbo.ppr_periodo_firma
-    WHERE employee_id = @employee_id
-      AND period_id = @period_id;
-  `, [
+  const rows = await executeProcedure('SP_APP_PPR_FIRMAR_PERIODO_TEST', [
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
     { name: 'period_id', type: sql.Int, value: Number(periodId) },
   ])
@@ -915,23 +568,7 @@ export function getPprImportSources() {
 }
 
 async function getProgramActivitiesForImport(programId) {
-  const rows = await executeQuery(`
-    SELECT
-      a.id,
-      ISNULL(a.code, '') AS code,
-      a.name,
-      a.unit,
-      a.annual_goal,
-      a.sort_order,
-      a.activity_group_code,
-      p.code AS program_code
-    FROM dbo.ppr_activities a
-    INNER JOIN dbo.ppr_programs p
-      ON p.id = a.program_id
-    WHERE a.program_id = @program_id
-      AND ISNULL(a.is_active, 1) = 1
-    ORDER BY a.sort_order, a.id;
-  `, [
+  const rows = await executeProcedure('SP_APP_PPR_IMPORT_ACTIVITIES', [
     { name: 'program_id', type: sql.Int, value: Number(programId) },
   ])
   return rows.map((r) => ({
@@ -949,12 +586,7 @@ async function getProgramActivitiesForImport(programId) {
 }
 
 async function ensureProgramPeriodNotSigned(programId, periodId) {
-  const rows = await executeQuery(`
-    SELECT DISTINCT up.employee_id
-    FROM dbo.ppr_user_programs up
-    WHERE up.program_id = @program_id
-      AND up.is_active = 1;
-  `, [
+  const rows = await executeProcedure('SP_APP_PPR_PROGRAM_EMPLOYEES', [
     { name: 'program_id', type: sql.Int, value: Number(programId) },
   ])
 
@@ -972,11 +604,7 @@ async function ensureProgramPeriodNotSigned(programId, periodId) {
 async function ensureSourceMatchesProgram(source, programId) {
   if (!Array.isArray(source.programCodes) || source.programCodes.length === 0) return
 
-  const rows = await executeQuery(`
-    SELECT TOP 1 code
-    FROM dbo.ppr_programs
-    WHERE id = @program_id;
-  `, [
+  const rows = await executeProcedure('SP_APP_PPR_PROGRAM_CODE', [
     { name: 'program_id', type: sql.Int, value: Number(programId) },
   ])
 
@@ -991,48 +619,7 @@ async function ensureSourceMatchesProgram(source, programId) {
 
 async function applyImportRows({ periodId, programId, source, adminId, rowsRead, matchedRows, unmatchedSourceRows }) {
   const unmatchedJson = JSON.stringify(unmatchedSourceRows)
-  const runRows = await executeQuery(`
-    DECLARE @now DATETIME2 = SYSDATETIME();
-    DECLARE @run TABLE (id INT);
-
-    INSERT INTO dbo.ppr_import_runs (
-      period_id,
-      program_id,
-      source_id,
-      source_label,
-      source_procedure,
-      admin_id,
-      started_at,
-      completed_at,
-      status,
-      rows_read,
-      rows_matched,
-      rows_updated,
-      rows_unmatched,
-      error_message
-    )
-    OUTPUT INSERTED.id INTO @run
-    VALUES (
-      @period_id,
-      @program_id,
-      @source_id,
-      @source_label,
-      @source_procedure,
-      @admin_id,
-      @now,
-      NULL,
-      'running',
-      @rows_read,
-      @rows_matched,
-      0,
-      @rows_unmatched,
-      @unmatched_json
-    );
-
-    DECLARE @run_id INT = (SELECT TOP 1 id FROM @run);
-
-    SELECT @run_id AS id;
-  `, [
+  const runRows = await executeProcedure('SP_APP_PPR_IMPORT_RUN_START', [
     { name: 'period_id', type: sql.Int, value: Number(periodId) },
     { name: 'program_id', type: sql.Int, value: Number(programId) },
     { name: 'source_id', type: sql.NVarChar(80), value: source.id },
@@ -1049,64 +636,7 @@ async function applyImportRows({ periodId, programId, source, adminId, rowsRead,
   let rowsUpdated = 0
 
   for (const row of matchedRows) {
-    const result = await executeQuery(`
-      DECLARE @now DATETIME2 = SYSDATETIME();
-      DECLARE @affected INT = 0;
-
-      UPDATE dbo.ppr_monthly_values
-      SET
-        employee_id = @admin_id,
-        value = @source_value,
-        value_source = 'source',
-        source_key = @source_key,
-        source_value = @source_value,
-        loaded_by = @admin_id,
-        loaded_at = @now,
-        validation_status = 'pending',
-        validated_by = NULL,
-        validated_at = NULL,
-        import_run_id = @run_id
-      WHERE activity_id = @activity_id
-        AND period_id = @period_id;
-
-      SET @affected = @@ROWCOUNT;
-
-      IF @affected = 0
-      BEGIN
-        INSERT INTO dbo.ppr_monthly_values (
-          activity_id,
-          period_id,
-          employee_id,
-          value,
-          notes,
-          value_source,
-          source_key,
-          source_value,
-          loaded_by,
-          loaded_at,
-          validation_status,
-          import_run_id
-        )
-        VALUES (
-          @activity_id,
-          @period_id,
-          @admin_id,
-          @source_value,
-          NULL,
-          'source',
-          @source_key,
-          @source_value,
-          @admin_id,
-          @now,
-          'pending',
-          @run_id
-        );
-
-        SET @affected = @@ROWCOUNT;
-      END
-
-      SELECT @affected AS affected;
-    `, [
+    const result = await executeProcedure('SP_APP_PPR_IMPORT_VALUE_UPSERT', [
       { name: 'activity_id', type: sql.Int, value: Number(row.activityId) },
       { name: 'period_id', type: sql.Int, value: Number(periodId) },
       { name: 'admin_id', type: sql.Int, value: Number(adminId) },
@@ -1117,33 +647,7 @@ async function applyImportRows({ periodId, programId, source, adminId, rowsRead,
     rowsUpdated += Number(result[0]?.affected ?? 0)
   }
 
-  const completedRows = await executeQuery(`
-    UPDATE dbo.ppr_import_runs
-    SET
-      completed_at = SYSDATETIME(),
-      status = 'completed',
-      rows_updated = @rows_updated
-    WHERE id = @run_id;
-
-    SELECT
-      id,
-      period_id,
-      program_id,
-      source_id,
-      source_label,
-      source_procedure,
-      admin_id,
-      started_at,
-      completed_at,
-      status,
-      rows_read,
-      rows_matched,
-      rows_updated,
-      rows_unmatched,
-      error_message
-    FROM dbo.ppr_import_runs
-    WHERE id = @run_id;
-  `, [
+  const completedRows = await executeProcedure('SP_APP_PPR_IMPORT_RUN_COMPLETE', [
     { name: 'run_id', type: sql.Int, value: runId },
     { name: 'rows_updated', type: sql.Int, value: rowsUpdated },
   ], { timeoutMs: 120000 })
@@ -1211,24 +715,7 @@ export async function runPprImport({ programId, sourceId, adminId }) {
 async function getAccessiblePprProgram(programId, employeeId) {
   await ensurePprActivityGroupInfrastructure()
   const isAdmin = await verificarAdmin(employeeId)
-  const programRows = await executeQuery(`
-    SELECT TOP 1
-      p.id,
-      p.code,
-      p.name
-    FROM dbo.ppr_programs p
-    WHERE p.id = @program_id
-      AND (
-        @is_admin = 1
-        OR EXISTS (
-          SELECT 1
-          FROM dbo.ppr_user_programs up
-          WHERE up.program_id = p.id
-            AND up.employee_id = @employee_id
-            AND up.is_active = 1
-        )
-      );
-  `, [
+  const programRows = await executeProcedure('SP_APP_PPR_ACCESSIBLE_PROGRAM', [
     { name: 'program_id', type: sql.Int, value: Number(programId) },
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
     { name: 'is_admin', type: sql.Bit, value: isAdmin ? 1 : 0 },
@@ -1334,38 +821,13 @@ function buildPreliminarPayload({ program, source, cutoff, activities, valueRows
     monthlyGoalPct: monthlyGoal > 0 ? Math.round((totalValue / monthlyGoal) * 100) : null,
     items,
     unmatchedSourceRows: parseJson(run?.unmatched_json ?? run?.unmatchedJson, []).slice(0, 30),
-    manualActivities: parseJson(run?.manual_json ?? run?.manualJson, []).slice(0, 30),
+    manualActivities: parseJson(run?.manual_json ?? run?.manualJson, []),
   }
 }
 
 async function readPprPreliminaryCache({ program, source, cutoff, employeeId }) {
   await ensurePprPreliminaryInfrastructure()
-  const runRows = await executeQuery(`
-    SELECT TOP 1
-      id,
-      program_id,
-      source_id,
-      source_label,
-      source_procedure,
-      range_start,
-      range_end,
-      cutoff_at,
-      cutoff_label,
-      started_at,
-      completed_at,
-      status,
-      rows_read,
-      rows_matched,
-      rows_unmatched,
-      unmatched_json,
-      manual_json
-    FROM dbo.ppr_preliminary_runs
-    WHERE program_id = @program_id
-      AND source_id = @source_id
-      AND cutoff_at = CONVERT(DATETIMEOFFSET, @cutoff_at)
-      AND status = 'completed'
-    ORDER BY completed_at DESC, id DESC;
-  `, [
+  const runRows = await executeProcedure('SP_APP_PPR_PRELIMINARY_RUN_READ', [
     { name: 'program_id', type: sql.Int, value: Number(program.id) },
     { name: 'source_id', type: sql.NVarChar(80), value: source.id },
     { name: 'cutoff_at', type: sql.NVarChar(40), value: cutoff.cutoffAt },
@@ -1379,14 +841,7 @@ async function readPprPreliminaryCache({ program, source, cutoff, employeeId }) 
     program,
     employeeId,
   )
-  const valueRows = await executeQuery(`
-    SELECT
-      activity_id,
-      source_key,
-      source_value
-    FROM dbo.ppr_preliminary_values
-    WHERE run_id = @run_id;
-  `, [
+  const valueRows = await executeProcedure('SP_APP_PPR_PRELIMINARY_VALUES', [
     { name: 'run_id', type: sql.Int, value: Number(run.id) },
   ], { timeoutMs: 120000 })
 
@@ -1408,56 +863,7 @@ async function refreshPprPreliminaryCache({ program, source, cutoff, employeeId 
     employeeId,
   )
   const { matchedRows, unmatchedSourceRows, manualActivities } = matchSourceRowsToActivities(rawRows, activities)
-  const runRows = await executeQuery(`
-    DECLARE @run TABLE (id INT);
-
-    UPDATE dbo.ppr_preliminary_runs
-    SET status = 'replaced'
-    WHERE program_id = @program_id
-      AND source_id = @source_id
-      AND cutoff_at = CONVERT(DATETIMEOFFSET, @cutoff_at)
-      AND status = 'completed';
-
-    INSERT INTO dbo.ppr_preliminary_runs (
-      program_id,
-      source_id,
-      source_label,
-      source_procedure,
-      range_start,
-      range_end,
-      cutoff_at,
-      cutoff_label,
-      started_at,
-      completed_at,
-      status,
-      rows_read,
-      rows_matched,
-      rows_unmatched,
-      unmatched_json,
-      manual_json
-    )
-    OUTPUT INSERTED.id INTO @run
-    VALUES (
-      @program_id,
-      @source_id,
-      @source_label,
-      @source_procedure,
-      @range_start,
-      @range_end,
-      CONVERT(DATETIMEOFFSET, @cutoff_at),
-      @cutoff_label,
-      SYSDATETIME(),
-      SYSDATETIME(),
-      'completed',
-      @rows_read,
-      @rows_matched,
-      @rows_unmatched,
-      @unmatched_json,
-      @manual_json
-    );
-
-    SELECT id FROM @run;
-  `, [
+  const runRows = await executeProcedure('SP_APP_PPR_PRELIMINARY_RUN_CREATE', [
     { name: 'program_id', type: sql.Int, value: Number(program.id) },
     { name: 'source_id', type: sql.NVarChar(80), value: source.id },
     { name: 'source_label', type: sql.NVarChar(200), value: source.label },
@@ -1475,24 +881,7 @@ async function refreshPprPreliminaryCache({ program, source, cutoff, employeeId 
 
   const runId = Number(runRows[0]?.id ?? 0)
   for (const row of matchedRows) {
-    await executeQuery(`
-      INSERT INTO dbo.ppr_preliminary_values (
-        run_id,
-        program_id,
-        activity_id,
-        source_key,
-        source_value,
-        loaded_at
-      )
-      VALUES (
-        @run_id,
-        @program_id,
-        @activity_id,
-        @source_key,
-        @source_value,
-        SYSDATETIME()
-      );
-    `, [
+    await executeProcedure('SP_APP_PPR_PRELIMINARY_VALUE_INSERT', [
       { name: 'run_id', type: sql.Int, value: runId },
       { name: 'program_id', type: sql.Int, value: Number(program.id) },
       { name: 'activity_id', type: sql.Int, value: Number(row.activityId) },
@@ -1552,6 +941,9 @@ function buildMonthlyEvaluationPayload({
   values,
 }) {
   const valueByActivityId = new Map(values.map((row) => [Number(row.activityId ?? row.activity_id), row]))
+  const pendingAutomationActivityIds = sourceMode === 'preliminary'
+    ? new Set((cutoffInfo?.manualActivities ?? []).map((activity) => Number(activity.activityId)))
+    : new Set()
   const cutoffGoalFactor = sourceMode === 'preliminary'
     ? getCutoffGoalFactor(cutoffInfo, year, month)
     : 1
@@ -1563,6 +955,9 @@ function buildMonthlyEvaluationPayload({
     const monthlyGoalPct = monthlyGoal && monthlyGoal > 0 && value != null
       ? Math.round((value / monthlyGoal) * 100)
       : null
+    const isPendingAutomation = sourceMode === 'preliminary'
+      && value == null
+      && pendingAutomationActivityIds.has(Number(activity.id))
     return {
       activityId: activity.id,
       code: activity.code,
@@ -1573,11 +968,20 @@ function buildMonthlyEvaluationPayload({
       monthlyGoalFull,
       value,
       monthlyGoalPct,
-      status: monthlyActivityStatus(value, monthlyGoal),
+      status: isPendingAutomation ? 'pendiente_automatizacion' : monthlyActivityStatus(value, monthlyGoal),
+      isPendingAutomation,
       sourceKey: row?.sourceKey ?? row?.source_key ?? activity.sourceKey ?? null,
     }
   }).sort((a, b) => {
-    const order = { critico: 0, seguimiento: 1, sin_dato: 2, con_avance: 3, sin_meta: 4, en_meta: 5 }
+    const order = {
+      critico: 0,
+      seguimiento: 1,
+      pendiente_automatizacion: 2,
+      sin_dato: 3,
+      con_avance: 4,
+      sin_meta: 5,
+      en_meta: 6,
+    }
     return (order[a.status] ?? 9) - (order[b.status] ?? 9)
       || Number(a.monthlyGoalPct ?? -1) - Number(b.monthlyGoalPct ?? -1)
   })
@@ -1631,14 +1035,7 @@ export async function getEvaluacionMensual({ programId, year, month, employeeId 
     program,
     employeeId,
   )
-  const periodRows = await executeQuery(`
-    SELECT TOP 1
-      id,
-      is_open
-    FROM dbo.ppr_periods
-    WHERE [year] = @year
-      AND [month] = @month;
-  `, [
+  const periodRows = await executeProcedure('SP_APP_PPR_PERIOD_BY_YEAR_MONTH', [
     { name: 'year', type: sql.Int, value: Number(year) },
     { name: 'month', type: sql.Int, value: Number(month) },
   ])
@@ -1665,13 +1062,7 @@ export async function getEvaluacionMensual({ programId, year, month, employeeId 
   }
 
   const valueRows = period
-    ? await executeQuery(`
-        SELECT
-          activity_id,
-          value
-        FROM dbo.ppr_monthly_values
-        WHERE period_id = @period_id;
-      `, [
+    ? await executeProcedure('SP_APP_PPR_MONTHLY_VALUES_BY_PERIOD', [
       { name: 'period_id', type: sql.Int, value: Number(period.id) },
     ])
     : []
@@ -1693,39 +1084,7 @@ export async function getEvaluacionMensual({ programId, year, month, employeeId 
 export async function getPeriodosUsuario(employeeId) {
   await ensurePprSignedDocumentInfrastructure()
   await ensurePprActivityGroupInfrastructure()
-  const rows = await executeQuery(`
-    SELECT
-      per.id,
-      per.year,
-      per.month,
-      per.is_open,
-      per.deadline,
-      p.id AS program_id,
-      p.code AS program_code,
-      a.id AS activity_id,
-      a.name AS activity_name,
-      a.activity_group_code,
-      mv.value,
-      sig.signed_at
-    FROM dbo.ppr_periods per
-    INNER JOIN dbo.ppr_user_programs up
-      ON up.employee_id = @employee_id
-      AND up.is_active = 1
-    INNER JOIN dbo.ppr_programs p
-      ON p.id = up.program_id
-    INNER JOIN dbo.ppr_activities a
-      ON a.program_id = p.id
-      AND ISNULL(a.is_active, 1) = 1
-    LEFT JOIN dbo.ppr_monthly_values mv
-      ON mv.activity_id = a.id
-      AND mv.period_id = per.id
-    LEFT JOIN dbo.ppr_signatures sig
-      ON sig.employee_id = up.employee_id
-      AND sig.period_id = per.id
-      AND sig.is_valid = 1
-      AND (sig.program_id = up.program_id OR sig.program_id IS NULL)
-    ORDER BY per.year, per.month, p.code, a.sort_order, a.id;
-  `, [
+  const rows = await executeProcedure('SP_APP_PPR_PERIODOS_USUARIO', [
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
   ])
 
@@ -1891,11 +1250,7 @@ export async function getProgramaDetalle(programId, year, employeeId) {
   ])
   if (!rows.length) return null
   const first = rows[0]
-  const groupRows = await executeQuery(`
-    SELECT id, activity_group_code
-    FROM dbo.ppr_activities
-    WHERE program_id = @program_id;
-  `, [
+  const groupRows = await executeProcedure('SP_APP_PPR_ACTIVITY_GROUPS_BY_PROGRAM', [
     { name: 'program_id', type: sql.Int, value: Number(programId) },
   ])
   const groupByActivityId = new Map(groupRows.map((row) => [
@@ -1944,24 +1299,7 @@ export async function getProgramaDetalle(programId, year, employeeId) {
 // Returns: id, program_id, code, name, unit, annual_goal, sort_order, is_active
 export async function getActividadesAdmin(programId) {
   await ensurePprActivityGroupInfrastructure()
-  const rows = await executeQuery(`
-    SELECT
-      a.id,
-      a.program_id,
-      p.code AS program_code,
-      a.code,
-      a.name,
-      a.unit,
-      a.annual_goal,
-      a.sort_order,
-      a.is_active,
-      a.activity_group_code
-    FROM dbo.ppr_activities a
-    INNER JOIN dbo.ppr_programs p
-      ON p.id = a.program_id
-    WHERE a.program_id = @program_id
-    ORDER BY ISNULL(a.is_active, 1) DESC, a.sort_order, a.id;
-  `, [
+  const rows = await executeProcedure('SP_APP_PPR_ADMIN_ACTIVIDADES_LIST', [
     { name: 'program_id', type: sql.Int, value: Number(programId) },
   ])
   return rows.map((r) => ({
@@ -2007,21 +1345,13 @@ export async function guardarActividad({
     { name: 'admin_id',     type: sql.Int,            value: Number(adminId) },
   ])
   const activityId = Number(rows[0]?.id ?? 0)
-  const programRows = await executeQuery(`
-    SELECT code
-    FROM dbo.ppr_programs
-    WHERE id = @program_id;
-  `, [
+  const programRows = await executeProcedure('SP_APP_PPR_PROGRAM_CODE', [
     { name: 'program_id', type: sql.Int, value: Number(programId) },
   ])
   const programCode = String(programRows[0]?.code ?? '')
   const normalizedGroupCode = String(activityGroupCode ?? '').trim().toUpperCase()
   const validGroup = getPprActivityGroupDefinition(programCode, normalizedGroupCode)
-  await executeQuery(`
-    UPDATE dbo.ppr_activities
-    SET activity_group_code = @activity_group_code
-    WHERE id = @activity_id;
-  `, [
+  await executeProcedure('SP_APP_PPR_UPDATE_ACTIVITY_GROUP', [
     { name: 'activity_group_code', type: sql.NVarChar(30), value: validGroup ? normalizedGroupCode : null },
     { name: 'activity_id', type: sql.Int, value: activityId },
   ])
@@ -2073,45 +1403,7 @@ export async function getMatrizExportData(year) {
 export async function getResumenAnual(employeeId, year) {
   await ensurePprSignedDocumentInfrastructure()
   await ensurePprActivityGroupInfrastructure()
-  const rows = await executeQuery(`
-    WITH months AS (
-      SELECT 1 AS month UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
-      UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8
-      UNION ALL SELECT 9 UNION ALL SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12
-    )
-    SELECT
-      p.id AS program_id,
-      p.code AS program_code,
-      p.name AS program_name,
-      a.id AS activity_id,
-      a.name AS activity_name,
-      a.activity_group_code,
-      months.month,
-      per.id AS period_id,
-      mv.value,
-      sig.signed_at
-    FROM dbo.ppr_user_programs up
-    INNER JOIN dbo.ppr_programs p
-      ON p.id = up.program_id
-    INNER JOIN dbo.ppr_activities a
-      ON a.program_id = p.id
-      AND ISNULL(a.is_active, 1) = 1
-    CROSS JOIN months
-    LEFT JOIN dbo.ppr_periods per
-      ON per.year = @year
-      AND per.month = months.month
-    LEFT JOIN dbo.ppr_monthly_values mv
-      ON mv.activity_id = a.id
-      AND mv.period_id = per.id
-    LEFT JOIN dbo.ppr_signatures sig
-      ON sig.employee_id = up.employee_id
-      AND sig.period_id = per.id
-      AND sig.is_valid = 1
-      AND (sig.program_id = up.program_id OR sig.program_id IS NULL)
-    WHERE up.employee_id = @employee_id
-      AND up.is_active = 1
-    ORDER BY p.code, a.sort_order, a.id, months.month;
-  `, [
+  const rows = await executeProcedure('SP_APP_PPR_RESUMEN_ANUAL', [
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
     { name: 'year', type: sql.Int, value: Number(year) },
   ])

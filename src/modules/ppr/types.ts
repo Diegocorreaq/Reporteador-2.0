@@ -21,6 +21,25 @@ export interface PprPrograma {
   activityScope?: Array<{ code: string; name: string; sortOrder: number }>
 }
 
+export interface PprProgramDocument {
+  id: number
+  documentType: string
+  documentKey: string | null
+  documentYear: number
+  versionLabel: string
+  displayName: string
+  fileName: string
+  mimeType: string
+  sizeBytes: number
+  contentHash: string
+  sourceUrl: string | null
+  sortOrder: number
+  uploadedAt: string
+  programCode: string
+  programName: string
+  notes: string | null
+}
+
 export interface PprActividad {
   id: number
   code: string
@@ -188,7 +207,8 @@ export interface PprEvaluacionMensualActividad {
   monthlyGoalFull?: number | null
   value: number | null
   monthlyGoalPct: number | null
-  status: 'en_meta' | 'seguimiento' | 'critico' | 'sin_dato' | 'con_avance' | 'sin_meta' | string
+  status: 'en_meta' | 'seguimiento' | 'critico' | 'pendiente_automatizacion' | 'sin_dato' | 'con_avance' | 'sin_meta' | string
+  isPendingAutomation?: boolean
   sourceKey: string | null
 }
 

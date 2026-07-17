@@ -1,4 +1,4 @@
-import { executeProcedure_Sigh1 as executeProcedure, executeQuery_Sigh1 as executeQuery, sql } from './sigh-sql-helpers.js'
+import { executeProcedure_Sigh1 as executeProcedure, sql } from './sigh-sql-helpers.js'
 import { buildProduccionMedicosWorkbook, MIME_XLSX } from './excel-export.service.js'
 import { buildProduccionMedicosPdf, MIME_PDF } from './pdf-export.service.js'
 
@@ -44,15 +44,8 @@ function buildExportFileName({ employeeName, fechaInicio, fechaFin, extension })
 }
 
 async function getProduccionMedicoEmpleado(empleadoId) {
-  const rows = await executeQuery(
-    `SELECT TOP 1
-       IDEMPLEADO AS idEmpleado,
-       DNI AS dni,
-       UPPER(ApellidoPaterno + ' ' + ApellidoMaterno + ' ' + Nombres) AS empleado,
-       UPPER(TE.Descripcion) AS tipoEmpleado
-     FROM SIGH..Empleados E
-     INNER JOIN SIGH..TiposEmpleado TE ON TE.IdTipoEmpleado = E.IdTipoEmpleado
-     WHERE E.IDEMPLEADO = @empleadoId`,
+  const rows = await executeProcedure(
+    'SP_APP_PROD_MEDICOS_EMPLEADO',
     [{ name: 'empleadoId', type: sql.Int, value: Number(empleadoId ?? 0) }],
     { timeoutMs: REPORT_TIMEOUT_MS },
   )
@@ -72,19 +65,8 @@ export async function searchProduccionMedicos(term) {
     return []
   }
 
-  const rows = await executeQuery(
-    `SELECT D1.*
-     FROM (
-       SELECT
-         IDEMPLEADO AS idEmpleado,
-         DNI AS dni,
-         UPPER(ApellidoPaterno + ' ' + ApellidoMaterno + ' ' + Nombres) AS empleado,
-         UPPER(TE.Descripcion) AS tipoEmpleado
-       FROM SIGH..Empleados E
-       INNER JOIN SIGH..TiposEmpleado TE ON TE.IdTipoEmpleado = E.IdTipoEmpleado
-       WHERE (TE.Abreviatura = 'M. C.' OR E.IdTipoEmpleado IN (247,55,234,239))
-     ) D1
-     WHERE D1.empleado LIKE @term + '%'`,
+  const rows = await executeProcedure(
+    'SP_APP_PROD_MEDICOS_BUSCAR',
     [{ name: 'term', type: sql.NVarChar, value: queryTerm }],
     { timeoutMs: REPORT_TIMEOUT_MS },
   )

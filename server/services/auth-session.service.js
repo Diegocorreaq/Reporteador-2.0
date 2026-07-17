@@ -20,6 +20,7 @@ export function createSession(payload) {
       employeeId: payload.employeeId,
       name: payload.name,
       scope: payload.scope ?? 'general',
+      pprRole: payload.pprRole ?? null,
     },
     getSecret(),
     { expiresIn: SESSION_EXPIRY, algorithm: ALGORITHM },

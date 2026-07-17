@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+const PPR_PRELIMINARY_MANUAL_ONLY_PROGRAM_CODES = new Set(['16', '17'])
 
 function greeting() {
   const h = new Date().getHours()
@@ -170,7 +171,7 @@ function CoordinatorInicioView({
   const [preliminar, setPreliminar] = useState<PprProgramaPreliminar | null>(null)
   const [preliminarLoading, setPreliminarLoading] = useState(false)
   const [preliminarError, setPreliminarError] = useState<string | null>(null)
-  const canLoadPreliminar = Boolean(programa && normalizePprCode(programa.code) === '129')
+  const canLoadPreliminar = Boolean(programa && !PPR_PRELIMINARY_MANUAL_ONLY_PROGRAM_CODES.has(normalizePprCode(programa.code)))
 
   const loadPreliminar = useCallback(() => {
     if (!programa?.id || !canLoadPreliminar) {
@@ -416,6 +417,12 @@ function CoordinatorInicioView({
                   style={{ width: `${Math.min(preliminar.monthlyGoalPct ?? 0, 100)}%` }}
                 />
               </div>
+              {preliminar.manualActivities.length > 0 && (
+                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  <span className="font-semibold">{preliminar.manualActivities.length} pendientes de automatizacion.</span>
+                  <span className="ml-1 text-amber-700">El resto se muestra con fuente institucional.</span>
+                </div>
+              )}
             </>
           ) : null}
         </div>

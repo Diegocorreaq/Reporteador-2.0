@@ -74,6 +74,6 @@ test('legacy export validation enforces report max days', async () => {
       startDate: '2026-01-01',
       endDate: '2026-07-03',
     },
-    'El rango de fechas no debe exceder 92 dias.',
+    'El rango de fechas no debe exceder 31 dias.',
   )
 })

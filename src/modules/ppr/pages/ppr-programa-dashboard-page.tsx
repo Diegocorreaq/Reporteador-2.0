@@ -29,6 +29,7 @@ import type {
 import { cn } from '@/lib/utils'
 
 const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+const PPR_PRELIMINARY_MANUAL_ONLY_PROGRAM_CODES = new Set(['16', '17'])
 const MONTHS_LONG = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
@@ -37,6 +38,10 @@ const MONTHS_LONG = [
 function fmt(n: number | null): string {
   if (n == null) return '—'
   return n.toLocaleString('es-PE')
+}
+
+function normalizePprCode(value: string | null | undefined) {
+  return String(value ?? '').trim().replace(/^0+/, '') || '0'
 }
 
 function cellBg(value: number | null, isActive: boolean) {
@@ -352,6 +357,7 @@ export function PreliminaryPanel({ data, loading, error, onRefresh }: Preliminar
   if (!loading && !data && !error) return null
 
   const visibleItems = data ? (showAll ? data.items : data.items.slice(0, 5)) : []
+  const pendingAutomationItems = data?.manualActivities ?? []
   const pct = data?.monthlyGoalPct ?? null
 
   return (
@@ -480,6 +486,36 @@ export function PreliminaryPanel({ data, loading, error, onRefresh }: Preliminar
               </button>
             )}
           </div>
+
+          {pendingAutomationItems.length > 0 && (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs font-semibold text-amber-800">
+                  {pendingAutomationItems.length} actividades pendientes de automatizacion
+                </p>
+                <p className="text-[10px] text-amber-700">
+                  Se mantienen visibles sin valor automatico en este corte.
+                </p>
+              </div>
+              <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+                {pendingAutomationItems.slice(0, 6).map((activity) => (
+                  <div key={activity.activityId} className="rounded bg-white/70 px-2 py-1.5">
+                    <p className="truncate text-xs font-semibold text-amber-900" title={activity.activityName}>
+                      {activity.activityName}
+                    </p>
+                    {activity.sourceKey && (
+                      <p className="font-mono text-[10px] text-amber-700">{activity.sourceKey}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {pendingAutomationItems.length > 6 && (
+                <p className="mt-2 text-[10px] text-amber-700">
+                  +{pendingAutomationItems.length - 6} actividades adicionales pendientes.
+                </p>
+              )}
+            </div>
+          )}
         </>
       ) : null}
     </div>
@@ -968,6 +1004,9 @@ export function PprProgramaDashboardContent({ programId, embedded = false }: Ppr
       return Math.round((completed / total) * 100)
     })
   }, [filteredActivities])
+  const supportsPreliminary = data
+    ? !PPR_PRELIMINARY_MANUAL_ONLY_PROGRAM_CODES.has(normalizePprCode(data.programCode))
+    : false
 
   return (
     <div className="space-y-4">
@@ -1069,7 +1108,7 @@ export function PprProgramaDashboardContent({ programId, embedded = false }: Ppr
 
           <MonthlyEvaluationAccess
             year={year}
-            preliminaryMonth={year === currentYear ? new Date().getMonth() + 1 : null}
+            preliminaryMonth={year === currentYear && supportsPreliminary ? new Date().getMonth() + 1 : null}
             completionByMonth={monthlyCompletion}
             onOpenMonth={(month) => navigate(`/ppr/evaluacion-mensual?programId=${programId}&year=${year}&month=${month}`)}
           />

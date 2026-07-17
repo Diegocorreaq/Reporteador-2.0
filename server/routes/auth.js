@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { hasLegacyAuthScope, validateLegacyUser } from '../services/legacy-export.service.js'
 import { createSession, verifySession } from '../services/auth-session.service.js'
 import { getReportAccessPermission, validateReportAccess } from '../services/report-access.service.js'
+import { getSqlPool, sql } from '../db/sql-server.js'
 import { requireAuth } from '../middleware/require-auth.js'
 import { authLimiter } from '../middleware/rate-limit.js'
 import {
@@ -44,7 +45,64 @@ async function getDeniedPermissions(sessionPayload, ip, correlationId) {
   }
 }
 
+async function getPprRoleForEmployee(employeeId, correlationId) {
+  const parsedEmployeeId = Number(employeeId)
+  if (!parsedEmployeeId) return null
+
+  try {
+    const pool = await getSqlPool('general')
+
+    try {
+      const adminRequest = pool.request()
+      adminRequest.input('employee_id', sql.Int, parsedEmployeeId)
+      const adminResult = await adminRequest.execute('SP_PPR_ADMIN_VERIFICAR')
+      if (Boolean(adminResult.recordset?.[0]?.is_admin)) {
+        return 'ppr_admin'
+      }
+    } catch (error) {
+      logger.warn({
+        correlationId,
+        event: 'auth:ppr-role:admin-check-error',
+        employeeId: parsedEmployeeId,
+        message: error instanceof Error ? error.message : String(error),
+      })
+    }
+
+    const coordinatorRequest = pool.request()
+    coordinatorRequest.input('employee_id', sql.Int, parsedEmployeeId)
+    const coordinatorResult = await coordinatorRequest.query(`
+      SELECT CASE
+        WHEN EXISTS (
+          SELECT 1
+          FROM dbo.ppr_user_programs up
+          WHERE up.employee_id = @employee_id
+            AND up.is_active = 1
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM dbo.ppr_coordinadores c
+          WHERE c.idempleado = @employee_id
+            AND ISNULL(c.activo, 1) = 1
+        )
+        THEN 1 ELSE 0
+      END AS is_coordinator;
+    `)
+
+    return Boolean(coordinatorResult.recordset?.[0]?.is_coordinator) ? 'ppr_coordinador' : null
+  } catch (error) {
+    logger.warn({
+      correlationId,
+      event: 'auth:ppr-role:error',
+      employeeId: parsedEmployeeId,
+      message: error instanceof Error ? error.message : String(error),
+    })
+    return null
+  }
+}
+
 async function buildUserResponse(sessionPayload, request) {
+  const pprRole = sessionPayload.pprRole ?? await getPprRoleForEmployee(sessionPayload.employeeId, request.correlationId)
+
   return {
     id: sessionPayload.id,
     username: sessionPayload.username,
@@ -56,7 +114,7 @@ async function buildUserResponse(sessionPayload, request) {
     email: `${sessionPayload.username}@hospital.local`,
     permissions: ['*'],
     deniedPermissions: await getDeniedPermissions(sessionPayload, getClientIp(request), request.correlationId),
-    pprRole: null,
+    pprRole,
   }
 }
 
@@ -121,6 +179,7 @@ authRouter.post('/auth/login', authLimiter, async (request, response) => {
       employeeId: validation.employeeId,
       name: employeeName,
       scope: normalizedScope,
+      pprRole: await getPprRoleForEmployee(validation.employeeId, correlationId),
     }
 
     const token = createSession(sessionPayload)

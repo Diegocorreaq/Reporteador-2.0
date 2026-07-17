@@ -292,7 +292,7 @@ export function PprAdminCargaPage() {
 
                   <div className="rounded-lg border border-slate-200">
                     <div className="border-b border-slate-200 px-3 py-2">
-                      <p className="text-xs font-semibold text-slate-950">Actividades manuales o sin fuente</p>
+                      <p className="text-xs font-semibold text-slate-950">Pendientes de automatizacion o manuales</p>
                     </div>
                     <div className="max-h-48 overflow-y-auto p-3">
                       {result.manualActivities.length === 0 ? (

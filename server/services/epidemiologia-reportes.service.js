@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs'
-import { executeProcedure, executeQuery, sql } from './legacy-sql.service.js'
+import { executeProcedure, sql } from './legacy-sql.service.js'
 
 const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -1334,21 +1334,9 @@ async function hydrateDengueDni(rows, connection) {
 
   for (let index = 0; index < patientIds.length; index += DENGUE_DNI_LOOKUP_CHUNK_SIZE) {
     const chunk = patientIds.slice(index, index + DENGUE_DNI_LOOKUP_CHUNK_SIZE)
-    const params = chunk.map((id, paramIndex) => ({
-      name: `id${paramIndex}`,
-      type: sql.Int,
-      value: id,
-    }))
-    const placeholders = params.map((param) => `@${param.name}`).join(', ')
-    const dniRows = await executeQuery(
-      `
-        SELECT
-          P.IdPaciente,
-          ISNULL(CONVERT(VARCHAR(20), P.NroDocumento), '') AS DNI
-        FROM SIGH..Pacientes P
-        WHERE P.IdPaciente IN (${placeholders})
-      `,
-      params,
+    const dniRows = await executeProcedure(
+      'SP_APP_EPI_DENGUE_PATIENT_DNI_CSV',
+      [{ name: 'patient_ids', type: sql.NVarChar(sql.MAX), value: chunk.join(',') }],
       { connection, timeoutMs: TIMEOUT_MS },
     )
 

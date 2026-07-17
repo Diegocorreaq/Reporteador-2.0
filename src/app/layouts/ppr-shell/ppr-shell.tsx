@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Outlet, useNavigate } from 'react-router-dom'
 import {
   BookOpen,
+  ChevronDown,
   ChevronLeft,
-  Download,
   Eye,
   EyeOff,
+  ExternalLink,
   FileSpreadsheet,
   Loader2,
   Lock,
@@ -16,10 +17,19 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
 import { clearCentroOrientacionOnboardingSession } from '@/modules/onboarding/hooks/use-centro-orientacion-onboarding'
-import { validatePprUser } from '@/modules/ppr/services/ppr.service'
+import {
+  buildPprProgramDocumentDownloadUrl,
+  fetchPprProgramDocuments,
+  fetchProgramas,
+  validatePprUser,
+} from '@/modules/ppr/services/ppr.service'
 import { PprContext, type PprUser } from '@/modules/ppr/context/ppr-context'
+import { appConfig } from '@/config/app-config'
 import { cn } from '@/lib/utils'
 import { PprSidebar } from './ppr-sidebar'
+
+const apiBaseUrl = appConfig.apiBaseUrl.replace(/\/$/, '')
+const PPR_129_CRITERIOS_PROGRAMACION_URL = `${apiBaseUrl}/ppr/programas/129/documentos/criterios_programacion/download`
 
 // ---------------------------------------------------------------------------
 // Validation overlay — Polished login experience
@@ -163,6 +173,162 @@ function ValidationOverlay({ onAuthorized }: ValidationOverlayProps) {
   )
 }
 
+interface PprHisGuideMenuItem {
+  id: number
+  programCode: string
+  programName: string
+  documentType: string
+  displayName: string
+  documentYear: number
+  versionLabel: string
+  href: string
+}
+
+function PprHisGuidesMenu({ pprUser }: { pprUser: PprUser }) {
+  const [guides, setGuides] = useState<PprHisGuideMenuItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setOpen(false)
+
+    fetchProgramas(pprUser.employeeId)
+      .then(async (programas) => {
+        const guidesByProgram = await Promise.all(
+          programas.map(async (programa) => {
+            const documents = await fetchPprProgramDocuments(programa.code, 'manual_his').catch(() => [])
+            return documents.map((document) => ({
+              id: document.id,
+              programCode: document.programCode || programa.code,
+              programName: document.programName || programa.name,
+              documentType: document.documentType,
+              displayName: document.displayName,
+              documentYear: document.documentYear,
+              versionLabel: document.versionLabel,
+              href: buildPprProgramDocumentDownloadUrl(
+                document.programCode || programa.code,
+                document.documentType,
+                document.id,
+              ),
+            }))
+          }),
+        )
+        if (!cancelled) setGuides(guidesByProgram.flat())
+      })
+      .catch(() => {
+        if (!cancelled) setGuides([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [pprUser.employeeId])
+
+  useEffect(() => {
+    if (!open) return undefined
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [open])
+
+  const groupedGuides = useMemo(() => {
+    const groups = new Map<string, { programCode: string; programName: string; guides: PprHisGuideMenuItem[] }>()
+    guides.forEach((guide) => {
+      const group = groups.get(guide.programCode) ?? {
+        programCode: guide.programCode,
+        programName: guide.programName,
+        guides: [],
+      }
+      group.guides.push(guide)
+      groups.set(guide.programCode, group)
+    })
+    return Array.from(groups.values())
+  }, [guides])
+
+  const disabled = loading || guides.length === 0
+
+  return (
+    <div ref={menuRef} className="relative shrink-0">
+      <button
+        type="button"
+        disabled={disabled}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={guides.length > 0 ? 'Abrir guias HIS de sus programas PPR.' : 'No hay guias HIS cargadas para sus programas.'}
+        onClick={() => setOpen((value) => !value)}
+        className={cn(
+          'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[11px] font-semibold transition',
+          disabled
+            ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
+            : 'border-teal-200 bg-white text-teal-700 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-800',
+        )}
+      >
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookOpen className="h-3.5 w-3.5" />}
+        <span>Guias HIS</span>
+        {guides.length > 0 && (
+          <span className="rounded bg-teal-100 px-1.5 py-0.5 text-[10px] font-bold text-teal-700">
+            {guides.length}
+          </span>
+        )}
+        <ChevronDown className={cn('h-3.5 w-3.5 transition', open && 'rotate-180')} />
+      </button>
+
+      {open && !disabled && (
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+0.5rem)] z-40 max-h-[70vh] w-[min(28rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-[0_18px_45px_rgba(15,23,42,0.16)]"
+        >
+          {groupedGuides.map((group) => (
+            <div key={group.programCode} className="border-b border-slate-100 last:border-b-0">
+              <div className="bg-slate-50 px-3 py-2">
+                <p className="truncate text-[10px] font-black uppercase tracking-wide text-slate-500">
+                  {group.programCode} - {group.programName}
+                </p>
+              </div>
+              <div className="py-1">
+                {group.guides.map((guide) => (
+                  <a
+                    key={guide.id}
+                    role="menuitem"
+                    href={guide.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setOpen(false)}
+                    className="flex items-start gap-2 px-3 py-2 text-left transition hover:bg-teal-50"
+                  >
+                    <BookOpen className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-700" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block whitespace-normal text-[11px] font-semibold leading-snug text-slate-800">
+                        {guide.displayName}
+                      </span>
+                      <span className="mt-0.5 block text-[10px] text-slate-400">
+                        {guide.versionLabel || guide.documentYear}
+                      </span>
+                    </span>
+                    <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // PPR Shell
 // ---------------------------------------------------------------------------
@@ -258,33 +424,16 @@ export function PprShell() {
               </div>
 
               <div className="flex gap-2 overflow-x-auto pb-0.5 lg:justify-end lg:overflow-visible">
-                <button
-                  type="button"
-                  disabled
-                  title="Pendiente de cargar: guia HIS MINSA de la estrategia."
-                  className="inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-400"
-                >
-                  <BookOpen className="h-3.5 w-3.5" />
-                  Guía HIS MINSA
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  title="Pendiente de cargar: guia SISGALEN / HIS MINSA."
-                  className="inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-400"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  Guía SISGALEN HIS
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  title="Pendiente de cargar: Excel de criterios de programación."
-                  className="inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-400"
+                <PprHisGuidesMenu pprUser={pprUser} />
+                <a
+                  href={PPR_129_CRITERIOS_PROGRAMACION_URL}
+                  download="Criterios_programacion_2027_PP_0129.xlsx"
+                  title="Descargar criterios de programación 2027 del programa 129."
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-[11px] font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800"
                 >
                   <FileSpreadsheet className="h-3.5 w-3.5" />
-                  Criterios de programación
-                </button>
+                  Criterios 2027
+                </a>
                 <button
                   type="button"
                   onClick={handleLogout}

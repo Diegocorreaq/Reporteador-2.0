@@ -35,6 +35,11 @@ import {
   getPprSignedDocumentInfo,
   signPprPeriodWithMockDocument,
 } from '../services/ppr-signature-document.service.js'
+import {
+  canAccessPprProgramDocument,
+  getPprProgramDocumentFile,
+  listPprProgramDocuments,
+} from '../services/ppr-program-documents.service.js'
 import { logger } from '../utils/logger.js'
 
 export const pprRouter = Router()
@@ -63,6 +68,37 @@ function getClientIp(request) {
     return forwarded.split(',')[0].trim()
   }
   return request.ip || request.socket?.remoteAddress || '0.0.0.0'
+}
+
+function contentDispositionAttachment(fileName) {
+  const fallback = String(fileName ?? 'documento-ppr')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^0-9A-Za-z._-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    || 'documento-ppr'
+
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(String(fileName ?? fallback))}`
+}
+
+function sendProgramDocument(response, file) {
+  if (file.sourceUrl && !file.buffer) {
+    return response.redirect(302, file.sourceUrl)
+  }
+
+  if (!file.buffer) {
+    return response.status(404).json({
+      code: 'PPR_PROGRAM_DOCUMENT_FILE_NOT_FOUND',
+      message: 'El documento no tiene archivo almacenado ni URL oficial.',
+    })
+  }
+
+  response.setHeader('Content-Type', file.mimeType)
+  response.setHeader('Content-Length', file.buffer.length)
+  response.setHeader('Content-Disposition', contentDispositionAttachment(file.fileName))
+  response.setHeader('Cache-Control', 'private, no-cache')
+  response.setHeader('Access-Control-Expose-Headers', 'Content-Disposition')
+  return response.send(file.buffer)
 }
 
 // POST /ppr/validate — validate PPR access via SP_USUARIO_VALIDA_ppr (same pattern as LM)
@@ -415,6 +451,133 @@ pprRouter.get('/ppr/firmas/:periodId/pdf', requireAuth, async (request, response
       message: String(error),
     })
     response.status(500).json({ code: 'PPR_ERROR', message: 'Error al descargar el documento firmado.' })
+  }
+})
+
+pprRouter.get('/ppr/programas/:programCode/documentos/:documentType', requireAuth, async (request, response) => {
+  const { programCode, documentType } = request.params
+  const employeeId = Number(request.user?.employeeId)
+  if (!programCode || !documentType || !employeeId) {
+    return response.status(400).json({
+      code: 'MISSING_PARAMS',
+      message: 'Se requiere programa, tipo de documento y usuario autenticado.',
+    })
+  }
+
+  try {
+    const allowed = await canAccessPprProgramDocument({ employeeId, programCode })
+    if (!allowed) {
+      return response.status(403).json({
+        code: 'FORBIDDEN',
+        message: 'No tiene permisos para consultar documentos de este programa PPR.',
+      })
+    }
+
+    const documents = await listPprProgramDocuments({ programCode, documentType })
+    response.json({ documents })
+  } catch (error) {
+    const status = error?.code === 'PPR_DOCUMENT_TYPE_INVALID' ? 400 : 500
+    logger.error({
+      correlationId: request.correlationId,
+      event: 'ppr:program-document:list:error',
+      programCode,
+      documentType,
+      message: String(error),
+    })
+    response.status(status).json({
+      code: error?.code ?? 'PPR_ERROR',
+      message: error?.message ?? 'Error al listar documentos del programa.',
+    })
+  }
+})
+
+pprRouter.get('/ppr/programas/:programCode/documentos/:documentType/:documentId/download', requireAuth, async (request, response) => {
+  const { programCode, documentType } = request.params
+  const documentId = Number(request.params.documentId)
+  const employeeId = Number(request.user?.employeeId)
+  if (!programCode || !documentType || !documentId || !employeeId) {
+    return response.status(400).json({
+      code: 'MISSING_PARAMS',
+      message: 'Se requiere programa, tipo de documento, documento y usuario autenticado.',
+    })
+  }
+
+  try {
+    const allowed = await canAccessPprProgramDocument({ employeeId, programCode })
+    if (!allowed) {
+      return response.status(403).json({
+        code: 'FORBIDDEN',
+        message: 'No tiene permisos para descargar documentos de este programa PPR.',
+      })
+    }
+
+    const file = await getPprProgramDocumentFile({ programCode, documentType, documentId })
+    if (!file) {
+      return response.status(404).json({
+        code: 'PPR_PROGRAM_DOCUMENT_NOT_FOUND',
+        message: 'No hay un documento vigente para este programa y tipo.',
+      })
+    }
+
+    return sendProgramDocument(response, file)
+  } catch (error) {
+    const status = error?.code === 'PPR_DOCUMENT_TYPE_INVALID' ? 400 : 500
+    logger.error({
+      correlationId: request.correlationId,
+      event: 'ppr:program-document:download-id:error',
+      programCode,
+      documentType,
+      documentId,
+      message: String(error),
+    })
+    response.status(status).json({
+      code: error?.code ?? 'PPR_ERROR',
+      message: error?.message ?? 'Error al descargar el documento del programa.',
+    })
+  }
+})
+
+pprRouter.get('/ppr/programas/:programCode/documentos/:documentType/download', requireAuth, async (request, response) => {
+  const { programCode, documentType } = request.params
+  const employeeId = Number(request.user?.employeeId)
+  if (!programCode || !documentType || !employeeId) {
+    return response.status(400).json({
+      code: 'MISSING_PARAMS',
+      message: 'Se requiere programa, tipo de documento y usuario autenticado.',
+    })
+  }
+
+  try {
+    const allowed = await canAccessPprProgramDocument({ employeeId, programCode })
+    if (!allowed) {
+      return response.status(403).json({
+        code: 'FORBIDDEN',
+        message: 'No tiene permisos para descargar documentos de este programa PPR.',
+      })
+    }
+
+    const file = await getPprProgramDocumentFile({ programCode, documentType })
+    if (!file) {
+      return response.status(404).json({
+        code: 'PPR_PROGRAM_DOCUMENT_NOT_FOUND',
+        message: 'No hay un documento vigente para este programa y tipo.',
+      })
+    }
+
+    return sendProgramDocument(response, file)
+  } catch (error) {
+    const status = error?.code === 'PPR_DOCUMENT_TYPE_INVALID' ? 400 : 500
+    logger.error({
+      correlationId: request.correlationId,
+      event: 'ppr:program-document:download:error',
+      programCode,
+      documentType,
+      message: String(error),
+    })
+    response.status(status).json({
+      code: error?.code ?? 'PPR_ERROR',
+      message: error?.message ?? 'Error al descargar el documento del programa.',
+    })
   }
 })
 

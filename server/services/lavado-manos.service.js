@@ -1,5 +1,5 @@
 import { executeConfiguredExport } from './legacy-export.service.js'
-import { executeProcedure_General as executeProcedure, executeQuery_General as executeQuery, sql } from './sigh-sql-helpers.js'
+import { executeProcedure_General as executeProcedure, sql } from './sigh-sql-helpers.js'
 
 const REPORT_TIMEOUT_MS = 120000
 
@@ -153,10 +153,12 @@ async function insertMomentoDetailItems(idRegistro, items, tipo) {
 }
 
 async function getDetalleByTipo(idRegistro, tipo) {
-  const detailView = Number(tipo) === 3 ? 'v_registro_detalle_c' : 'v_registro_detalle'
-  const detailRows = await executeQuery(
-    `SELECT * FROM ${detailView} WHERE idregistro = @idregistro ORDER BY idactividad`,
-    [{ name: 'idregistro', type: sql.Int, value: idRegistro }],
+  const detailRows = await executeProcedure(
+    'SP_APP_LAVADO_DETALLE',
+    [
+      { name: 'idregistro', type: sql.Int, value: idRegistro },
+      { name: 'tipo', type: sql.Int, value: Number(tipo) || 0 },
+    ],
     { timeoutMs: REPORT_TIMEOUT_MS },
   )
 
@@ -188,8 +190,8 @@ export async function listLavadoActividades(tipo) {
     return []
   }
 
-  return executeQuery(
-    'SELECT idactividad, actividad, tipo FROM t_Actividad WHERE tipo = @tipo ORDER BY idactividad',
+  return executeProcedure(
+    'SP_APP_LAVADO_ACTIVIDADES',
     [{ name: 'tipo', type: sql.Int, value: tipoNormalizado }],
   )
 }
@@ -213,8 +215,8 @@ export async function getLavadoRegistro(idRegistro) {
     throw new Error('El identificador del registro no es valido.')
   }
 
-  const rows = await executeQuery(
-    'SELECT * FROM v_registro WHERE idregistro = @idregistro',
+  const rows = await executeProcedure(
+    'SP_APP_LAVADO_REGISTRO',
     [{ name: 'idregistro', type: sql.Int, value: id }],
     { timeoutMs: REPORT_TIMEOUT_MS },
   )
@@ -295,10 +297,12 @@ export async function updateLavadoRegistro(idRegistro, payload) {
     { timeoutMs: REPORT_TIMEOUT_MS },
   )
 
-  const deleteTarget = isMomento ? 'SIGH_DEPURA..E_MomentoDetalle' : 'E_LavadoDetalle'
-  await executeQuery(
-    `DELETE FROM ${deleteTarget} WHERE idregistro = @idregistro`,
-    [{ name: 'idregistro', type: sql.Int, value: id }],
+  await executeProcedure(
+    'SP_APP_LAVADO_DELETE_DETALLE',
+    [
+      { name: 'idregistro', type: sql.Int, value: id },
+      { name: 'tipo', type: sql.Int, value: normalized.tipo },
+    ],
     { timeoutMs: REPORT_TIMEOUT_MS },
   )
 

@@ -1,4 +1,5 @@
 import { httpClient } from '@/services/http/client'
+import { appConfig } from '@/config/app-config'
 import type {
   PprActividad,
   PprActividadAdmin,
@@ -9,6 +10,7 @@ import type {
   PprImportSource,
   PprPeriodo,
   PprPeriodoItem,
+  PprProgramDocument,
   PprPrograma,
   PprProgramaAdmin,
   PprProgramaDetalle,
@@ -77,6 +79,25 @@ export async function fetchProgramas(employeeId: number): Promise<PprPrograma[]>
     params: { employeeId },
   })
   return res.data.programas
+}
+
+export function buildPprProgramDocumentDownloadUrl(
+  programCode: string,
+  documentType: string,
+  documentId: number,
+) {
+  const apiBaseUrl = appConfig.apiBaseUrl.replace(/\/$/, '')
+  return `${apiBaseUrl}/ppr/programas/${encodeURIComponent(programCode)}/documentos/${encodeURIComponent(documentType)}/${encodeURIComponent(String(documentId))}/download`
+}
+
+export async function fetchPprProgramDocuments(
+  programCode: string,
+  documentType: string,
+): Promise<PprProgramDocument[]> {
+  const res = await httpClient.get<{ documents: PprProgramDocument[] }>(
+    `/ppr/programas/${encodeURIComponent(programCode)}/documentos/${encodeURIComponent(documentType)}`,
+  )
+  return res.data.documents
 }
 
 export async function fetchActividades(

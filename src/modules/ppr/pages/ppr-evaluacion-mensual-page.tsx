@@ -36,6 +36,7 @@ function statusMeta(status: string, isPreliminary = false) {
     en_meta: { label: 'En meta', tone: 'text-emerald-700 bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500', color: '#34d399', description: `Alcanzo o supero el 100% de la ${goalLabel}.` },
     seguimiento: { label: 'Seguimiento', tone: 'text-amber-700 bg-amber-50 border-amber-200', dot: 'bg-amber-500', color: '#fbbf24', description: `Tiene dato y esta entre 80% y 99% de la ${goalLabel}.` },
     critico: { label: 'Critico', tone: 'text-rose-700 bg-rose-50 border-rose-200', dot: 'bg-rose-500', color: '#fb7185', description: `Tiene dato, pero esta por debajo del 80% de la ${goalLabel}.` },
+    pendiente_automatizacion: { label: 'Pendiente automatizacion', tone: 'text-amber-700 bg-amber-50 border-amber-200', dot: 'bg-amber-400', color: '#f59e0b', description: 'La actividad sigue visible, pero aun no tiene fuente automatica configurada.' },
     sin_dato: { label: 'Sin dato', tone: 'text-slate-600 bg-slate-50 border-slate-200', dot: 'bg-slate-300', color: '#cbd5e1', description: 'No tiene valor registrado para el mes seleccionado.' },
     con_avance: { label: 'Con avance', tone: 'text-cyan-700 bg-cyan-50 border-cyan-200', dot: 'bg-cyan-500', color: '#22d3ee', description: 'Tiene valor registrado, pero no hay meta mensual para calcular porcentaje.' },
     sin_meta: { label: 'Sin meta', tone: 'text-slate-600 bg-slate-50 border-slate-200', dot: 'bg-slate-400', color: '#94a3b8', description: 'No tiene meta mensual definida y no registra valor.' },
@@ -115,7 +116,7 @@ function TopActivitiesChart({
 }
 
 function StatusChart({ data }: { data: PprEvaluacionMensual }) {
-  const order = ['critico', 'seguimiento', 'sin_dato', 'en_meta', 'con_avance', 'sin_meta']
+  const order = ['critico', 'seguimiento', 'pendiente_automatizacion', 'sin_dato', 'en_meta', 'con_avance', 'sin_meta']
   const visibleStatuses = order.filter((status) => (data.statusCounts[status] ?? 0) > 0)
   const total = visibleStatuses.reduce((sum, status) => sum + (data.statusCounts[status] ?? 0), 0)
   const enMeta = data.statusCounts.en_meta ?? 0
@@ -270,6 +271,7 @@ export function PprEvaluacionMensualPage() {
       || String(displayActivityCode(activity) ?? '').toLowerCase().includes(normalized),
     )
   }, [data, query])
+  const pendingAutomationCount = data?.statusCounts.pendiente_automatizacion ?? 0
 
   return (
     <div className="space-y-5">
@@ -396,6 +398,15 @@ export function PprEvaluacionMensualPage() {
               </div>
             ))}
           </div>
+
+          {data.isPreliminary && pendingAutomationCount > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+              <span className="font-semibold">{pendingAutomationCount} actividades pendientes de automatizacion.</span>
+              <span className="ml-1 text-amber-700">
+                Se muestran en el detalle sin valor automatico; las demas actividades usan la fuente institucional del corte.
+              </span>
+            </div>
+          )}
 
           <div className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
             <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">

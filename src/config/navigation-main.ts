@@ -644,7 +644,7 @@ export const mainQuickLinks: WorkspaceQuickLink[] = [
     to: '/ppr',
     description: 'Acceso directo al portal de validacion PPR.',
     icon: ClipboardList,
-    access: { employeeIds: [5713] },
+    access: { pprRoles: ['ppr_admin', 'ppr_coordinador'] },
   },
   {
     key: 'manuales',

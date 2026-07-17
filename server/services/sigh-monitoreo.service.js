@@ -1,4 +1,4 @@
-import { executeProcedure_Sigh1 as executeProcedure, executeQuery_Sigh1 as executeQuery, sql } from './sigh-sql-helpers.js'
+import { executeProcedure_Sigh1 as executeProcedure, sql } from './sigh-sql-helpers.js'
 
 const REPORT_TIMEOUT_MS = 180000
 
@@ -19,14 +19,7 @@ function resolveAlertState(row) {
 }
 
 export async function listFamiliaPendienteUpss() {
-  const rows = await executeQuery(
-    `SELECT cod_upss AS codUpSs, des_upss AS desUpSs
-     FROM T_Upss
-     WHERE cod_upss IN (2,3,4,6)
-     ORDER BY des_upss`,
-    [],
-    { timeoutMs: REPORT_TIMEOUT_MS },
-  )
+  const rows = await executeProcedure('SP_APP_FAMILIA_PENDIENTE_UPSS', [], { timeoutMs: REPORT_TIMEOUT_MS })
 
   return rows.map((row) => ({
     value: String(row.codUpSs ?? '').trim(),

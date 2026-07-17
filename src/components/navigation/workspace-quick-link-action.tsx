@@ -29,9 +29,9 @@ export function WorkspaceQuickLinkAction({
   const Icon = link.icon ?? ExternalLink
   const isPortalPpr = link.key === 'portal-ppr'
   const portalPprTopbarClass =
-    'border-[#6D28D9] bg-[#6D28D9] text-white shadow-sm shadow-violet-500/25 hover:border-[#5B21B6] hover:bg-[#5B21B6] hover:text-white'
-  const portalPprHomeClass = 'border-[#6D28D9]/35 bg-violet-50 hover:border-[#6D28D9]/70 hover:bg-violet-100'
-  const portalPprIconClass = 'bg-[#6D28D9] text-white'
+    'border-teal-700 bg-teal-700 text-white shadow-sm shadow-teal-500/20 hover:border-teal-800 hover:bg-teal-800 hover:text-white'
+  const portalPprHomeClass = 'border-teal-200 bg-teal-50 hover:border-teal-300 hover:bg-teal-100'
+  const portalPprIconClass = 'bg-teal-700 text-white'
 
   if (link.actionType === 'datos-en-linea-launcher') {
     return (
