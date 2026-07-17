@@ -85,17 +85,21 @@ export function buildPprProgramDocumentDownloadUrl(
   programCode: string,
   documentType: string,
   documentId: number,
+  employeeId?: number,
 ) {
   const apiBaseUrl = appConfig.apiBaseUrl.replace(/\/$/, '')
-  return `${apiBaseUrl}/ppr/programas/${encodeURIComponent(programCode)}/documentos/${encodeURIComponent(documentType)}/${encodeURIComponent(String(documentId))}/download`
+  const query = employeeId ? `?employeeId=${encodeURIComponent(String(employeeId))}` : ''
+  return `${apiBaseUrl}/ppr/programas/${encodeURIComponent(programCode)}/documentos/${encodeURIComponent(documentType)}/${encodeURIComponent(String(documentId))}/download${query}`
 }
 
 export async function fetchPprProgramDocuments(
   programCode: string,
   documentType: string,
+  employeeId?: number,
 ): Promise<PprProgramDocument[]> {
   const res = await httpClient.get<{ documents: PprProgramDocument[] }>(
     `/ppr/programas/${encodeURIComponent(programCode)}/documentos/${encodeURIComponent(documentType)}`,
+    { params: employeeId ? { employeeId } : undefined },
   )
   return res.data.documents
 }

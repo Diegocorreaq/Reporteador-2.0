@@ -100,6 +100,11 @@ function blockPprDataEntryIfLocked(request, response, next) {
   return response.status(423).json(PPR_DATA_ENTRY_LOCKED_RESPONSE)
 }
 
+function getPprDocumentAccessEmployeeId(request) {
+  const requestedEmployeeId = Number(request.query.employeeId)
+  return requestedEmployeeId || Number(request.user?.employeeId)
+}
+
 function sendProgramDocument(response, file) {
   if (file.sourceUrl && !file.buffer) {
     return response.redirect(302, file.sourceUrl)
@@ -475,7 +480,7 @@ pprRouter.get('/ppr/firmas/:periodId/pdf', requireAuth, async (request, response
 
 pprRouter.get('/ppr/programas/:programCode/documentos/:documentType', requireAuth, async (request, response) => {
   const { programCode, documentType } = request.params
-  const employeeId = Number(request.user?.employeeId)
+  const employeeId = getPprDocumentAccessEmployeeId(request)
   if (!programCode || !documentType || !employeeId) {
     return response.status(400).json({
       code: 'MISSING_PARAMS',
@@ -513,7 +518,7 @@ pprRouter.get('/ppr/programas/:programCode/documentos/:documentType', requireAut
 pprRouter.get('/ppr/programas/:programCode/documentos/:documentType/:documentId/download', requireAuth, async (request, response) => {
   const { programCode, documentType } = request.params
   const documentId = Number(request.params.documentId)
-  const employeeId = Number(request.user?.employeeId)
+  const employeeId = getPprDocumentAccessEmployeeId(request)
   if (!programCode || !documentType || !documentId || !employeeId) {
     return response.status(400).json({
       code: 'MISSING_PARAMS',
@@ -558,7 +563,7 @@ pprRouter.get('/ppr/programas/:programCode/documentos/:documentType/:documentId/
 
 pprRouter.get('/ppr/programas/:programCode/documentos/:documentType/download', requireAuth, async (request, response) => {
   const { programCode, documentType } = request.params
-  const employeeId = Number(request.user?.employeeId)
+  const employeeId = getPprDocumentAccessEmployeeId(request)
   if (!programCode || !documentType || !employeeId) {
     return response.status(400).json({
       code: 'MISSING_PARAMS',

@@ -29,7 +29,9 @@ import { cn } from '@/lib/utils'
 import { PprSidebar } from './ppr-sidebar'
 
 const apiBaseUrl = appConfig.apiBaseUrl.replace(/\/$/, '')
-const PPR_129_CRITERIOS_PROGRAMACION_URL = `${apiBaseUrl}/ppr/programas/129/documentos/criterios_programacion/download`
+function buildCurrentPprProgramDocumentDownloadUrl(programCode: string, documentType: string, employeeId: number) {
+  return `${apiBaseUrl}/ppr/programas/${encodeURIComponent(programCode)}/documentos/${encodeURIComponent(documentType)}/download?employeeId=${encodeURIComponent(String(employeeId))}`
+}
 
 // ---------------------------------------------------------------------------
 // Validation overlay — Polished login experience
@@ -199,7 +201,7 @@ function PprHisGuidesMenu({ pprUser }: { pprUser: PprUser }) {
       .then(async (programas) => {
         const guidesByProgram = await Promise.all(
           programas.map(async (programa) => {
-            const documents = await fetchPprProgramDocuments(programa.code, 'manual_his').catch(() => [])
+            const documents = await fetchPprProgramDocuments(programa.code, 'manual_his', pprUser.employeeId).catch(() => [])
             return documents.map((document) => ({
               id: document.id,
               programCode: document.programCode || programa.code,
@@ -212,6 +214,7 @@ function PprHisGuidesMenu({ pprUser }: { pprUser: PprUser }) {
                 document.programCode || programa.code,
                 document.documentType,
                 document.id,
+                pprUser.employeeId,
               ),
             }))
           }),
@@ -426,7 +429,7 @@ export function PprShell() {
               <div className="flex gap-2 overflow-x-auto pb-0.5 lg:justify-end lg:overflow-visible">
                 <PprHisGuidesMenu pprUser={pprUser} />
                 <a
-                  href={PPR_129_CRITERIOS_PROGRAMACION_URL}
+                  href={buildCurrentPprProgramDocumentDownloadUrl('129', 'criterios_programacion', pprUser.employeeId)}
                   download="Criterios_programacion_2027_PP_0129.xlsx"
                   title="Descargar criterios de programación 2027 del programa 129."
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-[11px] font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800"
