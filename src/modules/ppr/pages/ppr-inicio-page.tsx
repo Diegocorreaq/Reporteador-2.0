@@ -218,7 +218,7 @@ function CoordinatorInicioView({
         </div>
         <h2 className="mt-4 text-sm font-bold text-slate-950">Sin programa asignado</h2>
         <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-slate-500">
-          Aún no tienes un programa PPR activo en tu perfil. Cuando el administrador te asigne uno, aquí aparecerá tu avance y seguimiento.
+          Aún no tienes un programa PPR activo en tu perfil. Cuando el administrador te asigne uno, aquí aparecerá tu avance y acceso de registro.
         </p>
       </div>
     )
@@ -265,7 +265,7 @@ function CoordinatorInicioView({
             </h2>
             <p className="mt-1 text-xs text-slate-500">
               {periodo?.isOpen
-                ? `Periodo ${periodo.label} abierto para seguimiento.`
+                ? `Periodo ${periodo.label} abierto para registrar avance.`
                 : periodo
                   ? `Periodo ${periodo.label} cerrado.`
                   : 'Sin periodo activo disponible.'}
@@ -441,7 +441,7 @@ function CoordinatorInicioView({
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Periodo activo</p>
           <p className="mt-2 text-lg font-bold text-slate-950">{periodo?.label ?? '—'}</p>
           <p className="mt-1 text-[11px] text-slate-500">
-            {periodo?.isOpen ? 'Disponible para seguimiento mensual' : 'Disponible solo para consulta'}
+            {periodo?.isOpen ? 'Disponible para registro mensual' : 'No disponible para registro'}
           </p>
         </div>
 
@@ -583,6 +583,7 @@ export function PprInicioPage() {
     ?? null
   const evaluationYear = now.getFullYear()
   const evaluationMonth = currentMonth
+  const canRegisterData = Boolean(periodo?.isOpen && selectedCoordinatorProgram)
   return (
     <div className="space-y-6">
       {/* ── Hero header ── */}
@@ -612,7 +613,7 @@ export function PprInicioPage() {
                 {periodo?.isOpen && (
                   <PprPill tone="emerald">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Abierto para seguimiento
+                    Abierto para registro
                   </PprPill>
                 )}
               </div>
@@ -673,9 +674,9 @@ export function PprInicioPage() {
                   </div>
                   <p className="mt-1 text-xs text-slate-500">
                     {periodo?.isOpen
-                      ? `Periodo ${periodo.label} abierto para seguimiento.`
+                      ? `Periodo ${periodo.label} abierto para ingresar datos.`
                       : periodo
-                        ? `Periodo ${periodo.label} cerrado para consulta.`
+                        ? `Periodo ${periodo.label} cerrado para registro.`
                         : 'Sin periodo activo disponible.'}
                   </p>
                 </div>
@@ -707,6 +708,22 @@ export function PprInicioPage() {
                     Evaluación mensual
                     <ChevronRight className="h-3.5 w-3.5" />
                   </Link>
+
+                  {canRegisterData ? (
+                    <Link
+                      to="/ppr/actividades"
+                      state={{ programaId: selectedCoordinatorProgram.id }}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-800"
+                    >
+                      Ingresar datos
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Link>
+                  ) : (
+                    <span className="inline-flex cursor-not-allowed items-center justify-center gap-1.5 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-400">
+                      Ingresar datos
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -775,7 +792,7 @@ export function PprInicioPage() {
             <StatCard
               label="Período activo"
               value={periodo?.label ?? '—'}
-              sub={periodo?.isOpen ? 'Abierto para seguimiento' : 'Cerrado'}
+              sub={periodo?.isOpen ? 'Abierto para registro' : 'Cerrado'}
               icon={Calendar}
               accent={periodo?.isOpen ? 'emerald' : 'slate'}
             />
