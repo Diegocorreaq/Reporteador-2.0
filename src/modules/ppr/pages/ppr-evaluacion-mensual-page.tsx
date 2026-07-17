@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import ReactECharts from 'echarts-for-react'
 import {
   ArrowLeft,
   BarChart3,
   Calendar,
-  ChevronRight,
   Database,
   Loader2,
   Search,
 } from 'lucide-react'
 import { usePprContext } from '@/modules/ppr/context/ppr-context'
-import { fetchEvaluacionMensual, fetchPeriodoActivo, fetchProgramas } from '@/modules/ppr/services/ppr.service'
-import type { PprEvaluacionMensual, PprEvaluacionMensualActividad, PprPeriodo, PprPrograma } from '@/modules/ppr/types'
+import { fetchEvaluacionMensual, fetchProgramas } from '@/modules/ppr/services/ppr.service'
+import type { PprEvaluacionMensual, PprEvaluacionMensualActividad, PprPrograma } from '@/modules/ppr/types'
 import { cn } from '@/lib/utils'
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -221,7 +220,6 @@ export function PprEvaluacionMensualPage() {
   )
 
   const [programas, setProgramas] = useState<PprPrograma[]>([])
-  const [periodo, setPeriodo] = useState<PprPeriodo | null>(null)
   const [programId, setProgramId] = useState<number>(() => Number(searchParams.get('programId')) || 0)
   const [year, setYear] = useState<number>(() => Math.max(Number(searchParams.get('year')) || currentYear, MIN_EVALUACION_YEAR))
   const [month, setMonth] = useState<number>(() => Number(searchParams.get('month')) || (now.getMonth() + 1))
@@ -231,12 +229,8 @@ export function PprEvaluacionMensualPage() {
   const [query, setQuery] = useState('')
 
   useEffect(() => {
-    Promise.all([
-      fetchProgramas(pprUser.employeeId).catch(() => []),
-      fetchPeriodoActivo().catch(() => null),
-    ]).then(([programList, activePeriod]) => {
+    fetchProgramas(pprUser.employeeId).catch(() => []).then((programList) => {
       setProgramas(programList)
-      setPeriodo(activePeriod)
       if (!programId && programList[0]) setProgramId(programList[0].id)
     })
   }, [pprUser.employeeId])
@@ -261,7 +255,6 @@ export function PprEvaluacionMensualPage() {
   }, [programId, year, month, setSearchParams])
 
   const selectedProgram = programas.find((program) => program.id === programId) ?? null
-  const isOpenMonth = periodo?.year === year && periodo?.month === month
   const filteredActivities = useMemo(() => {
     const normalized = query.trim().toLowerCase()
     if (!data) return []
@@ -373,15 +366,6 @@ export function PprEvaluacionMensualPage() {
                     : `Valores registrados en la consolidacion PPR de ${MONTHS[data.month - 1]} ${data.year}.`}
                 </p>
               </div>
-              {isOpenMonth && (
-                <Link
-                  to="/ppr/periodos"
-                  className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-800"
-                >
-                  Ingresar datos
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
-              )}
             </div>
           </div>
 

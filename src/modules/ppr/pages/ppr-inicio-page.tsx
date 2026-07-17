@@ -35,6 +35,18 @@ function greeting() {
   return 'Buenas noches'
 }
 
+function formatNamePart(value: string) {
+  const lower = value.toLocaleLowerCase('es-PE')
+  return lower.charAt(0).toLocaleUpperCase('es-PE') + lower.slice(1)
+}
+
+function displayFirstName(employeeName: string) {
+  const parts = employeeName.trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return ''
+  const looksLikeInstitutionalName = parts.length >= 3 && parts.every((part) => part === part.toLocaleUpperCase('es-PE'))
+  return formatNamePart(looksLikeInstitutionalName ? parts[2] : parts[0])
+}
+
 function fmtNum(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000)     return `${Math.round(n / 1_000)}k`
@@ -206,7 +218,7 @@ function CoordinatorInicioView({
         </div>
         <h2 className="mt-4 text-sm font-bold text-slate-950">Sin programa asignado</h2>
         <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-slate-500">
-          Aún no tienes un programa PPR activo en tu perfil. Cuando el administrador te asigne uno, aquí aparecerá tu avance y acceso de registro.
+          Aún no tienes un programa PPR activo en tu perfil. Cuando el administrador te asigne uno, aquí aparecerá tu avance y seguimiento.
         </p>
       </div>
     )
@@ -253,26 +265,14 @@ function CoordinatorInicioView({
             </h2>
             <p className="mt-1 text-xs text-slate-500">
               {periodo?.isOpen
-                ? `Periodo ${periodo.label} abierto para registrar avance.`
+                ? `Periodo ${periodo.label} abierto para seguimiento.`
                 : periodo
                   ? `Periodo ${periodo.label} cerrado.`
                   : 'Sin periodo activo disponible.'}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:w-auto sm:min-w-[280px]">
-            <Link
-              to="/ppr/periodos"
-              className={cn(
-                'flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-semibold transition',
-                periodo?.isOpen
-                  ? 'bg-teal-700 text-white hover:bg-teal-800'
-                  : 'pointer-events-none bg-slate-100 text-slate-400',
-              )}
-            >
-              Ingresar datos
-              <ChevronRight className="h-4 w-4" />
-            </Link>
+          <div className="grid grid-cols-1 gap-2 sm:w-auto sm:min-w-[140px]">
             <Link
               to={`/ppr/programas/${programa.id}`}
               className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
@@ -441,7 +441,7 @@ function CoordinatorInicioView({
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Periodo activo</p>
           <p className="mt-2 text-lg font-bold text-slate-950">{periodo?.label ?? '—'}</p>
           <p className="mt-1 text-[11px] text-slate-500">
-            {periodo?.isOpen ? 'Disponible para registro mensual' : 'No disponible para registro'}
+            {periodo?.isOpen ? 'Disponible para seguimiento mensual' : 'Disponible solo para consulta'}
           </p>
         </div>
 
@@ -583,8 +583,6 @@ export function PprInicioPage() {
     ?? null
   const evaluationYear = now.getFullYear()
   const evaluationMonth = currentMonth
-  const canRegisterData = Boolean(periodo?.isOpen && selectedCoordinatorProgram)
-
   return (
     <div className="space-y-6">
       {/* ── Hero header ── */}
@@ -599,7 +597,7 @@ export function PprInicioPage() {
             <div>
               <p className="text-[11px] capitalize text-slate-400">{todayLabel}</p>
               <h1 className="mt-0.5 text-xl font-bold leading-tight text-slate-950">
-                {greeting()}, {pprUser.employeeName.split(' ')[0]}
+                {greeting()}, {displayFirstName(pprUser.employeeName)}
               </h1>
               <p className="text-xs text-slate-500">{pprUser.employeeName}</p>
               <div className="mt-2.5 flex flex-wrap items-center gap-2">
@@ -614,7 +612,7 @@ export function PprInicioPage() {
                 {periodo?.isOpen && (
                   <PprPill tone="emerald">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Abierto para registro
+                    Abierto para seguimiento
                   </PprPill>
                 )}
               </div>
@@ -675,9 +673,9 @@ export function PprInicioPage() {
                   </div>
                   <p className="mt-1 text-xs text-slate-500">
                     {periodo?.isOpen
-                      ? `Periodo ${periodo.label} abierto para ingresar datos.`
+                      ? `Periodo ${periodo.label} abierto para seguimiento.`
                       : periodo
-                        ? `Periodo ${periodo.label} cerrado para registro.`
+                        ? `Periodo ${periodo.label} cerrado para consulta.`
                         : 'Sin periodo activo disponible.'}
                   </p>
                 </div>
@@ -709,22 +707,6 @@ export function PprInicioPage() {
                     Evaluación mensual
                     <ChevronRight className="h-3.5 w-3.5" />
                   </Link>
-
-                  {canRegisterData ? (
-                    <Link
-                      to="/ppr/actividades"
-                      state={{ programaId: selectedCoordinatorProgram.id }}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-teal-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-800"
-                    >
-                      Ingresar datos
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Link>
-                  ) : (
-                    <span className="inline-flex cursor-not-allowed items-center justify-center gap-1.5 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-400">
-                      Ingresar datos
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
@@ -793,7 +775,7 @@ export function PprInicioPage() {
             <StatCard
               label="Período activo"
               value={periodo?.label ?? '—'}
-              sub={periodo?.isOpen ? 'Abierto para registro' : 'Cerrado'}
+              sub={periodo?.isOpen ? 'Abierto para seguimiento' : 'Cerrado'}
               icon={Calendar}
               accent={periodo?.isOpen ? 'emerald' : 'slate'}
             />
