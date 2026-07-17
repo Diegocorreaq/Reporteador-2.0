@@ -197,29 +197,49 @@ function PprHisGuidesMenu({ pprUser }: { pprUser: PprUser }) {
     setLoading(true)
     setOpen(false)
 
+    async function fetchGuidesForProgram(programa: { code: string; name: string }) {
+      const documents = await fetchPprProgramDocuments(programa.code, 'manual_his', pprUser.employeeId)
+      return documents.map((document) => ({
+        id: document.id,
+        programCode: document.programCode || programa.code,
+        programName: document.programName || programa.name,
+        documentType: document.documentType,
+        displayName: document.displayName,
+        documentYear: document.documentYear,
+        versionLabel: document.versionLabel,
+        href: buildPprProgramDocumentDownloadUrl(
+          document.programCode || programa.code,
+          document.documentType,
+          document.id,
+          pprUser.employeeId,
+        ),
+      }))
+    }
+
     fetchProgramas(pprUser.employeeId)
       .then(async (programas) => {
         const guidesByProgram = await Promise.all(
           programas.map(async (programa) => {
-            const documents = await fetchPprProgramDocuments(programa.code, 'manual_his', pprUser.employeeId).catch(() => [])
-            return documents.map((document) => ({
-              id: document.id,
-              programCode: document.programCode || programa.code,
-              programName: document.programName || programa.name,
-              documentType: document.documentType,
-              displayName: document.displayName,
-              documentYear: document.documentYear,
-              versionLabel: document.versionLabel,
-              href: buildPprProgramDocumentDownloadUrl(
-                document.programCode || programa.code,
-                document.documentType,
-                document.id,
-                pprUser.employeeId,
-              ),
-            }))
+            try {
+              return await fetchGuidesForProgram(programa)
+            } catch (error) {
+              console.warn('No se pudo cargar guia HIS del programa PPR.', { programCode: programa.code, error })
+              return []
+            }
           }),
         )
-        if (!cancelled) setGuides(guidesByProgram.flat())
+        let nextGuides = guidesByProgram.flat()
+        const has129Program = programas.some((programa) => String(programa.code).replace(/^0+/, '') === '129')
+        if (nextGuides.length === 0 && has129Program) {
+          nextGuides = await fetchGuidesForProgram({
+            code: '129',
+            name: 'PREVENCION Y MANEJO DE CONDICIONES SECUNDARIAS DE SALUD EN PERSONAS CON DISCAPACIDAD',
+          }).catch((error) => {
+            console.warn('No se pudo cargar guia HIS fallback del PP 129.', error)
+            return []
+          })
+        }
+        if (!cancelled) setGuides(nextGuides)
       })
       .catch(() => {
         if (!cancelled) setGuides([])

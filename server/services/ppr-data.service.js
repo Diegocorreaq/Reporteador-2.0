@@ -509,24 +509,56 @@ async function getScopedProgramMetrics({ employeeId, programId, programCode, mes
 }
 
 export async function getActividadesPrograma({ programaId, periodoId, employeeId }) {
-  await ensurePprSignedDocumentInfrastructure()
   await ensurePprActivityGroupInfrastructure()
-  const rows = await executeProcedure('SP_PPR_ACTIVIDADES_PROGRAMA', [
-    { name: 'program_id', type: sql.Int, value: Number(programaId) },
-    { name: 'period_id', type: sql.Int, value: Number(periodoId) },
-    { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
-  ])
-  const programRows = await executeProcedure('SP_APP_PPR_PROGRAM_CODE', [
-    { name: 'program_id', type: sql.Int, value: Number(programaId) },
-  ])
-  const programCode = String(programRows[0]?.code ?? '')
+  const pool = await getSqlPool('general')
+  const result = await pool.request()
+    .input('program_id', sql.Int, Number(programaId))
+    .input('period_id', sql.Int, Number(periodoId))
+    .query(`
+      SELECT
+        a.id,
+        a.code,
+        a.name,
+        a.unit,
+        a.annual_goal,
+        a.sort_order,
+        a.activity_group_code,
+        p.code AS program_code,
+        mv.value,
+        mv.notes,
+        mv.value_source,
+        mv.source_key,
+        mv.source_value,
+        mv.loaded_at,
+        mv.validated_at,
+        mv.validation_status
+      FROM dbo.ppr_activities a
+      INNER JOIN dbo.ppr_programs p
+        ON p.id = a.program_id
+      LEFT JOIN dbo.ppr_monthly_values mv
+        ON mv.activity_id = a.id
+        AND mv.period_id = @period_id
+      WHERE a.program_id = @program_id
+        AND ISNULL(a.is_active, 1) = 1
+      ORDER BY a.sort_order, a.id;
+    `)
+  const rows = result.recordset
+  const programCode = String(rows[0]?.program_code ?? '')
   const groupByActivityId = await getActivityGroupByActivityId(programaId)
-  const signatureRows = await executeProcedure('SP_APP_PPR_SIGNATURE_FOR_PROGRAM_PERIOD', [
-    { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
-    { name: 'period_id', type: sql.Int, value: Number(periodoId) },
-    { name: 'program_id', type: sql.Int, value: Number(programaId) },
-  ])
-  const signedAt = signatureRows[0]?.signed_at ?? null
+  const signatureResult = await pool.request()
+    .input('employee_id', sql.Int, Number(employeeId))
+    .input('period_id', sql.Int, Number(periodoId))
+    .input('program_id', sql.Int, Number(programaId))
+    .query(`
+      SELECT TOP 1 signed_at
+      FROM dbo.ppr_signatures
+      WHERE employee_id = @employee_id
+        AND period_id = @period_id
+        AND is_valid = 1
+        AND (program_id = @program_id OR program_id IS NULL)
+      ORDER BY CASE WHEN program_id = @program_id THEN 0 ELSE 1 END, signed_at DESC;
+    `)
+  const signedAt = signatureResult.recordset[0]?.signed_at ?? null
   const activityRows = rows.map((row) => ({
     ...row,
     program_code: programCode,
@@ -563,10 +595,21 @@ export async function getActividadesPrograma({ programaId, periodoId, employeeId
 
 async function ensureCanEditPprActivity({ activityId, employeeId }) {
   await ensurePprActivityGroupInfrastructure()
-  const rows = await executeProcedure('SP_APP_PPR_ACTIVITY_SCOPE_INFO', [
-    { name: 'activity_id', type: sql.Int, value: Number(activityId) },
-  ])
-  const row = rows[0]
+  const pool = await getSqlPool('general')
+  const result = await pool.request()
+    .input('activity_id', sql.Int, Number(activityId))
+    .query(`
+      SELECT
+        p.code AS program_code,
+        a.name AS activity_name,
+        a.activity_group_code
+      FROM dbo.ppr_activities a
+      INNER JOIN dbo.ppr_programs p
+        ON p.id = a.program_id
+      WHERE a.id = @activity_id
+        AND ISNULL(a.is_active, 1) = 1;
+    `)
+  const row = result.recordset[0]
   if (!row) {
     const error = new Error('La actividad PPR no existe o no esta activa.')
     error.code = 'PPR_ACTIVITY_NOT_FOUND'
