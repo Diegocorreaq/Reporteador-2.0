@@ -690,7 +690,7 @@ pprRouter.get('/ppr/programa-preliminar', requireAuth, async (request, response)
     return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere programId.' })
   }
   try {
-    const preliminar = await getProgramaPreliminar(programId, requesterEmployeeId)
+    const preliminar = await getProgramaPreliminar(programId, requesterEmployeeId, { refreshIfMissing: false })
     response.json({ preliminar })
   } catch (error) {
     const status = error?.code === 'PPR_PRELIMINARY_SOURCE_NOT_FOUND'

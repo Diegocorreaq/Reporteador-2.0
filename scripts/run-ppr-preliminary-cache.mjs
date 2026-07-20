@@ -5,7 +5,6 @@ import {
   refreshProgramaPreliminar,
 } from '../server/services/ppr-data.service.js'
 
-const DEFAULT_PROGRAM_CODES = ['18']
 const DEFAULT_ADMIN_ID = Number(process.env.PPR_PRELIMINARY_ADMIN_ID ?? 5713)
 
 function normalizeProgramCode(value) {
@@ -13,11 +12,18 @@ function normalizeProgramCode(value) {
   return normalized || '0'
 }
 
+function getAllConfiguredProgramCodes() {
+  return [...new Set(getPprImportSources()
+    .flatMap((source) => source.programCodes ?? [])
+    .map(normalizeProgramCode))]
+}
+
 function parseArgs(argv) {
   const options = {
     adminId: DEFAULT_ADMIN_ID,
     force: false,
-    programCodes: DEFAULT_PROGRAM_CODES,
+    programCodes: getAllConfiguredProgramCodes(),
+    stopOnError: false,
   }
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -26,6 +32,10 @@ function parseArgs(argv) {
       options.help = true
     } else if (arg === '--force') {
       options.force = true
+    } else if (arg === '--stop-on-error') {
+      options.stopOnError = true
+    } else if (arg === '--all') {
+      options.programCodes = getAllConfiguredProgramCodes()
     } else if (arg === '--program' || arg === '--programs') {
       options.programCodes = splitProgramCodes(argv[index + 1])
       index += 1
@@ -65,9 +75,12 @@ function printHelp() {
     'Precarga preliminar PPR en tablas SQL.',
     '',
     'Uso:',
-    '  node scripts/run-ppr-preliminary-cache.mjs',
+    '  node scripts/run-ppr-preliminary-cache.mjs --all',
     '  node scripts/run-ppr-preliminary-cache.mjs --program=18',
     '  node scripts/run-ppr-preliminary-cache.mjs --programs=18,129 --force',
+    '  node scripts/run-ppr-preliminary-cache.mjs --all --stop-on-error',
+    '',
+    'Sin argumentos precarga todos los programas PPR con fuente automatica.',
     '',
     'Variables:',
     '  PPR_PRELIMINARY_ADMIN_ID=5713',
@@ -145,12 +158,22 @@ async function main() {
     const results = []
 
     for (const program of programs) {
-      results.push(await runProgram(program, options))
+      try {
+        results.push(await runProgram(program, options))
+      } catch (error) {
+        console.error(`[PPR ${program.code}] ERROR ${error.message}`)
+        results.push({ status: 'failed', program, error, durationMs: 0 })
+        if (options.stopOnError) throw error
+      }
     }
 
     const completed = results.filter((item) => item.status === 'completed').length
     const skipped = results.filter((item) => item.status === 'skipped').length
-    console.log(`Precarga preliminar PPR fin=${new Date().toISOString()} completados=${completed} omitidos=${skipped}`)
+    const failed = results.filter((item) => item.status === 'failed').length
+    console.log(`Precarga preliminar PPR fin=${new Date().toISOString()} completados=${completed} omitidos=${skipped} fallidos=${failed}`)
+    if (failed > 0) {
+      process.exitCode = 1
+    }
   } finally {
     await closeSqlPool('general')
   }

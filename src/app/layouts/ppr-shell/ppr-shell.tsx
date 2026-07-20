@@ -24,14 +24,8 @@ import {
   validatePprUser,
 } from '@/modules/ppr/services/ppr.service'
 import { PprContext, type PprUser } from '@/modules/ppr/context/ppr-context'
-import { appConfig } from '@/config/app-config'
 import { cn } from '@/lib/utils'
 import { PprSidebar } from './ppr-sidebar'
-
-const apiBaseUrl = appConfig.apiBaseUrl.replace(/\/$/, '')
-function buildCurrentPprProgramDocumentDownloadUrl(programCode: string, documentType: string, employeeId: number) {
-  return `${apiBaseUrl}/ppr/programas/${encodeURIComponent(programCode)}/documentos/${encodeURIComponent(documentType)}/download?employeeId=${encodeURIComponent(String(employeeId))}`
-}
 
 // ---------------------------------------------------------------------------
 // Validation overlay — Polished login experience
@@ -185,6 +179,78 @@ interface PprHisGuideMenuItem {
   versionLabel: string
   href: string
 }
+
+interface PprCriteriaProgram {
+  code: string
+  name: string
+}
+
+interface PprCriteriaMenuItem extends PprCriteriaProgram {
+  fileName: string
+  href: string
+}
+
+interface PprCriteriaMenuGroup {
+  year: number
+  rangeLabel: string
+  documents: PprCriteriaMenuItem[]
+}
+
+const PPR_CRITERIA_PROGRAMS: PprCriteriaProgram[] = [
+  { code: '0002', name: 'SALUD MATERNO NEONATAL' },
+  { code: '0016', name: 'TB-VIH-SIDA' },
+  { code: '0017', name: 'ENFERMEDADES METAXENICAS Y ZOONOSIS' },
+  { code: '0018', name: 'ENFERMEDADES NO TRANSMISIBLES' },
+  { code: '0024', name: 'PREVENCION Y CONTROL DEL CANCER' },
+  { code: '0104', name: 'REDUCCION DE LA MORTALIDAD POR EMERGENCIAS Y URGENCIAS MEDICAS' },
+  { code: '0129', name: 'PREVENCION Y MANEJO DE CONDICIONES SECUNDARIAS DE SALUD EN PERSONAS CON DISCAPACIDAD' },
+  { code: '0131', name: 'CONTROL Y PREVENCION EN SALUD MENTAL' },
+  { code: '1001', name: 'PRODUCTOS ESPECIFICOS PARA DESARROLLO INFANTIL TEMPRANO' },
+]
+
+function buildPprCriteriaDocuments(year: number, fileNamesByProgram: Record<string, string>): PprCriteriaMenuItem[] {
+  return PPR_CRITERIA_PROGRAMS.map((program) => {
+    const fileName = fileNamesByProgram[program.code]
+    return {
+      ...program,
+      fileName,
+      href: `/ppr-documents/criterios/${year}/${fileName}`,
+    }
+  })
+}
+
+const PPR_CRITERIA_GROUPS: PprCriteriaMenuGroup[] = [
+  {
+    year: 2026,
+    rangeLabel: '2026-2028',
+    documents: buildPprCriteriaDocuments(2026, {
+      '0002': 'do-y-cp_2026_pp-0002_3.xlsx',
+      '0016': 'do-y-cp_2026_pp-0016_3.xlsx',
+      '0017': 'do-y-cp_2026_pp-0017_3.xlsx',
+      '0018': 'do-y-cp_2026_pp-0018_3.xlsx',
+      '0024': 'do-y-cp_2026_pp-0024_3b.xlsx',
+      '0104': 'do-y-cp_2026_pp-0104_3.xlsx',
+      '0129': 'do-y-cp_2026_pp-0129_3.xlsx',
+      '0131': 'do-y-cp_2026_pp-0131_3.xlsx',
+      '1001': 'do-y-cp_2026_pp-1001_3.xlsx',
+    }),
+  },
+  {
+    year: 2027,
+    rangeLabel: '2027-2029',
+    documents: buildPprCriteriaDocuments(2027, {
+      '0002': 'do-y-cp_2027_pp-0002-2.xlsx',
+      '0016': 'do-y-cp_2027_pp-0016-2.xlsx',
+      '0017': 'do-y-cp_2027_pp-0017-2.xlsx',
+      '0018': 'do-y-cp_2027_pp-0018-2.xlsx',
+      '0024': 'do-y-cp_2027_pp-0024-2.xlsx',
+      '0104': 'do-y-cp_2027_pp-0104-2.xlsx',
+      '0129': 'do-y-cp_2027_pp-0129-2.xlsx',
+      '0131': 'do-y-cp_2027_pp-0131-2.xlsx',
+      '1001': 'do-y-cp_2027_pp-1001-2.xlsx',
+    }),
+  },
+]
 
 function PprHisGuidesMenu({ pprUser }: { pprUser: PprUser }) {
   const [guides, setGuides] = useState<PprHisGuideMenuItem[]>([])
@@ -352,6 +418,99 @@ function PprHisGuidesMenu({ pprUser }: { pprUser: PprUser }) {
   )
 }
 
+function PprCriteriaDocumentsMenu({ group }: { group: PprCriteriaMenuGroup }) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+  const isNextYear = group.year === 2027
+
+  useEffect(() => {
+    if (!open) return undefined
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [open])
+
+  return (
+    <div ref={menuRef} className="relative shrink-0">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={`Descargar definiciones operacionales y criterios de programacion ${group.year}.`}
+        onClick={() => setOpen((value) => !value)}
+        className={cn(
+          'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border bg-white px-3 text-[11px] font-semibold transition',
+          isNextYear
+            ? 'border-emerald-200 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800'
+            : 'border-cyan-200 text-cyan-700 hover:border-cyan-300 hover:bg-cyan-50 hover:text-cyan-800',
+        )}
+      >
+        <FileSpreadsheet className="h-3.5 w-3.5" />
+        <span>Criterios {group.year}</span>
+        <span
+          className={cn(
+            'rounded px-1.5 py-0.5 text-[10px] font-bold',
+            isNextYear ? 'bg-emerald-100 text-emerald-700' : 'bg-cyan-100 text-cyan-700',
+          )}
+        >
+          {group.documents.length}
+        </span>
+        <ChevronDown className={cn('h-3.5 w-3.5 transition', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+0.5rem)] z-40 max-h-[70vh] w-[min(30rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-[0_18px_45px_rgba(15,23,42,0.16)]"
+        >
+          <div className="border-b border-slate-100 bg-slate-50 px-3 py-2">
+            <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+              Programacion multianual {group.rangeLabel}
+            </p>
+          </div>
+          <div className="py-1">
+            {group.documents.map((document) => (
+              <a
+                key={`${group.year}-${document.code}`}
+                role="menuitem"
+                href={document.href}
+                download={document.fileName}
+                onClick={() => setOpen(false)}
+                className={cn(
+                  'flex items-start gap-2 px-3 py-2 text-left transition',
+                  isNextYear ? 'hover:bg-emerald-50' : 'hover:bg-cyan-50',
+                )}
+              >
+                <FileSpreadsheet
+                  className={cn(
+                    'mt-0.5 h-3.5 w-3.5 shrink-0',
+                    isNextYear ? 'text-emerald-700' : 'text-cyan-700',
+                  )}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block whitespace-normal text-[11px] font-semibold leading-snug text-slate-800">
+                    PP {document.code} - {document.name}
+                  </span>
+                  <span className="mt-0.5 block text-[10px] text-slate-400">
+                    Excel {group.year}
+                  </span>
+                </span>
+                <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // PPR Shell
 // ---------------------------------------------------------------------------
@@ -448,15 +607,9 @@ export function PprShell() {
 
               <div className="flex gap-2 overflow-x-auto pb-0.5 lg:justify-end lg:overflow-visible">
                 <PprHisGuidesMenu pprUser={pprUser} />
-                <a
-                  href={buildCurrentPprProgramDocumentDownloadUrl('129', 'criterios_programacion', pprUser.employeeId)}
-                  download="Criterios_programacion_2027_PP_0129.xlsx"
-                  title="Descargar criterios de programación 2027 del programa 129."
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-[11px] font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800"
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5" />
-                  Criterios 2027
-                </a>
+                {PPR_CRITERIA_GROUPS.map((group) => (
+                  <PprCriteriaDocumentsMenu key={group.year} group={group} />
+                ))}
                 <button
                   type="button"
                   onClick={handleLogout}
