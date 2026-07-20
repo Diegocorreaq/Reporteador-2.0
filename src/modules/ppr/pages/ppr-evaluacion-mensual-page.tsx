@@ -255,6 +255,7 @@ export function PprEvaluacionMensualPage() {
   }, [programId, year, month, setSearchParams])
 
   const selectedProgram = programas.find((program) => program.id === programId) ?? null
+  const returnsToProgramDashboard = (pprUser.role === 'admin' || pprUser.role === 'consulta') && selectedProgram
   const filteredActivities = useMemo(() => {
     const normalized = query.trim().toLowerCase()
     if (!data) return []
@@ -271,7 +272,7 @@ export function PprEvaluacionMensualPage() {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3">
           <button
-            onClick={() => navigate(pprUser.role === 'admin' && selectedProgram ? `/ppr/programas/${selectedProgram.id}` : '/ppr')}
+            onClick={() => navigate(returnsToProgramDashboard ? `/ppr/programas/${selectedProgram.id}` : '/ppr')}
             className="mt-0.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-slate-50"
           >
             <ArrowLeft className="h-3.5 w-3.5" />

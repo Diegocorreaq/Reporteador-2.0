@@ -3,7 +3,7 @@ import { createContext, useContext } from 'react'
 export interface PprUser {
   employeeId: number
   employeeName: string
-  role: 'coordinador' | 'admin'
+  role: 'coordinador' | 'admin' | 'consulta'
 }
 
 interface PprContextValue {

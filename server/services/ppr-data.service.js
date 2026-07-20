@@ -12,6 +12,7 @@ import {
   getPprProgramActivityGroups,
   resolvePprActivityGroup,
 } from './ppr-activity-scope.service.js'
+import { isPprReadOnlyEmployee } from './ppr-access.service.js'
 import { logger } from '../utils/logger.js'
 
 const MONTHS_ES = [
@@ -23,6 +24,7 @@ const WEEKDAYS_ES = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viern
 const PPR_PRELIMINARY_TIME_ZONE = 'America/Bogota'
 const PPR_PRELIMINARY_CUTOFF_HOUR = 8
 const PPR_PRELIMINARY_MANUAL_ONLY_PROGRAM_CODES = new Set(['16', '17'])
+const PPR_PRELIMINARY_QUERY_TIMEOUT_MS = Number(process.env.PPR_PRELIMINARY_QUERY_TIMEOUT_MS ?? 900000)
 
 let pprActivityGroupInfrastructurePromise = null
 let pprPreliminaryInfrastructurePromise = null
@@ -247,6 +249,192 @@ function findPreliminarySourceForProgramCode(programCode) {
   }) ?? null
 }
 
+function isPpr0018Source(source) {
+  return String(source?.procedureName ?? '').toLowerCase() === 'dbo.usp_ppr_0018'
+}
+
+async function executePpr0018Inline(startDate, endDate, timeoutMs = PPR_PRELIMINARY_QUERY_TIMEOUT_MS) {
+  const pool = await getSqlPool('general')
+  const definitionResult = await pool.request().query(`
+    SELECT OBJECT_DEFINITION(OBJECT_ID(N'dbo.usp_PPR_0018')) AS definition;
+  `)
+  const definition = String(definitionResult.recordset[0]?.definition ?? '')
+  const bodyStart = definition.indexOf("IF OBJECT_ID('tempdb..#CurrentRows')")
+  const bodyEnd = definition.lastIndexOf('\nEND')
+
+  if (bodyStart < 0 || bodyEnd < 0 || bodyEnd <= bodyStart) {
+    return executeProcedure('dbo.usp_PPR_0018', [
+      { name: 'FechaInicio', type: sql.Date, value: startDate },
+      { name: 'FechaFin', type: sql.Date, value: endDate },
+    ], { timeoutMs })
+  }
+
+  const request = pool.request()
+  request.timeout = timeoutMs
+  request.input('FechaInicioParam', sql.Date, startDate)
+  request.input('FechaFinParam', sql.Date, endDate)
+  const result = await request.query(`
+    DECLARE @FechaInicio DATE = @FechaInicioParam;
+    DECLARE @FechaFin DATE = @FechaFinParam;
+    ${definition.slice(bodyStart, bodyEnd)}
+  `)
+  return result.recordset ?? []
+}
+
+async function executePprSourceRows(source, startDate, endDate, timeoutMs = PPR_PRELIMINARY_QUERY_TIMEOUT_MS) {
+  if (isPpr0018Source(source)) {
+    return executePpr0018Inline(startDate, endDate, timeoutMs)
+  }
+
+  return executeProcedure(source.procedureName, [
+    { name: 'FechaInicio', type: sql.Date, value: startDate },
+    { name: 'FechaFin', type: sql.Date, value: endDate },
+  ], { timeoutMs })
+}
+
+function isMissingStoredProcedureError(error, procedureName) {
+  return String(error?.message ?? '').includes(`Could not find stored procedure '${procedureName}'`)
+}
+
+async function createPprPreliminaryRun({ program, source, cutoff, rowsRead, matchedRows, unmatchedSourceRows, manualActivities }) {
+  const params = [
+    { name: 'program_id', type: sql.Int, value: Number(program.id) },
+    { name: 'source_id', type: sql.NVarChar(80), value: source.id },
+    { name: 'source_label', type: sql.NVarChar(200), value: source.label },
+    { name: 'source_procedure', type: sql.NVarChar(200), value: source.procedureName },
+    { name: 'range_start', type: sql.Date, value: cutoff.rangeStart },
+    { name: 'range_end', type: sql.Date, value: cutoff.rangeEnd },
+    { name: 'cutoff_at', type: sql.NVarChar(40), value: cutoff.cutoffAt },
+    { name: 'cutoff_label', type: sql.NVarChar(80), value: cutoff.cutoffLabel },
+    { name: 'rows_read', type: sql.Int, value: rowsRead },
+    { name: 'rows_matched', type: sql.Int, value: matchedRows.length },
+    { name: 'rows_unmatched', type: sql.Int, value: unmatchedSourceRows.length },
+    { name: 'unmatched_json', type: sql.NVarChar(sql.MAX), value: JSON.stringify(unmatchedSourceRows) },
+    { name: 'manual_json', type: sql.NVarChar(sql.MAX), value: JSON.stringify(manualActivities) },
+  ]
+
+  try {
+    return await executeProcedure('SP_APP_PPR_PRELIMINARY_RUN_CREATE', params, { timeoutMs: 120000 })
+  } catch (error) {
+    if (!isMissingStoredProcedureError(error, 'SP_APP_PPR_PRELIMINARY_RUN_CREATE')) {
+      throw error
+    }
+  }
+
+  const pool = await getSqlPool('general')
+  const result = await pool.request()
+    .input('program_id', sql.Int, Number(program.id))
+    .input('source_id', sql.NVarChar(80), source.id)
+    .input('source_label', sql.NVarChar(200), source.label)
+    .input('source_procedure', sql.NVarChar(200), source.procedureName)
+    .input('range_start', sql.Date, cutoff.rangeStart)
+    .input('range_end', sql.Date, cutoff.rangeEnd)
+    .input('cutoff_at', sql.NVarChar(40), cutoff.cutoffAt)
+    .input('cutoff_label', sql.NVarChar(80), cutoff.cutoffLabel)
+    .input('rows_read', sql.Int, rowsRead)
+    .input('rows_matched', sql.Int, matchedRows.length)
+    .input('rows_unmatched', sql.Int, unmatchedSourceRows.length)
+    .input('unmatched_json', sql.NVarChar(sql.MAX), JSON.stringify(unmatchedSourceRows))
+    .input('manual_json', sql.NVarChar(sql.MAX), JSON.stringify(manualActivities))
+    .query(`
+      DECLARE @run TABLE (id INT);
+
+      UPDATE dbo.ppr_preliminary_runs
+      SET status = 'replaced'
+      WHERE program_id = @program_id
+        AND source_id = @source_id
+        AND cutoff_at = CONVERT(DATETIMEOFFSET, @cutoff_at)
+        AND status = 'completed';
+
+      INSERT INTO dbo.ppr_preliminary_runs (
+        program_id,
+        source_id,
+        source_label,
+        source_procedure,
+        range_start,
+        range_end,
+        cutoff_at,
+        cutoff_label,
+        started_at,
+        completed_at,
+        status,
+        rows_read,
+        rows_matched,
+        rows_unmatched,
+        unmatched_json,
+        manual_json
+      )
+      OUTPUT INSERTED.id INTO @run
+      VALUES (
+        @program_id,
+        @source_id,
+        @source_label,
+        @source_procedure,
+        @range_start,
+        @range_end,
+        CONVERT(DATETIMEOFFSET, @cutoff_at),
+        @cutoff_label,
+        SYSDATETIME(),
+        SYSDATETIME(),
+        'completed',
+        @rows_read,
+        @rows_matched,
+        @rows_unmatched,
+        @unmatched_json,
+        @manual_json
+      );
+
+      SELECT TOP 1 id
+      FROM @run;
+    `)
+  return result.recordset
+}
+
+async function insertPprPreliminaryValue({ runId, programId, row }) {
+  const params = [
+    { name: 'run_id', type: sql.Int, value: runId },
+    { name: 'program_id', type: sql.Int, value: Number(programId) },
+    { name: 'activity_id', type: sql.Int, value: Number(row.activityId) },
+    { name: 'source_key', type: sql.NVarChar(80), value: row.sourceKey == null ? null : String(row.sourceKey) },
+    { name: 'source_value', type: sql.Decimal(18, 2), value: Number(row.sourceValue ?? 0) },
+  ]
+
+  try {
+    await executeProcedure('SP_APP_PPR_PRELIMINARY_VALUE_INSERT', params, { timeoutMs: 120000 })
+    return
+  } catch (error) {
+    if (!isMissingStoredProcedureError(error, 'SP_APP_PPR_PRELIMINARY_VALUE_INSERT')) {
+      throw error
+    }
+  }
+
+  const pool = await getSqlPool('general')
+  await pool.request()
+    .input('run_id', sql.Int, runId)
+    .input('program_id', sql.Int, Number(programId))
+    .input('activity_id', sql.Int, Number(row.activityId))
+    .input('source_key', sql.NVarChar(80), row.sourceKey == null ? null : String(row.sourceKey))
+    .input('source_value', sql.Decimal(18, 2), Number(row.sourceValue ?? 0))
+    .query(`
+      INSERT INTO dbo.ppr_preliminary_values (
+        run_id,
+        program_id,
+        activity_id,
+        source_key,
+        source_value,
+        loaded_at
+      )
+      VALUES (
+        @run_id,
+        @program_id,
+        @activity_id,
+        @source_key,
+        @source_value,
+        SYSDATETIME()
+      );
+    `)
+}
+
 function matchSourceRowsToActivities(rawRows, activities) {
   const sourceTotalsByKey = new Map()
   const sourceTotalsByName = new Map()
@@ -354,6 +542,21 @@ export async function getPeriodoActivo() {
 
 export async function getProgramasUsuario(employeeId) {
   await ensurePprActivityGroupInfrastructure()
+  if (isPprReadOnlyEmployee(employeeId)) {
+    const rows = await executeProcedure('SP_PPR_ADMIN_PROGRAMAS', [])
+    return await Promise.all(rows.map(async (r) => {
+      const metrics = await getGlobalProgramMetrics(Number(r.id))
+      return {
+        id: Number(r.id),
+        code: String(r.code ?? ''),
+        name: String(r.name ?? ''),
+        ...metrics,
+        activityGroups: getPprProgramActivityGroups(r.code),
+        activityScope: [],
+      }
+    }))
+  }
+
   const rows = await executeProcedure('SP_PPR_PROGRAMAS_USUARIO', [
     { name: 'employee_id', type: sql.Int, value: Number(employeeId) },
   ])
@@ -478,10 +681,7 @@ async function getActivityGroupByActivityId(programId) {
 }
 
 async function getScopedProgramMetrics({ employeeId, programId, programCode, mesesCompletos }) {
-  await ensurePprActivityGroupInfrastructure()
-  const metricRows = await executeProcedure('SP_APP_PPR_SCOPED_PROGRAM_METRICS', [
-    { name: 'program_id', type: sql.Int, value: Number(programId) },
-  ])
+  const metricRows = await getProgramMetricRows(programId)
 
   const scopedRows = filterPprActivitiesForEmployee(metricRows, {
     programCodeKey: 'program_code',
@@ -506,6 +706,80 @@ async function getScopedProgramMetrics({ employeeId, programId, programCode, mes
     sumMetaAnual: scopedRows.reduce((sum, row) => sum + Number(row.annual_goal ?? 0), 0),
     mesesCompletos: meses,
   }
+}
+
+async function getProgramMetricRows(programId) {
+  await ensurePprActivityGroupInfrastructure()
+  const pool = await getSqlPool('general')
+  const result = await pool.request()
+    .input('program_id', sql.Int, Number(programId))
+    .query(`
+      DECLARE @active_year INT = YEAR(GETDATE());
+      DECLARE @active_month INT = MONTH(GETDATE());
+
+      SELECT TOP 1
+        @active_year = [year],
+        @active_month = [month]
+      FROM dbo.ppr_periods
+      WHERE is_open = 1
+      ORDER BY [year] DESC, [month] DESC;
+
+      SELECT
+        @active_year AS active_year,
+        @active_month AS active_month,
+        p.code AS program_code,
+        a.id AS activity_id,
+        a.name AS activity_name,
+        a.activity_group_code,
+        ISNULL(a.annual_goal, 0) AS annual_goal,
+        SUM(CASE
+            WHEN per.year = @active_year
+              AND per.month < @active_month
+            THEN ISNULL(mv.value, 0)
+            ELSE 0
+        END) AS logrado,
+        MAX(CASE
+            WHEN per.year = @active_year
+              AND per.month < @active_month
+              AND mv.value IS NOT NULL
+            THEN 1
+            ELSE 0
+        END) AS tiene_dato
+      FROM dbo.ppr_programs p
+      INNER JOIN dbo.ppr_activities a
+        ON a.program_id = p.id
+        AND ISNULL(a.is_active, 1) = 1
+      LEFT JOIN dbo.ppr_monthly_values mv
+        ON mv.activity_id = a.id
+      LEFT JOIN dbo.ppr_periods per
+        ON per.id = mv.period_id
+      WHERE p.id = @program_id
+      GROUP BY p.code, a.id, a.name, a.activity_group_code, a.annual_goal;
+    `)
+  return result.recordset
+}
+
+function buildProgramMetricsFromRows(metricRows, mesesCompletos = 0) {
+  const meses = Number(metricRows[0]?.active_month ?? 1) > 1
+    ? Number(metricRows[0].active_month) - 1
+    : Number(mesesCompletos ?? 0)
+
+  return {
+    totalActividades: metricRows.length,
+    conDatos: metricRows.reduce((sum, row) => sum + Number(row.tiene_dato ?? 0), 0),
+    sumLogrado: metricRows.reduce((sum, row) => sum + Number(row.logrado ?? 0), 0),
+    sumMetaEsperada: metricRows.reduce(
+      (sum, row) => sum + (Number(row.annual_goal ?? 0) * meses / 12),
+      0,
+    ),
+    sumMetaAnual: metricRows.reduce((sum, row) => sum + Number(row.annual_goal ?? 0), 0),
+    mesesCompletos: meses,
+  }
+}
+
+async function getGlobalProgramMetrics(programId, mesesCompletos = 0) {
+  const metricRows = await getProgramMetricRows(programId)
+  return buildProgramMetricsFromRows(metricRows, mesesCompletos)
 }
 
 export async function getActividadesPrograma({ programaId, periodoId, employeeId }) {
@@ -565,12 +839,13 @@ export async function getActividadesPrograma({ programaId, periodoId, employeeId
     activity_group_code: row.activity_group_code ?? groupByActivityId.get(Number(row.id)) ?? null,
   }))
   return activityRows.map((r) => {
-    const canEdit = canPprEmployeeEditActivity({
-      programCode,
-      activityName: r.name,
-      activityGroupCode: r.activity_group_code,
-      employeeId,
-    })
+    const canEdit = !isPprReadOnlyEmployee(employeeId)
+      && canPprEmployeeEditActivity({
+        programCode,
+        activityName: r.name,
+        activityGroupCode: r.activity_group_code,
+        employeeId,
+      })
     return {
       id: Number(r.id),
       code: String(r.code ?? ''),
@@ -594,6 +869,12 @@ export async function getActividadesPrograma({ programaId, periodoId, employeeId
 }
 
 async function ensureCanEditPprActivity({ activityId, employeeId }) {
+  if (isPprReadOnlyEmployee(employeeId)) {
+    const error = new Error('El perfil de consulta PPR no puede registrar ni validar actividades.')
+    error.code = 'PPR_ACTIVITY_FORBIDDEN'
+    throw error
+  }
+
   await ensurePprActivityGroupInfrastructure()
   const pool = await getSqlPool('general')
   const result = await pool.request()
@@ -770,9 +1051,26 @@ async function ensureProgramPeriodNotSigned(programId, periodId) {
 async function ensureSourceMatchesProgram(source, programId) {
   if (!Array.isArray(source.programCodes) || source.programCodes.length === 0) return
 
-  const rows = await executeProcedure('SP_APP_PPR_PROGRAM_CODE', [
-    { name: 'program_id', type: sql.Int, value: Number(programId) },
-  ])
+  let rows
+  try {
+    rows = await executeProcedure('SP_APP_PPR_PROGRAM_CODE', [
+      { name: 'program_id', type: sql.Int, value: Number(programId) },
+    ])
+  } catch (error) {
+    if (!String(error?.message ?? '').includes("Could not find stored procedure 'SP_APP_PPR_PROGRAM_CODE'")) {
+      throw error
+    }
+
+    const pool = await getSqlPool('general')
+    const result = await pool.request()
+      .input('program_id', sql.Int, Number(programId))
+      .query(`
+        SELECT TOP 1 code
+        FROM dbo.ppr_programs
+        WHERE id = @program_id;
+      `)
+    rows = result.recordset
+  }
 
   const programCode = normalizeProgramCode(rows[0]?.code)
   const allowedCodes = source.programCodes.map(normalizeProgramCode)
@@ -842,10 +1140,7 @@ export async function runPprImport({ programId, sourceId, adminId }) {
   await ensureProgramPeriodNotSigned(programId, periodo.id)
 
   const { startDate, endDate } = monthDateRange(periodo.year, periodo.month)
-  const rawRows = await executeProcedure(source.procedureName, [
-    { name: 'FechaInicio', type: sql.Date, value: startDate },
-    { name: 'FechaFin', type: sql.Date, value: endDate },
-  ], { timeoutMs: 120000 })
+  const rawRows = await executePprSourceRows(source, startDate, endDate, 120000)
 
   const activities = await getProgramActivitiesForImport(programId)
   const { matchedRows, unmatchedSourceRows, manualActivities } = matchSourceRowsToActivities(rawRows, activities)
@@ -881,6 +1176,7 @@ export async function runPprImport({ programId, sourceId, adminId }) {
 async function getAccessiblePprProgram(programId, employeeId) {
   await ensurePprActivityGroupInfrastructure()
   let isAdmin = Number(employeeId) === 5713
+  const hasGlobalReadAccess = isPprReadOnlyEmployee(employeeId)
   try {
     isAdmin = isAdmin || await verificarAdmin(employeeId)
   } catch (error) {
@@ -895,7 +1191,7 @@ async function getAccessiblePprProgram(programId, employeeId) {
   const result = await pool.request()
     .input('program_id', sql.Int, Number(programId))
     .input('employee_id', sql.Int, Number(employeeId))
-    .input('is_admin', sql.Bit, isAdmin ? 1 : 0)
+    .input('is_admin', sql.Bit, (isAdmin || hasGlobalReadAccess) ? 1 : 0)
     .query(`
       SELECT TOP 1
         p.id,
@@ -930,6 +1226,10 @@ async function getAccessiblePprProgram(programId, employeeId) {
 }
 
 function scopedImportActivitiesForEmployee(activities, program, employeeId) {
+  if (isPprReadOnlyEmployee(employeeId)) {
+    return activities
+  }
+
   return filterPprActivitiesForEmployee(activities.map((activity) => ({
     ...activity,
     program_code: activity.programCode || program.code,
@@ -1086,10 +1386,12 @@ async function refreshPprPreliminaryCache({ program, source, cutoff, employeeId 
   await ensurePprPreliminaryInfrastructure()
   await ensureSourceMatchesProgram(source, program.id)
 
-  const rawRows = await executeProcedure(source.procedureName, [
-    { name: 'FechaInicio', type: sql.Date, value: cutoff.rangeStart },
-    { name: 'FechaFin', type: sql.Date, value: cutoff.rangeEnd },
-  ], { timeoutMs: 120000 })
+  const rawRows = await executePprSourceRows(
+    source,
+    cutoff.rangeStart,
+    cutoff.rangeEnd,
+    PPR_PRELIMINARY_QUERY_TIMEOUT_MS,
+  )
 
   const activities = scopedImportActivitiesForEmployee(
     await getProgramActivitiesForImport(program.id),
@@ -1097,31 +1399,19 @@ async function refreshPprPreliminaryCache({ program, source, cutoff, employeeId 
     employeeId,
   )
   const { matchedRows, unmatchedSourceRows, manualActivities } = matchSourceRowsToActivities(rawRows, activities)
-  const runRows = await executeProcedure('SP_APP_PPR_PRELIMINARY_RUN_CREATE', [
-    { name: 'program_id', type: sql.Int, value: Number(program.id) },
-    { name: 'source_id', type: sql.NVarChar(80), value: source.id },
-    { name: 'source_label', type: sql.NVarChar(200), value: source.label },
-    { name: 'source_procedure', type: sql.NVarChar(200), value: source.procedureName },
-    { name: 'range_start', type: sql.Date, value: cutoff.rangeStart },
-    { name: 'range_end', type: sql.Date, value: cutoff.rangeEnd },
-    { name: 'cutoff_at', type: sql.NVarChar(40), value: cutoff.cutoffAt },
-    { name: 'cutoff_label', type: sql.NVarChar(80), value: cutoff.cutoffLabel },
-    { name: 'rows_read', type: sql.Int, value: rawRows.length },
-    { name: 'rows_matched', type: sql.Int, value: matchedRows.length },
-    { name: 'rows_unmatched', type: sql.Int, value: unmatchedSourceRows.length },
-    { name: 'unmatched_json', type: sql.NVarChar(sql.MAX), value: JSON.stringify(unmatchedSourceRows) },
-    { name: 'manual_json', type: sql.NVarChar(sql.MAX), value: JSON.stringify(manualActivities) },
-  ], { timeoutMs: 120000 })
+  const runRows = await createPprPreliminaryRun({
+    program,
+    source,
+    cutoff,
+    rowsRead: rawRows.length,
+    matchedRows,
+    unmatchedSourceRows,
+    manualActivities,
+  })
 
   const runId = Number(runRows[0]?.id ?? 0)
   for (const row of matchedRows) {
-    await executeProcedure('SP_APP_PPR_PRELIMINARY_VALUE_INSERT', [
-      { name: 'run_id', type: sql.Int, value: runId },
-      { name: 'program_id', type: sql.Int, value: Number(program.id) },
-      { name: 'activity_id', type: sql.Int, value: Number(row.activityId) },
-      { name: 'source_key', type: sql.NVarChar(80), value: row.sourceKey == null ? null : String(row.sourceKey) },
-      { name: 'source_value', type: sql.Decimal(18, 2), value: Number(row.sourceValue ?? 0) },
-    ], { timeoutMs: 120000 })
+    await insertPprPreliminaryValue({ runId, programId: program.id, row })
   }
 
   return readPprPreliminaryCache({ program, source, cutoff, employeeId })
@@ -1510,7 +1800,92 @@ export async function buscarEmpleados(query) {
 // Returns: program_id, program_code, program_name,
 //          activity_id, activity_code, activity_name, unit, annual_goal, sort_order,
 //          period_id, month, value, notes
+async function getProgramaDetalleGlobal(programId, year, employeeId) {
+  await ensurePprActivityGroupInfrastructure()
+  const program = await getAccessiblePprProgram(programId, employeeId)
+  const pool = await getSqlPool('general')
+  const result = await pool.request()
+    .input('program_id', sql.Int, Number(programId))
+    .input('year', sql.Int, Number(year))
+    .query(`
+      WITH months AS (
+        SELECT 1 AS month UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4
+        UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8
+        UNION ALL SELECT 9 UNION ALL SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12
+      )
+      SELECT
+        p.id AS program_id,
+        p.code AS program_code,
+        p.name AS program_name,
+        a.id AS activity_id,
+        a.code AS activity_code,
+        a.name AS activity_name,
+        a.unit,
+        a.annual_goal,
+        a.sort_order,
+        a.activity_group_code,
+        months.month,
+        per.id AS period_id,
+        mv.value,
+        mv.notes
+      FROM dbo.ppr_programs p
+      INNER JOIN dbo.ppr_activities a
+        ON a.program_id = p.id
+        AND ISNULL(a.is_active, 1) = 1
+      CROSS JOIN months
+      LEFT JOIN dbo.ppr_periods per
+        ON per.year = @year
+        AND per.month = months.month
+      LEFT JOIN dbo.ppr_monthly_values mv
+        ON mv.activity_id = a.id
+        AND mv.period_id = per.id
+      WHERE p.id = @program_id
+      ORDER BY a.sort_order, a.id, months.month;
+    `)
+
+  const groupByActivityId = await getActivityGroupByActivityId(programId)
+  const activityMap = new Map()
+  for (const row of result.recordset) {
+    const activityId = Number(row.activity_id)
+    const activityGroupCode = row.activity_group_code ?? groupByActivityId.get(activityId) ?? null
+    const activityGroup = resolvePprActivityGroup(row.program_code, row.activity_name, activityGroupCode)
+    if (!activityMap.has(activityId)) {
+      activityMap.set(activityId, {
+        id: activityId,
+        code: String(row.activity_code ?? ''),
+        sourceKey: extractActivitySourceKey(row.activity_name) ?? null,
+        name: String(row.activity_name ?? ''),
+        activityGroup,
+        unit: String(row.unit ?? ''),
+        annualGoal: row.annual_goal != null ? Number(row.annual_goal) : null,
+        sortOrder: Number(row.sort_order ?? 0),
+        months: [],
+      })
+    }
+
+    activityMap.get(activityId).months.push({
+      month: Number(row.month),
+      periodId: row.period_id != null ? Number(row.period_id) : null,
+      value: row.value != null ? Number(row.value) : null,
+      notes: row.notes ?? null,
+    })
+  }
+
+  return {
+    programId: program.id,
+    programCode: program.code,
+    programName: program.name,
+    activityGroups: getPprProgramActivityGroups(program.code),
+    activityScope: [],
+    activities: Array.from(activityMap.values()),
+  }
+}
+
 export async function getProgramaDetalle(programId, year, employeeId) {
+  if (isPprReadOnlyEmployee(employeeId)) {
+    return getProgramaDetalleGlobal(programId, year, employeeId)
+  }
+
   await ensurePprActivityGroupInfrastructure()
   const rows = await executeProcedure('SP_PPR_PROGRAMA_DETALLE', [
     { name: 'program_id', type: sql.Int, value: Number(programId) },

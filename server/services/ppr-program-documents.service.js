@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { getSqlPool, sql } from '../db/sql-server.js'
+import { isPprReadOnlyEmployee } from './ppr-access.service.js'
 
 export const PPR_PROGRAM_DOCUMENT_TYPES = new Set([
   'manual_his',
@@ -190,6 +191,10 @@ async function findProgramByCode(request, programCode) {
 }
 
 export async function canAccessPprProgramDocument({ employeeId, programCode }) {
+  if (isPprReadOnlyEmployee(employeeId)) {
+    return true
+  }
+
   await ensurePprProgramDocumentInfrastructure()
   const pool = await getSqlPool('general')
   const request = pool.request()

@@ -495,7 +495,7 @@ export function PprInicioPage() {
   }, [pprUser.employeeId])
 
   useEffect(() => {
-    if (pprUser.role === 'admin') return
+    if (pprUser.role === 'admin' || pprUser.role === 'consulta') return
     if (!programas.length) {
       setSelectedProgramId(null)
       return
@@ -578,6 +578,10 @@ export function PprInicioPage() {
   })
 
   const isAdmin = pprUser.role === 'admin'
+  const isReadOnly = pprUser.role === 'consulta'
+  const hasGlobalOverview = isAdmin || isReadOnly
+  const roleTone = isAdmin ? 'amber' : isReadOnly ? 'sky' : 'indigo'
+  const roleLabel = isAdmin ? 'Administrador PPR' : isReadOnly ? 'Consulta PPR' : 'Coordinador PPR'
   const selectedCoordinatorProgram = programasSorted.find((programa) => programa.id === selectedProgramId)
     ?? programasSorted[0]
     ?? null
@@ -593,7 +597,7 @@ export function PprInicioPage() {
             <PprAvatar
               name={pprUser.employeeName}
               size="lg"
-              tone={isAdmin ? 'amber' : 'green'}
+              tone={isAdmin ? 'amber' : isReadOnly ? 'navy' : 'green'}
             />
             <div>
               <p className="text-[11px] capitalize text-slate-400">{todayLabel}</p>
@@ -602,15 +606,15 @@ export function PprInicioPage() {
               </h1>
               <p className="text-xs text-slate-500">{pprUser.employeeName}</p>
               <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                <PprPill tone={isAdmin ? 'amber' : 'indigo'}>
-                  {isAdmin ? 'Administrador PPR' : 'Coordinador PPR'}
+                <PprPill tone={roleTone}>
+                  {roleLabel}
                 </PprPill>
                 {periodo && (
                   <PprPill tone="sky" icon={Calendar}>
                     Período: {periodo.label}
                   </PprPill>
                 )}
-                {periodo?.isOpen && (
+                {periodo?.isOpen && !isReadOnly && (
                   <PprPill tone="emerald">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                     Abierto para registro
@@ -653,7 +657,7 @@ export function PprInicioPage() {
             </div>
           </div>
         </>
-      ) : !isAdmin ? (
+      ) : !hasGlobalOverview ? (
         selectedCoordinatorProgram ? (
           <div className="space-y-5">
             <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-5">
@@ -768,7 +772,7 @@ export function PprInicioPage() {
           {/* ── KPIs ── */}
           <div className="ppr-stagger grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard
-              label="Programas asignados"
+              label={isReadOnly ? 'Programas visibles' : 'Programas asignados'}
               value={programas.length}
               sub={`${programasConAvance} con avance`}
               icon={Layers}
@@ -792,7 +796,7 @@ export function PprInicioPage() {
             <StatCard
               label="Período activo"
               value={periodo?.label ?? '—'}
-              sub={periodo?.isOpen ? 'Abierto para registro' : 'Cerrado'}
+              sub={isReadOnly ? 'Consulta de avance' : periodo?.isOpen ? 'Abierto para registro' : 'Cerrado'}
               icon={Calendar}
               accent={periodo?.isOpen ? 'emerald' : 'slate'}
             />
@@ -846,7 +850,7 @@ export function PprInicioPage() {
             <div className="lg:col-span-2">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                  Mis programas
+                  {isReadOnly ? 'Programas' : 'Mis programas'}
                 </h2>
                 <Link
                   to="/ppr/programas"

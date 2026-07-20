@@ -9,6 +9,7 @@ import { LoadingState } from '@/components/feedback/loading-state'
 import { getModulesByWorkspace } from '@/config/module-registry'
 import { getWorkspaceLegacyPowerBiModules } from '@/config/legacy-functional-map'
 import { useAuthStore } from '@/modules/auth/store/use-auth-store'
+import { usePprContext, type PprUser } from '@/modules/ppr/context/ppr-context'
 
 const LoginPage = lazy(() =>
   import('@/modules/auth/pages/login-clean-page').then((module) => ({ default: module.LoginCleanPage })),
@@ -165,6 +166,21 @@ function RootRedirect() {
   }
 
   return <Navigate replace to={workspace === 'main' ? '/app' : '/sigh'} />
+}
+
+function RequirePprPortalRole({
+  allowed,
+  children,
+}: {
+  allowed: PprUser['role'][]
+  children: ReactNode
+}) {
+  const { pprUser } = usePprContext()
+  if (!allowed.includes(pprUser.role)) {
+    return <Navigate replace to="/ppr" />
+  }
+
+  return <>{children}</>
 }
 
 const legacyMainEmbedRoutes = getWorkspaceLegacyPowerBiModules('main').map((module) => ({
@@ -414,11 +430,19 @@ export const router = createBrowserRouter([
           },
           {
             path: 'actividades',
-            element: lazyElement(<PprActividadesPage />),
+            element: lazyElement(
+              <RequirePprPortalRole allowed={['admin', 'coordinador']}>
+                <PprActividadesPage />
+              </RequirePprPortalRole>,
+            ),
           },
           {
             path: 'periodos',
-            element: lazyElement(<PprPeriodosPage />),
+            element: lazyElement(
+              <RequirePprPortalRole allowed={['admin', 'coordinador']}>
+                <PprPeriodosPage />
+              </RequirePprPortalRole>,
+            ),
           },
           {
             path: 'evaluacion-mensual',
@@ -434,19 +458,35 @@ export const router = createBrowserRouter([
           },
           {
             path: 'reportes',
-            element: lazyElement(<PprReportesPage />),
+            element: lazyElement(
+              <RequirePprPortalRole allowed={['admin', 'coordinador']}>
+                <PprReportesPage />
+              </RequirePprPortalRole>,
+            ),
           },
           {
             path: 'admin/coordinadores',
-            element: lazyElement(<PprAdminCoordinadoresPage />),
+            element: lazyElement(
+              <RequirePprPortalRole allowed={['admin']}>
+                <PprAdminCoordinadoresPage />
+              </RequirePprPortalRole>,
+            ),
           },
           {
             path: 'admin/actividades',
-            element: lazyElement(<PprAdminActividadesPage />),
+            element: lazyElement(
+              <RequirePprPortalRole allowed={['admin']}>
+                <PprAdminActividadesPage />
+              </RequirePprPortalRole>,
+            ),
           },
           {
             path: 'admin/carga',
-            element: lazyElement(<PprAdminCargaPage />),
+            element: lazyElement(
+              <RequirePprPortalRole allowed={['admin']}>
+                <PprAdminCargaPage />
+              </RequirePprPortalRole>,
+            ),
           },
           {
             path: '*',

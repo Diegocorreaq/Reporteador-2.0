@@ -874,6 +874,7 @@ export function PprProgramaDashboardContent({ programId, embedded = false }: Ppr
   const { pprUser } = usePprContext()
   const navigate = useNavigate()
   const currentYear = new Date().getFullYear()
+  const returnsToProgramList = pprUser.role === 'admin' || pprUser.role === 'consulta'
 
   const [data, setData] = useState<PprProgramaDetalle | null>(null)
   const [year, setYear] = useState(currentYear)
@@ -1015,11 +1016,11 @@ export function PprProgramaDashboardContent({ programId, embedded = false }: Ppr
         <div className="flex items-center gap-3">
           {!embedded && (
             <button
-              onClick={() => navigate(pprUser.role === 'admin' ? '/ppr/programas' : '/ppr')}
+              onClick={() => navigate(returnsToProgramList ? '/ppr/programas' : '/ppr')}
               className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-slate-50"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              {pprUser.role === 'admin' ? 'Programas' : 'Inicio'}
+              {returnsToProgramList ? 'Programas' : 'Inicio'}
             </button>
           )}
           <div>

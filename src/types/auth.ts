@@ -1,6 +1,6 @@
 export type WorkspaceKey = 'main' | 'sigh'
 
-export type PprRole = 'ppr_admin' | 'ppr_coordinador' | 'ppr_supervisor'
+export type PprRole = 'ppr_admin' | 'ppr_coordinador' | 'ppr_supervisor' | 'ppr_consulta'
 
 export interface AuthUser {
   id: string

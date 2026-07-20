@@ -3,6 +3,7 @@ import { hasLegacyAuthScope, validateLegacyUser } from '../services/legacy-expor
 import { createSession, verifySession } from '../services/auth-session.service.js'
 import { getReportAccessPermission, validateReportAccess } from '../services/report-access.service.js'
 import { getSqlPool, sql } from '../db/sql-server.js'
+import { isPprReadOnlyEmployee } from '../services/ppr-access.service.js'
 import { requireAuth } from '../middleware/require-auth.js'
 import { authLimiter } from '../middleware/rate-limit.js'
 import {
@@ -66,6 +67,10 @@ async function getPprRoleForEmployee(employeeId, correlationId) {
         employeeId: parsedEmployeeId,
         message: error instanceof Error ? error.message : String(error),
       })
+    }
+
+    if (isPprReadOnlyEmployee(parsedEmployeeId)) {
+      return 'ppr_consulta'
     }
 
     const coordinatorRequest = pool.request()

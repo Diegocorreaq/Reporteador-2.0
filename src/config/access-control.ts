@@ -1,6 +1,13 @@
 import type { AuthUser } from '@/types/auth'
 
-export const PPR_PORTAL_FALLBACK_EMPLOYEE_IDS = [5713, 6289, 1929] as const
+export const PPR_PORTAL_READONLY_EMPLOYEE_IDS = [3833, 4064, 5526, 4550, 6358, 3436, 6739, 3137] as const
+
+export const PPR_PORTAL_FALLBACK_EMPLOYEE_IDS = [
+  5713,
+  6289,
+  1929,
+  ...PPR_PORTAL_READONLY_EMPLOYEE_IDS,
+] as const
 
 export function normalizeDni(value: unknown): string {
   return String(value ?? '').trim()

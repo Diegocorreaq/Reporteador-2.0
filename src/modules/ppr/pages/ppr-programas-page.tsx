@@ -147,6 +147,7 @@ type StatusFilter = 'all' | 'delayed' | 'line' | 'done'
 export function PprProgramasPage() {
   const { pprUser } = usePprContext()
   const navigate = useNavigate()
+  const isReadOnly = pprUser.role === 'consulta'
 
   const [programas, setProgramas] = useState<PprPrograma[]>([])
   const [periodo, setPeriodo] = useState<PprPeriodo | null>(null)
@@ -222,7 +223,7 @@ export function PprProgramasPage() {
       {/* Header */}
       <PprSectionHeader
         eyebrow="Vista por programa"
-        title="Mis Programas"
+        title={isReadOnly ? 'Programas PPR' : 'Mis Programas'}
         description={periodo ? <>Período activo: <span className="font-semibold">{periodo.label}</span></> : 'Cargando…'}
         right={
           !loading && total > 0 && (
@@ -247,8 +248,8 @@ export function PprProgramasPage() {
       ) : programas.length === 0 ? (
         <PprEmptyState
           icon={Layers}
-          title="Sin programas asignados"
-          description="Contacte al administrador para que le asigne programas PPR."
+          title={isReadOnly ? 'Sin programas visibles' : 'Sin programas asignados'}
+          description={isReadOnly ? 'No hay programas PPR disponibles para consulta.' : 'Contacte al administrador para que le asigne programas PPR.'}
         />
       ) : (
         <>

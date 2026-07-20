@@ -284,7 +284,7 @@ export const sighQuickLinks: WorkspaceQuickLink[] = [
     to: '/ppr',
     description: 'Acceso directo al portal de validacion PPR.',
     icon: ClipboardList,
-    access: { pprRoles: ['ppr_admin', 'ppr_coordinador'], employeeIds: PPR_PORTAL_FALLBACK_EMPLOYEE_IDS },
+    access: { pprRoles: ['ppr_admin', 'ppr_coordinador', 'ppr_consulta'], employeeIds: PPR_PORTAL_FALLBACK_EMPLOYEE_IDS },
   },
   {
     key: 'manuales',

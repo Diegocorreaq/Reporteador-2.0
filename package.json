@@ -11,6 +11,7 @@
     "lint": "eslint . --max-warnings=0",
     "test": "node --test server/tests/susalud-parity.test.js server/tests/sql-procedure-migration-smoke.test.js server/tests/legacy-export-validation.test.js && npm run test:ppr",
     "test:ppr": "node server\\tests\\ppr-signature-pdf.test.js",
+    "ppr:preliminar:18": "node scripts/run-ppr-preliminary-cache.mjs --program=18",
     "test:obstetras-cnv": "node --test server/tests/sigh-prod-obstetras-cnv.test.js",
     "test:susalud:legacy-file": "node server/tests/susalud-legacy-file-parity.test.js",
     "preview": "vite preview",

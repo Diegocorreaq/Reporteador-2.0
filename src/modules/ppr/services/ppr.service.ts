@@ -23,7 +23,7 @@ export interface PprValidationResult {
   ok: boolean
   employeeId: number | null
   employeeName: string
-  role: 'coordinador' | 'admin' | null
+  role: 'coordinador' | 'admin' | 'consulta' | null
   message: string
 }
 

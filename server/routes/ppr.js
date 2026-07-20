@@ -40,6 +40,7 @@ import {
   getPprProgramDocumentFile,
   listPprProgramDocuments,
 } from '../services/ppr-program-documents.service.js'
+import { isPprReadOnlyEmployee } from '../services/ppr-access.service.js'
 import { logger } from '../utils/logger.js'
 
 export const pprRouter = Router()
@@ -100,6 +101,31 @@ function blockPprDataEntryIfLocked(request, response, next) {
   return response.status(423).json(PPR_DATA_ENTRY_LOCKED_RESPONSE)
 }
 
+function isSessionEmployee(request, employeeId) {
+  return Number(request.user?.employeeId) === Number(employeeId)
+}
+
+function requireSessionEmployee(request, response, employeeId) {
+  if (isSessionEmployee(request, employeeId)) return true
+
+  response.status(403).json({
+    code: 'FORBIDDEN',
+    message: 'No puede consultar informacion PPR de otro usuario.',
+  })
+  return false
+}
+
+function blockPprReadOnlyMutation(request, response, next) {
+  if (isPprReadOnlyEmployee(request.user?.employeeId)) {
+    return response.status(403).json({
+      code: 'PPR_READONLY_ACCESS',
+      message: 'El perfil de consulta PPR no puede registrar, validar ni firmar informacion.',
+    })
+  }
+
+  return next()
+}
+
 function getPprDocumentAccessEmployeeId(request) {
   const requestedEmployeeId = Number(request.query.employeeId)
   return requestedEmployeeId || Number(request.user?.employeeId)
@@ -130,12 +156,34 @@ pprRouter.post('/ppr/validate', requireAuth, authLimiter, async (request, respon
   try {
     const { username, password } = request.body ?? {}
     const ip = getClientIp(request)
+    const requestedUsername = String(username ?? '').trim()
+    const sessionUsername = String(request.user?.username ?? '').trim()
+
+    if (requestedUsername !== sessionUsername) {
+      return response.status(403).json({
+        ok: false,
+        employeeId: null,
+        employeeName: '',
+        role: null,
+        message: 'Debe validar el Portal PPR con el mismo usuario de la sesion activa.',
+      })
+    }
 
     const result = await validatePprUser({
-      username: String(username ?? '').trim(),
+      username: requestedUsername,
       password: String(password ?? '').trim(),
       ip,
     })
+
+    if (result.ok && result.employeeId && !isSessionEmployee(request, result.employeeId)) {
+      return response.status(403).json({
+        ok: false,
+        employeeId: null,
+        employeeName: '',
+        role: null,
+        message: 'El acceso PPR validado no corresponde a la sesion activa.',
+      })
+    }
 
     if (result.ok) {
       logger.info({
@@ -178,6 +226,7 @@ pprRouter.get('/ppr/programas', requireAuth, async (request, response) => {
   if (!employeeId) {
     return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere employeeId.' })
   }
+  if (!requireSessionEmployee(request, response, employeeId)) return
   try {
     const programas = await getProgramasUsuario(employeeId)
     response.json({ programas })
@@ -195,6 +244,7 @@ pprRouter.get('/ppr/actividades', requireAuth, async (request, response) => {
   if (!programaId || !periodoId || !employeeId) {
     return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere programaId, periodoId y employeeId.' })
   }
+  if (!requireSessionEmployee(request, response, employeeId)) return
   try {
     const actividades = await getActividadesPrograma({ programaId, periodoId, employeeId })
     response.json({ actividades })
@@ -205,11 +255,12 @@ pprRouter.get('/ppr/actividades', requireAuth, async (request, response) => {
 })
 
 // POST /ppr/valores — save or update a monthly value
-pprRouter.post('/ppr/valores', requireAuth, blockPprDataEntryIfLocked, async (request, response) => {
+pprRouter.post('/ppr/valores', requireAuth, blockPprReadOnlyMutation, blockPprDataEntryIfLocked, async (request, response) => {
   const { activityId, periodId, employeeId, value, notes } = request.body ?? {}
   if (activityId == null || periodId == null || employeeId == null || value == null) {
     return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere activityId, periodId, employeeId y value.' })
   }
+  if (!requireSessionEmployee(request, response, employeeId)) return
   try {
     await guardarValor({
       activityId: Number(activityId),
@@ -233,11 +284,12 @@ pprRouter.post('/ppr/valores', requireAuth, blockPprDataEntryIfLocked, async (re
 
 // GET /ppr/periodos — all periods for the year with signing/progress status per employee
 // POST /ppr/valores/validar — validate one monthly value before signing
-pprRouter.post('/ppr/valores/validar', requireAuth, blockPprDataEntryIfLocked, async (request, response) => {
+pprRouter.post('/ppr/valores/validar', requireAuth, blockPprReadOnlyMutation, blockPprDataEntryIfLocked, async (request, response) => {
   const { activityId, periodId, employeeId } = request.body ?? {}
   if (activityId == null || periodId == null || employeeId == null) {
     return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere activityId, periodId y employeeId.' })
   }
+  if (!requireSessionEmployee(request, response, employeeId)) return
   try {
     const validatedAt = await validarValor({
       activityId: Number(activityId),
@@ -269,6 +321,7 @@ pprRouter.get('/ppr/validacion/resumen', requireAuth, async (request, response) 
   if (!employeeId || !periodId) {
     return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere employeeId y periodId.' })
   }
+  if (!requireSessionEmployee(request, response, employeeId)) return
   try {
     const resumen = await getResumenValidacion(employeeId, periodId, programId)
     response.json({ resumen })
@@ -283,6 +336,7 @@ pprRouter.get('/ppr/periodos', requireAuth, async (request, response) => {
   if (!employeeId) {
     return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere employeeId.' })
   }
+  if (!requireSessionEmployee(request, response, employeeId)) return
   try {
     const periodos = await getPeriodosUsuario(employeeId)
     response.json({ periodos })
@@ -299,6 +353,7 @@ pprRouter.get('/ppr/resumen', requireAuth, async (request, response) => {
   if (!employeeId) {
     return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere employeeId.' })
   }
+  if (!requireSessionEmployee(request, response, employeeId)) return
   try {
     const resumen = await getResumenAnual(employeeId, year)
     response.json({ resumen, year })
@@ -309,7 +364,7 @@ pprRouter.get('/ppr/resumen', requireAuth, async (request, response) => {
 })
 
 // POST /ppr/firmar — sign the active period
-pprRouter.post('/ppr/firmar', requireAuth, blockPprDataEntryIfLocked, async (request, response) => {
+pprRouter.post('/ppr/firmar', requireAuth, blockPprReadOnlyMutation, blockPprDataEntryIfLocked, async (request, response) => {
   const { periodId, employeeId, programId, forceForTesting } = request.body ?? {}
   if (periodId == null || employeeId == null || programId == null) {
     return response.status(400).json({
@@ -487,6 +542,7 @@ pprRouter.get('/ppr/programas/:programCode/documentos/:documentType', requireAut
       message: 'Se requiere programa, tipo de documento y usuario autenticado.',
     })
   }
+  if (!requireSessionEmployee(request, response, employeeId)) return
 
   try {
     const allowed = await canAccessPprProgramDocument({ employeeId, programCode })
@@ -525,6 +581,7 @@ pprRouter.get('/ppr/programas/:programCode/documentos/:documentType/:documentId/
       message: 'Se requiere programa, tipo de documento, documento y usuario autenticado.',
     })
   }
+  if (!requireSessionEmployee(request, response, employeeId)) return
 
   try {
     const allowed = await canAccessPprProgramDocument({ employeeId, programCode })
@@ -570,6 +627,7 @@ pprRouter.get('/ppr/programas/:programCode/documentos/:documentType/download', r
       message: 'Se requiere programa, tipo de documento y usuario autenticado.',
     })
   }
+  if (!requireSessionEmployee(request, response, employeeId)) return
 
   try {
     const allowed = await canAccessPprProgramDocument({ employeeId, programCode })
@@ -612,6 +670,7 @@ pprRouter.get('/ppr/programa-detalle', requireAuth, async (request, response) =>
   if (!programId || !employeeId) {
     return response.status(400).json({ code: 'MISSING_PARAMS', message: 'Se requiere programId y employeeId.' })
   }
+  if (!requireSessionEmployee(request, response, employeeId)) return
   try {
     const detalle = await getProgramaDetalle(programId, year, employeeId)
     if (!detalle) {
