@@ -12,9 +12,17 @@ import { PprAlert, PprEmptyState, PprPill, PprSectionHeader, PprSkeleton } from 
 import { cn } from '@/lib/utils'
 
 function errorMessage(error: unknown, fallback: string) {
-  if (typeof error === 'object' && error && 'response' in error) {
-    const response = (error as { response?: { data?: { message?: string } } }).response
-    return response?.data?.message ?? fallback
+  if (typeof error === 'object' && error) {
+    const requestError = error as {
+      code?: string
+      message?: string
+      response?: { data?: { message?: string } }
+    }
+    const response = requestError.response
+    if (response?.data?.message) return response.data.message
+    if (requestError.code === 'ECONNABORTED' || /timeout/i.test(requestError.message ?? '')) {
+      return 'La carga mensual excedió el tiempo de espera. Verifique el resultado antes de reintentar.'
+    }
   }
   return fallback
 }

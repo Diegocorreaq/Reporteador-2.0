@@ -1,47 +1,34 @@
-# ============================================================
-# REPORTEADOR 2.0 - GITIGNORE
-# Proyecto React/Vite + Node/Express + Apache Windows
-# ============================================================
-
-
-# ============================================================
 # Dependencias
-# ============================================================
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-
-# ============================================================
-# Build / archivos generados
-# ============================================================
+# Build y archivos generados
 dist/
 build/
 .vite/
+coverage/
+.nyc_output/
+*.tsbuildinfo
 
-
-# ============================================================
-# Variables de entorno / configuración sensible
-# ============================================================
+# Variables de entorno y configuracion sensible
 .env
 .env.*
 !.env.example
 
-
-# ============================================================
-# Logs
-# ============================================================
+# Logs y estado local
 logs/
-*.log
 server/logs/
+*.log
+*.pid
+outputs/
+informes/
+memory/
+.cache/
 
-
-# ============================================================
-# Certificados SSL / llaves privadas
-# NO subir nunca a Git
-# ============================================================
+# Certificados y llaves privadas
 *.key
 *.pem
 *.crt
@@ -51,54 +38,39 @@ server/logs/
 *.p12
 *.ca-bundle
 *ca-bundle*
-
-
-# ============================================================
-# Configuración local de Apache / servidor
-# Solo se debe documentar, no subir archivos reales sensibles
-# ============================================================
-httpd.conf
-httpd-vhosts.conf
-httpd-ssl.conf
 ssl/
 certs/
 certificados/
 
+# Configuracion local de Apache/servidor
+httpd.conf
+httpd-vhosts.conf
+httpd-ssl.conf
+deploy.local.ps1
+deploy.local.bat
 
-# ============================================================
-# Archivos temporales / backups
-# ============================================================
+# Temporales, respaldos y bases locales
 *.tmp
 *.temp
 *.bak
 *.backup
 *.old
 *.orig
+*.db
+*.sqlite
+*.sqlite3
 *_BACKUP*/
 backup/
 backups/
 
+# Herramientas locales y referencias extraidas
+.agents/
+.codex/
+.legacy_extract/
+.legacy_report_extract/
+.legacy*/
 
-# ============================================================
-# Sistema operativo Windows
-# ============================================================
-Thumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-*.lnk
-
-
-# ============================================================
-# Sistema operativo macOS / Linux
-# ============================================================
-.DS_Store
-.AppleDouble
-.LSOverride
-
-
-# ============================================================
-# Editores / IDE
-# ============================================================
+# IDE y sistema operativo
 .vscode/
 .idea/
 *.suo
@@ -106,34 +78,13 @@ $RECYCLE.BIN/
 *.njsproj
 *.sln
 *.swp
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+.DS_Store
+.AppleDouble
+.LSOverride
 
-
-# ============================================================
-# Testing / coverage
-# ============================================================
-coverage/
-.nyc_output/
-
-
-# ============================================================
-# TypeScript / caches
-# ============================================================
-*.tsbuildinfo
-
-
-# ============================================================
-# Archivos locales de despliegue
-# ============================================================
-deploy.local.ps1
-deploy.local.bat
-
-# ============================================================
-# Informes generados localmente
-# ============================================================
-informes/
-
-# ============================================================
 # Scripts PPR ocasionales de carga/comparacion local
-# ============================================================
 scripts/ppr-*.mjs
-

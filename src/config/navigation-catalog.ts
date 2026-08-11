@@ -93,6 +93,22 @@ const navigationCatalogBase: CatalogResource[] = [
     permissionKey: 'menu.main.indicadores-hospitalarios.calidad',
   },
 
+  // Indicadores de Convenio de Gestión
+  {
+    id: 'main-indicadores-convenio-gestion-tablero',
+    title: 'Tablero de Control',
+    description: 'Tablero de seguimiento de los indicadores del convenio de gestión.',
+    workspace: 'principal',
+    workspaceLabel: 'Reporteador',
+    type: 'tablero',
+    category: 'Indicadores de Convenio de Gestión',
+    route: '/app/indicadores-convenio-gestion/tablero-de-control',
+    breadcrumb: 'Reporteador → Indicadores de Convenio de Gestión',
+    aliases: ['convenio de gestión', 'indicadores de convenio', 'tablero de control'],
+    keywords: ['indicador', 'convenio', 'gestion', 'tablero', 'control', 'powerbi'],
+    permissionKey: 'menu.main.indicadores-convenio-gestion.tablero-control',
+  },
+
   // Atención Ambulatoria y Hospitalización
   {
     id: 'main-consulta-externa',

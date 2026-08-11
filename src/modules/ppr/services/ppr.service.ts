@@ -301,11 +301,11 @@ export async function runImportCarga(
   sourceId: string,
   adminId: number,
 ): Promise<PprImportResult> {
-  const res = await httpClient.post<{ ok: boolean; result: PprImportResult }>('/ppr/admin/cargas/run', {
-    programId,
-    sourceId,
-    adminId,
-  })
+  const res = await httpClient.post<{ ok: boolean; result: PprImportResult }>(
+    '/ppr/admin/cargas/run',
+    { programId, sourceId, adminId },
+    { timeout: 240000 },
+  )
   return res.data.result
 }
 

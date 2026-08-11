@@ -775,10 +775,13 @@ pprRouter.post('/ppr/admin/cargas/run', requireAuth, requirePprAdmin, async (req
     response.json({ ok: true, result })
   } catch (error) {
     const isConflict = ['PPR_PERIOD_SIGNED', 'PPR_NO_OPEN_PERIOD'].includes(error?.code)
+    const isTimeout = error?.code === 'ETIMEOUT' || /timeout/i.test(String(error?.message ?? ''))
     logger.error({ correlationId: request.correlationId, event: 'ppr:admin:carga:run:error', message: String(error) })
-    response.status(isConflict ? 409 : 500).json({
-      code: error?.code ?? 'PPR_ERROR',
-      message: error?.message ?? 'Error al ejecutar la carga mensual.',
+    response.status(isConflict ? 409 : isTimeout ? 504 : 500).json({
+      code: isTimeout ? 'PPR_SOURCE_TIMEOUT' : error?.code ?? 'PPR_ERROR',
+      message: isTimeout
+        ? 'La fuente del programa superó el tiempo máximo de consulta. Verifique el estado antes de reintentar.'
+        : error?.message ?? 'Error al ejecutar la carga mensual.',
     })
   }
 })

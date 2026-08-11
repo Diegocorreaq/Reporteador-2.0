@@ -25,6 +25,7 @@ const PPR_PRELIMINARY_TIME_ZONE = 'America/Bogota'
 const PPR_PRELIMINARY_CUTOFF_HOUR = 8
 const PPR_PRELIMINARY_MANUAL_ONLY_PROGRAM_CODES = new Set(['16', '17'])
 const PPR_PRELIMINARY_QUERY_TIMEOUT_MS = Number(process.env.PPR_PRELIMINARY_QUERY_TIMEOUT_MS ?? 900000)
+const PPR_IMPORT_QUERY_TIMEOUT_MS = Number(process.env.PPR_IMPORT_QUERY_TIMEOUT_MS ?? 180000)
 
 let pprActivityGroupInfrastructurePromise = null
 let pprPreliminaryInfrastructurePromise = null
@@ -1140,7 +1141,7 @@ export async function runPprImport({ programId, sourceId, adminId }) {
   await ensureProgramPeriodNotSigned(programId, periodo.id)
 
   const { startDate, endDate } = monthDateRange(periodo.year, periodo.month)
-  const rawRows = await executePprSourceRows(source, startDate, endDate, 120000)
+  const rawRows = await executePprSourceRows(source, startDate, endDate, PPR_IMPORT_QUERY_TIMEOUT_MS)
 
   const activities = await getProgramActivitiesForImport(programId)
   const { matchedRows, unmatchedSourceRows, manualActivities } = matchSourceRowsToActivities(rawRows, activities)

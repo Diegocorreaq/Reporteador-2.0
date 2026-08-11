@@ -68,6 +68,16 @@ export const legacyPowerBiModules: LegacyModuleMapping[] = [
   },
   {
     workspace: 'main',
+    path: 'indicadores-convenio-gestion/tablero-de-control',
+    legacyRoute: '/indicador/convenio-gestion',
+    moduleType: 'powerbi',
+    title: 'Indicadores de Convenio de Gestión - Tablero de Control',
+    powerBiUrl:
+      'https://app.powerbi.com/view?r=eyJrIjoiMjgyODA0OWItNzUwOC00NzVmLWJlZDgtNzk0N2QzZDNhMzllIiwidCI6ImIwZDQ1ZmViLTM5MzUtNGE4ZS04YTc1LTNhYWM4MGQ4NTMzYSJ9',
+    frameHeight: 800,
+  },
+  {
+    workspace: 'main',
     path: 'atencion-ambulatoria-hospitalizacion/consulta-externa',
     legacyRoute: '/upss/produccion',
     moduleType: 'powerbi',

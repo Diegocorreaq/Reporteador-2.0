@@ -9,6 +9,7 @@ const CAMAS_APROBADAS_OVERRIDES = new Map([
   [197, { camas: 1 }],
   [421, { camas: 6, servicio: 'SALA DE DILATACION' }],
   [422, { camas: 4, servicio: 'SALA DE PUERPERIO' }],
+  [650, { camas: 21 }],
 ])
 
 function normalizeRows(rows = []) {

@@ -49,7 +49,7 @@ function buildDbConfig(prefix = '', overrides = {}) {
   }
 
   return {
-    server: process.env[hostKey] ?? overrides.defaultHost ?? '192.168.32.129',
+    server: process.env[hostKey] ?? overrides.defaultHost ?? '',
     port: toNumber(process.env[portKey], 1433),
     database: process.env[dbKey] ?? overrides.defaultDatabase ?? 'SIGH_DEPURA',
     user: process.env[userKey] ?? '',
@@ -128,7 +128,6 @@ export const serverConfig = {
     sigh2: buildDbConfig('SIGH_SQL2'),
     cnv: buildDbConfig('CNV_DB', {
       databaseKey: 'CNV_DB_NAME',
-      defaultHost: '192.168.32.129',
       defaultDatabase: 'SIGH_DEPURA',
     }),
   },

@@ -85,6 +85,25 @@ export const mainSections: NavigationSection[] = [
         ],
       }),
       group({
+        key: 'main-indicadores-convenio-gestion',
+        label: 'Indicadores de Convenio de Gestión',
+        description: 'Tablero de seguimiento de los indicadores del convenio de gestión.',
+        icon: BarChart3,
+        access: { permissions: ['menu.main.indicadores-convenio-gestion.*'] },
+        items: [
+          item({
+            key: 'main-indicadores-convenio-gestion-tablero',
+            legacyKey: 'convenio-gestion',
+            legacyRoute: '/indicador/convenio-gestion',
+            label: 'Tablero de Control',
+            to: '/app/indicadores-convenio-gestion/tablero-de-control',
+            description: 'Consulta el tablero de control de los indicadores del convenio de gestión.',
+            icon: BarChart3,
+            access: { permissions: ['menu.main.indicadores-convenio-gestion.tablero-control'] },
+          }),
+        ],
+      }),
+      group({
         key: 'main-atencion-ambulatoria-hospitalizacion',
         legacyKey: 'upss',
         label: 'Departamento Atencion Ambulatoria y Hospitalizacion',

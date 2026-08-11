@@ -20,7 +20,7 @@ function assertDeepEqual<T>(actual: T, expected: T, message: string): void {
 const indicatorResults = searchCatalog('indicadores hospitalarios')
 assertDeepEqual(
   CATALOG_STATS,
-  { principal: 46, datosEnLinea: 16, total: 62 },
+  { principal: 47, datosEnLinea: 16, total: 63 },
   'el centro de orientacion debe mostrar las cantidades actualizadas de recursos navegables',
 )
 
@@ -28,6 +28,12 @@ assertDeepEqual(
   indicatorResults.map((result) => result.resource.category),
   ['Indicadores Hospitalarios', 'Indicadores Hospitalarios', 'Indicadores Hospitalarios'],
   'indicadores hospitalarios debe devolver exactamente sus 3 recursos',
+)
+
+assertDeepEqual(
+  titlesFor('indicadores de convenio de gestion'),
+  ['Tablero de Control'],
+  'indicadores de convenio de gestion debe devolver su tablero de control',
 )
 
 const camasTitles = titlesFor('camas')
@@ -58,4 +64,4 @@ assert(
 assertDeepEqual(tokenize('lunes'), ['lunes'], 'lunes no debe stemmizarse a lun')
 assertDeepEqual(searchCatalog('lunes'), [], 'lunes no debe devolver módulos si no hay relación')
 
-console.info('search.test.ts: 7 assertions groups passed')
+console.info('search.test.ts: 8 assertion groups passed')
