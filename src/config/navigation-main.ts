@@ -13,11 +13,13 @@ import {
   Home,
   Hospital,
   Image,
+  LayoutDashboard,
   Microscope,
   ShieldPlus,
   SquareActivity,
   Stethoscope,
   Syringe,
+  Target,
 } from 'lucide-react'
 import { group, item, section } from '@/config/navigation-builders'
 import { PPR_PORTAL_FALLBACK_EMPLOYEE_IDS } from '@/config/access-control'
@@ -88,7 +90,7 @@ export const mainSections: NavigationSection[] = [
         key: 'main-indicadores-convenio-gestion',
         label: 'Indicadores de Convenio de Gestión',
         description: 'Tablero de seguimiento de los indicadores del convenio de gestión.',
-        icon: BarChart3,
+        icon: Target,
         access: { permissions: ['menu.main.indicadores-convenio-gestion.*'] },
         items: [
           item({
@@ -98,7 +100,7 @@ export const mainSections: NavigationSection[] = [
             label: 'Tablero de Control',
             to: '/app/indicadores-convenio-gestion/tablero-de-control',
             description: 'Consulta el tablero de control de los indicadores del convenio de gestión.',
-            icon: BarChart3,
+            icon: LayoutDashboard,
             access: { permissions: ['menu.main.indicadores-convenio-gestion.tablero-control'] },
           }),
         ],
