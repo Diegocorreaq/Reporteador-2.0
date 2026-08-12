@@ -5,6 +5,10 @@ import ExcelJS from 'exceljs'
 import { buildSusaludExportPayload } from '../services/susalud/susalud-pipeline.js'
 import { buildMonitoreoCamasSusaludWorkbook } from '../services/excel-export.service.js'
 import {
+  mergeSinAltaEfectivaIntoDisponibles,
+  reclassifySinAltaEfectivaAsLibres,
+} from '../services/sigh-camas.service.js'
+import {
   corteRowsFixture,
   resumenRowsFixture,
   expectedParity,
@@ -82,6 +86,48 @@ function toRecursoTuple(row) {
   return [row.total, row.inoperativos, row.operativos, row.disponibles, row.enUso]
 }
 
+test('Camas: Sin alta efectiva se reclasifica de ocupada a libre', () => {
+  const rows = [
+    { idservicio: 657, tipo: 'Cama', chabi: 55, cocup: 52, tocupa: 51, clibr: 3 },
+    { idservicio: 798, tipo: 'Cama', chabi: 3, cocup: 3, tocupa: 3, clibr: 0 },
+    { idservicio: 655, tipo: 'Cama', chabi: 48, cocup: 47, tocupa: 47, clibr: 1 },
+  ]
+  const counts = {
+    byType: new Map([
+      ['657|cama', 2],
+      ['798|cama', 1],
+    ]),
+    byService: new Map([
+      [657, 2],
+      [798, 1],
+    ]),
+  }
+
+  const result = reclassifySinAltaEfectivaAsLibres(rows, counts)
+
+  assert.deepEqual(result[0], { idservicio: 657, tipo: 'Cama', chabi: 55, cocup: 50, tocupa: 49, clibr: 5 })
+  assert.deepEqual(result[1], { idservicio: 798, tipo: 'Cama', chabi: 3, cocup: 2, tocupa: 2, clibr: 1 })
+  assert.deepEqual(result[2], rows[2])
+  assert.equal(result.reduce((sum, row) => sum + row.cocup + row.clibr, 0), 106)
+  assert.equal(result.reduce((sum, row) => sum + row.chabi, 0), 106)
+})
+
+test('Camas: el detalle disponible incorpora Sin alta efectiva sin duplicar camas', () => {
+  const disponibles = [
+    { NROCAMA: 'C-01', ESTADOCAMA: 'Libre' },
+    { NROCAMA: 'C-02', ESTADOCAMA: 'Libre' },
+  ]
+  const operativas = [
+    { NROCAMA: 'C-02', ESTADOCAMA: 'Sin alta efectiva' },
+    { NROCAMA: 'C-03', ESTADOCAMA: 'Sin alta efectiva' },
+    { NROCAMA: 'C-04', ESTADOCAMA: 'Ocupado' },
+  ]
+
+  const result = mergeSinAltaEfectivaIntoDisponibles(disponibles, operativas)
+
+  assert.deepEqual(result.map((row) => row.NROCAMA), ['C-01', 'C-02', 'C-03'])
+})
+
 test('SUSALUD: dataset intermedio normalizado es auditable', () => {
   const payload = buildPayload()
 
@@ -118,6 +164,71 @@ test('SUSALUD: dataset intermedio normalizado es auditable', () => {
   assert.ok(payload.mappingRows.some((row) => row.categoria_legacy === 'UCI ADULTOS'))
   assert.ok(payload.mappingRows.some((row) => row.categoria_legacy === 'EMERGENCIA PEDIATRICA'))
   assert.ok(payload.mappingRows.some((row) => row.idservicio_incluidos.includes(672)))
+})
+
+test('SUSALUD: Emergencia divide las ocupadas entre con y sin oxigeno', () => {
+  const payload = buildSusaludExportPayload({
+    resumenRows: [
+      {
+        idservicio: 665,
+        piso: 'Emergencia 1er Piso',
+        servicio: 'OBSERVACION PEDIATRIA 1',
+        tipo: 'CAMA',
+        camas: 4,
+        total: 4,
+        chabi: 4,
+        cocup: 4,
+        clibr: 0,
+        c_oxi: 3,
+        c_vm: 0,
+      },
+    ],
+    corteTimestamp: new Date('2026-08-12T15:00:00.000Z'),
+    includeAudit: true,
+    onlyTipoCama: true,
+  })
+
+  const pediatrica = payload.emergenciaRows.find(
+    (row) => row.upssEmergencia === 'EMERGENCIA PEDIATRICA',
+  )
+
+  assert.ok(pediatrica)
+  assert.equal(pediatrica.ocupados, 4)
+  assert.equal(pediatrica.conOxigeno, 3)
+  assert.equal(pediatrica.sinOxigeno, 1)
+  assert.equal(pediatrica.conOxigeno + pediatrica.sinOxigeno, pediatrica.ocupados)
+})
+
+test('SUSALUD: UCIN clasifica oxigenacion independientemente de VM', () => {
+  const payload = buildSusaludExportPayload({
+    resumenRows: [
+      {
+        idservicio: 690,
+        piso: 'Cuidados Criticos',
+        servicio: 'UCIN PEDIATRIA',
+        tipo: 'CAMA',
+        camas: 5,
+        total: 5,
+        chabi: 5,
+        cocup: 4,
+        clibr: 1,
+        c_oxi: 1,
+        c_vm: 2,
+      },
+    ],
+    corteTimestamp: new Date('2026-08-12T15:00:00.000Z'),
+    includeAudit: true,
+    onlyTipoCama: true,
+  })
+
+  const pediatrica = payload.ucinRows.find((row) => row.upssUcin === 'UCIN PEDIATRICO')
+
+  assert.ok(pediatrica)
+  assert.equal(pediatrica.ocupados, 4)
+  assert.equal(pediatrica.conOxigeno, 1)
+  assert.equal(pediatrica.sinOxigeno, 3)
+  assert.equal(pediatrica.conOxigeno + pediatrica.sinOxigeno, pediatrica.ocupados)
+  assert.equal(pediatrica.conVm, 2)
 })
 
 test('SUSALUD: paridad por bloque con corte validado', () => {

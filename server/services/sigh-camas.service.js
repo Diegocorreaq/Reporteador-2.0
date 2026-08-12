@@ -9,7 +9,7 @@ const CAMAS_APROBADAS_OVERRIDES = new Map([
   [197, { camas: 1 }],
   [421, { camas: 6, servicio: 'SALA DE DILATACION' }],
   [422, { camas: 4, servicio: 'SALA DE PUERPERIO' }],
-  [650, { camas: 21 }],
+  [650, { camas: 30 }],
 ])
 
 function normalizeRows(rows = []) {
@@ -438,7 +438,7 @@ async function getNonReservableCamasSopCounts() {
   return buildCamasCountsMaps(rows)
 }
 
-function excludeSinAltaEfectivaFromOcupadas(rows, counts) {
+export function reclassifySinAltaEfectivaAsLibres(rows, counts) {
   return rows.map((row) => {
     const typeCount = counts.byType.get(buildCamasEstadoKey(row.idservicio, row.tipo)) ?? 0
     const serviceCount = counts.byService.get(row.idservicio) ?? 0
@@ -451,6 +451,7 @@ function excludeSinAltaEfectivaFromOcupadas(rows, counts) {
       ...row,
       cocup: Math.max(row.cocup - typeCount, 0),
       tocupa: Math.max(row.tocupa - serviceCount, 0),
+      clibr: row.clibr + typeCount,
     }
   })
 }
@@ -940,8 +941,8 @@ export async function getMonitoreoCamasReport() {
     getNonReservableCamasSopCounts(),
   ])
   const normalizedRows = rows.map(mapCamasRow)
-  const withoutSinAltaEfectiva = excludeSinAltaEfectivaFromOcupadas(normalizedRows, sinAltaEfectivaCounts)
-  return excludeNonReservableCamasSopFromOcupadas(withoutSinAltaEfectiva, nonReservableCqCounts)
+  const withSinAltaEfectivaAsLibres = reclassifySinAltaEfectivaAsLibres(normalizedRows, sinAltaEfectivaCounts)
+  return excludeNonReservableCamasSopFromOcupadas(withSinAltaEfectivaAsLibres, nonReservableCqCounts)
 }
 
 export async function getMonitoreoCamasCorteReport() {
@@ -1272,6 +1273,11 @@ function deduplicateCamasDetalleRows(rows) {
   return deduplicated
 }
 
+export function mergeSinAltaEfectivaIntoDisponibles(disponiblesRows, operativasRows) {
+  const sinAltaEfectivaRows = operativasRows.filter(isSinAltaEfectivaRow)
+  return deduplicateCamasDetalleRows([...disponiblesRows, ...sinAltaEfectivaRows])
+}
+
 export async function getCamasDetalle(tipoDetalle, filters) {
   const key = String(tipoDetalle ?? '').toLowerCase()
   const definition = DETAIL_PROCEDURE_BY_TYPE[key]
@@ -1294,7 +1300,16 @@ export async function getCamasDetalle(tipoDetalle, filters) {
     return { name: 'tipo', type: sql.NVarChar, value: String(filters.tipo ?? '').trim() }
   })
 
-  let rows = await executeProcedure(definition.procedure, params, { timeoutMs: REPORT_TIMEOUT_MS })
+  const [procedureRows, operativasRows] = key === '3'
+    ? await Promise.all([
+        executeProcedure(definition.procedure, params, { timeoutMs: REPORT_TIMEOUT_MS }),
+        executeProcedure(DETAIL_PROCEDURE_BY_TYPE['1'].procedure, params, { timeoutMs: REPORT_TIMEOUT_MS }),
+      ])
+    : [await executeProcedure(definition.procedure, params, { timeoutMs: REPORT_TIMEOUT_MS }), []]
+
+  let rows = key === '3'
+    ? mergeSinAltaEfectivaIntoDisponibles(procedureRows, operativasRows)
+    : procedureRows
   if (key === '2') {
     rows = rows.filter((row) => !isSinAltaEfectivaRow(row))
     const reservas = await getCamasReservadasSopDetalle(filters.idServicio, filters.tipo)
