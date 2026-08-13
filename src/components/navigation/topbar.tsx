@@ -212,7 +212,7 @@ export function Topbar({ workspace, onOpenMobile }: TopbarProps) {
         {/* Workspace switcher */}
         <div className="flex shrink-0 items-center rounded-lg border border-border bg-canvas p-0.5">
           <WorkspaceSwitchButton active={workspace === 'main'} label="Principal" to="/app" />
-          <WorkspaceSwitchButton active={workspace === 'sigh'} label="Dato" to="/sigh" />
+          <WorkspaceSwitchButton active={workspace === 'sigh'} label="Datos en Linea" to="/sigh" />
         </div>
 
         {!isWorkspaceHome ? (
