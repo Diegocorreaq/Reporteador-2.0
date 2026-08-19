@@ -12,7 +12,6 @@ build/
 coverage/
 .nyc_output/
 *.tsbuildinfo
-
 # Variables de entorno y configuracion sensible
 .env
 .env.*
@@ -86,8 +85,11 @@ $RECYCLE.BIN/
 .AppleDouble
 .LSOverride
 
-# Scripts PPR ocasionales de carga/comparacion local
-scripts/ppr-*.mjs
+# Documentacion, scripts y pruebas locales no requeridos por el runtime
+/scripts/
+/docs/
+/server/tests/
+
 
 #salida de documentos
 .ppt_build
