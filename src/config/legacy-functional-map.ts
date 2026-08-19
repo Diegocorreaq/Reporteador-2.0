@@ -248,6 +248,26 @@ export const legacyPowerBiModules: LegacyModuleMapping[] = [
   },
   {
     workspace: 'main',
+    path: 'neonatologia/mama-canguro',
+    legacyRoute: '/neonatologia/mama-canguro',
+    moduleType: 'powerbi',
+    title: 'Mamá Canguro',
+    powerBiUrl:
+      'https://app.powerbi.com/view?r=eyJrIjoiYzBiMTdlM2QtOThlZi00YTU2LTg5M2YtMjU3NGI5MmU3MDlkIiwidCI6ImIwZDQ1ZmViLTM5MzUtNGE4ZS04YTc1LTNhYWM4MGQ4NTMzYSJ9',
+    frameHeight: 800,
+  },
+  {
+    workspace: 'main',
+    path: 'neonatologia/piel-a-piel',
+    legacyRoute: '/neonatologia/piel-a-piel',
+    moduleType: 'powerbi',
+    title: 'Piel a Piel',
+    powerBiUrl:
+      'https://app.powerbi.com/view?r=eyJrIjoiMzdjNTU4OTUtMTAxZi00MzYwLTg1ZGMtMjViYjRmNGQ4MjJmIiwidCI6ImIwZDQ1ZmViLTM5MzUtNGE4ZS04YTc1LTNhYWM4MGQ4NTMzYSJ9',
+    frameHeight: 800,
+  },
+  {
+    workspace: 'main',
     path: 'hechos-vitales/defunciones',
     legacyRoute: '/otros/fallecidos',
     moduleType: 'powerbi',

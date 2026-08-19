@@ -62,7 +62,7 @@ deploy.local.bat
 *_BACKUP*/
 backup/
 backups/
-
+/tmp
 # Herramientas locales y referencias extraidas
 .agents/
 .codex/
@@ -88,3 +88,7 @@ $RECYCLE.BIN/
 
 # Scripts PPR ocasionales de carga/comparacion local
 scripts/ppr-*.mjs
+
+#salida de documentos
+.ppt_build
+.doc_build
